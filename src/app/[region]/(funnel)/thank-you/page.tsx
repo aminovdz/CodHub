@@ -2,7 +2,7 @@
 
 import { use, useState } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { CheckCircle2, Mail, ExternalLink, MessageCircle, ShoppingBag, ShieldCheck, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -16,7 +16,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
 
   const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addCartItem, buyNow } = useFunnelStore();
   const { availableStores, checkoutConfigs, products } = useAdminStore();
-  const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+  const store = resolveStore(availableStores, region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const whatsappConfig = store?.whatsappConfig;
   const checkoutConfig = checkoutConfigs.find(c => c.storeId === store?.id);

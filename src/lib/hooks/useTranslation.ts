@@ -1,4 +1,4 @@
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { useMemo } from 'react';
 import { DEFAULT_TRANSLATIONS } from '../translations';
 
@@ -6,7 +6,7 @@ export function useTranslation(region: string) {
   const { availableStores } = useAdminStore();
   
   const { translations, language } = useMemo(() => {
-    const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+    const store = resolveStore(availableStores, region);
     return {
       translations: store?.translations || {},
       language: store?.language || 'en'

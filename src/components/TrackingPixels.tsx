@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
 export default function TrackingPixels({ region }: { region: string }) {
   const pathname = usePathname();
   const { availableStores } = useAdminStore();
-  const store = availableStores.find(s => s.region === region);
+  const store = resolveStore(availableStores, region);
   const injectedRef = useRef(false);
 
   useEffect(() => {

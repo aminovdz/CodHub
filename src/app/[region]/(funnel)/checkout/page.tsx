@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3 } from 'lucide-react';
 import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
-import { useAdminStore, Coupon } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
 export default function CheckoutPage({ params }: { params: Promise<{ region: string }> }) {
@@ -40,7 +40,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [showCouponInput, setShowCouponInput] = useState(false);
 
   const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog } = useAdminStore();
-  const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+  const store = resolveStore(availableStores, region);
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const prefix = store?.phonePrefix || (region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57');

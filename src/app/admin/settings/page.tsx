@@ -30,6 +30,7 @@ export default function AdminSettingsPage() {
   const [localOpenRouterModel, setLocalOpenRouterModel] = useState(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
+  const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
@@ -40,6 +41,7 @@ export default function AdminSettingsPage() {
   const [newStorePrefix, setNewStorePrefix] = useState('');
   const [newStoreCurrency, setNewStoreCurrency] = useState('');
   const [newStoreLanguage, setNewStoreLanguage] = useState('en');
+  const [newStoreCustomDomain, setNewStoreCustomDomain] = useState('');
 
   // Status State
   const [newStatus, setNewStatus] = useState('');
@@ -161,14 +163,16 @@ export default function AdminSettingsPage() {
       highValueThreshold: 15000
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
-  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor]);
+    setCustomDomain(activeStore.customDomain || '');
+  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain]);
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateStore(activeStore.id, { 
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
-      whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor
+      whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
+      customDomain: customDomain.trim() || undefined
     });
 
     setGlobalApiKey(localApiKey);
@@ -193,6 +197,7 @@ export default function AdminSettingsPage() {
       phonePrefix: newStorePrefix,
       currency: newStoreCurrency.toUpperCase(),
       language: newStoreLanguage.toLowerCase(),
+      customDomain: newStoreCustomDomain.trim() || undefined,
       translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
     });
     setNewStoreName('');
@@ -200,6 +205,7 @@ export default function AdminSettingsPage() {
     setNewStorePrefix('');
     setNewStoreCurrency('');
     setNewStoreLanguage('en');
+    setNewStoreCustomDomain('');
     setIsCreatingStore(false);
     notify('New store created successfully!', 'success');
   };
@@ -317,11 +323,11 @@ export default function AdminSettingsPage() {
                 <option value="hu">Hungarian</option>
                 <option value="pl">Polish</option>
                 <option value="cs">Czech</option>
-                <option value="sk">Slovak</option>
-                <option value="bg">Bulgarian</option>
-                <option value="sr">Serbian</option>
-                <option value="el">Greek</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 mb-1">Custom Domain</label>
+              <input type="text" value={newStoreCustomDomain} onChange={e => setNewStoreCustomDomain(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. fitnessdz.com" />
             </div>
           </div>
           <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm transition-colors">
@@ -545,6 +551,22 @@ export default function AdminSettingsPage() {
               <input type="checkbox" checked={isRtl} onChange={(e) => setIsRtl(e.target.checked)} className="sr-only peer" />
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
+          </div>
+
+          <div className="mt-6 p-5 bg-indigo-50 border border-indigo-100 rounded-2xl">
+            <h3 className="font-bold text-slate-900 mb-1">Custom Domain Binding</h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Point a unique custom domain (e.g. <code>algerian-beauty.com</code> or <code>fitnessdz.com</code>) to this specific sub-store.
+            </p>
+            <div className="flex gap-2 max-w-md">
+              <input 
+                type="text" 
+                value={customDomain} 
+                onChange={(e) => setCustomDomain(e.target.value)} 
+                placeholder="e.g. algerian-beauty.com" 
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold text-sm" 
+              />
+            </div>
           </div>
           
           <div className="mt-6 space-y-5">

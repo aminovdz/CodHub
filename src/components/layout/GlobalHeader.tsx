@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
 export default function GlobalHeader({ region }: { region: string }) {
   const { availableStores } = useAdminStore();
-  const store = availableStores.find(s => s.region === region);
+  const store = resolveStore(availableStores, region);
   const language = store?.language || 'en';
 
   return (

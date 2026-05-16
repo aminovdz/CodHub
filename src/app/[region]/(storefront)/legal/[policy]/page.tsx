@@ -2,7 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
 // Mocks removed
 
@@ -18,7 +18,7 @@ export default function LegalPage({ params }: { params: Promise<{ region: string
     setIsMounted(true);
   }, []);
 
-  const store = availableStores.find(s => s.region === region);
+  const store = resolveStore(availableStores, region);
   const currentPolicy = store ? legalPages.find(p => p.storeId === store.id && p.slug.trim().toLowerCase() === policySlug.trim().toLowerCase()) : undefined;
 
   if (!isMounted) return null;

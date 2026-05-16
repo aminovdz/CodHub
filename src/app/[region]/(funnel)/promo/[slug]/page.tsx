@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
 import { Loader2 } from 'lucide-react';
 
@@ -37,7 +37,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
   const region = resolvedParams.region as 'dz' | 'ro' | 'co';
   const slug = resolvedParams.slug;
   const { landingPages, availableStores, _hasHydrated } = useAdminStore();
-  const store = availableStores.find(s => s.region === region);
+  const store = resolveStore(availableStores, region);
   const page = store ? landingPages.find(p => p.storeId === store.id && p.slug === slug) : undefined;
 
   if (!_hasHydrated) {

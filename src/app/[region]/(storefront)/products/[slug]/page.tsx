@@ -6,7 +6,7 @@ import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
 // Using same mock data here for simplicity until DB connected
 const PRODUCTS = [
@@ -69,7 +69,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   // Currency will be initialized after store is fetched
   
   const { products, availableStores, _hasHydrated } = useAdminStore();
-  const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+  const store = resolveStore(availableStores, region);
   const product = products.find(p => p.seoSlug === slug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug) || PRODUCTS.find(p => p.slug === slug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
 

@@ -22,6 +22,15 @@ export const COUNTRY_DATA: Record<string, { name: string, states: string[] }> = 
   "RO": { name: "Romania", states: ROMANIA_COUNTIES }
 };
 
+export function resolveStore(availableStores: Store[], region: string): Store | undefined {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname.replace('www.', '').split(':')[0];
+    const found = availableStores.find(s => s.customDomain && s.customDomain.replace('www.', '').toLowerCase() === host.toLowerCase());
+    if (found) return found;
+  }
+  return availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+}
+
 // --- Mappers: camelCase Store ↔ snake_case Supabase row ---
 function storeToRow(store: Partial<Store> & { id?: string }) {
   return {
@@ -42,6 +51,7 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
     whatsapp_config: store.whatsappConfig,
     dz_fulfillment: store.dzFulfillment,
     fraud_config: store.fraudConfig,
+    custom_domain: store.customDomain,
   };
 }
 
@@ -64,6 +74,7 @@ function rowToStore(row: any): Store {
     whatsappConfig: row.whatsapp_config,
     dzFulfillment: row.dz_fulfillment,
     fraudConfig: row.fraud_config,
+    customDomain: row.custom_domain,
   };
 }
 
@@ -289,6 +300,7 @@ export interface Store {
   region: string;
   name: string;
   currency: string;
+  customDomain?: string;
   language?: string;
   phonePrefix?: string;
   primaryColor?: string;

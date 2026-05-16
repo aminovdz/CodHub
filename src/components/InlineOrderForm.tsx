@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { submitOrder } from '@/lib/actions/funnelActions';
@@ -30,7 +30,7 @@ export default function InlineOrderForm({ productId, region }: Props) {
   const { products, shippingZones, availableStores, setOrders } = useAdminStore();
   const { setLead, addCartItem, setAddressData, setDraftOrderId, setStatus } = useFunnelStore();
 
-  const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+  const store = resolveStore(availableStores, region);
   const product = products.find(p => p.id === productId);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
