@@ -929,7 +929,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const { error: deleteError } = await supabase
           .from('shipping_zones')
           .delete()
-          .eq('storeId', storeId);
+          .eq('store_id', storeId);
         
         if (deleteError) {
           console.error("Error clearing shipping zones:", deleteError);
