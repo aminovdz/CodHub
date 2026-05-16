@@ -152,7 +152,8 @@ function shippingZoneToRow(z: ShippingZone) {
     store_id: z.storeId,
     wilaya: z.wilaya,
     commune: z.commune,
-    delivery_rate: z.deliveryRate
+    delivery_rate: z.deliveryRate,
+    home_delivery_rate: z.deliveryRate
   };
 }
 
@@ -932,7 +933,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           .eq('store_id', storeId);
         
         if (deleteError) {
-          console.error("Error clearing shipping zones:", deleteError);
+          console.error("Error clearing shipping zones:", deleteError.message, deleteError.code);
           throw deleteError;
         }
 
@@ -943,7 +944,8 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             .insert(zones.map(shippingZoneToRow));
 
           if (insertError) {
-            console.error("Error inserting shipping zones:", insertError);
+            console.error("Error inserting shipping zones:", insertError.message, insertError.code, insertError.details);
+            notify(`Failed to save shipping zones: ${insertError.message}`, "error");
             throw insertError;
           }
         }
