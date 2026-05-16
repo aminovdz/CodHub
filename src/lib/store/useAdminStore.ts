@@ -2,6 +2,25 @@ import { create } from 'zustand';
 
 import { DEFAULT_TRANSLATIONS } from '../translations';
 import { supabase } from '../supabase';
+import { useNotificationStore } from './useNotificationStore';
+
+export const ALGERIA_WILAYAS = [
+  "Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger", "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma", "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh", "Illizi", "Bordj Bou Arreridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal", "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"
+];
+
+export const SPAIN_PROVINCES = [
+  "Álava", "Albacete", "Alicante", "Almería", "Asturias", "Ávila", "Badajoz", "Baleares", "Barcelona", "Burgos", "Cáceres", "Cádiz", "Cantabria", "Castellón", "Ciudad Real", "Córdoba", "Cuenca", "Gerona", "Granada", "Guadalajara", "Guipúzcoa", "Huelva", "Huesca", "Jaén", "La Coruña", "La Rioja", "Las Palmas", "León", "Lérida", "Lugo", "Madrid", "Málaga", "Murcia", "Navarra", "Orense", "Palencia", "Pontevedra", "Salamanca", "Segovia", "Sevilla", "Soria", "Tarragona", "Tenerife", "Teruel", "Toledo", "Valencia", "Valladolid", "Vizcaya", "Zamora", "Zaragoza", "Ceuta", "Melilla"
+];
+
+export const ROMANIA_COUNTIES = [
+  "Alba", "Arad", "Argeș", "Bacău", "Bihor", "Bistrița-Năsăud", "Botoșani", "Brașov", "Brăila", "Buzău", "Caraș-Severin", "Călărași", "Cluj", "Constanța", "Covasna", "Dâmbovița", "Dolj", "Galați", "Giurgiu", "Gorj", "Harghita", "Hunedoara", "Ialomița", "Iași", "Ilfov", "Maramureș", "Mehedinți", "Mureș", "Neamț", "Olt", "Prahova", "Satu Mare", "Sălaj", "Sibiu", "Suceava", "Teleorman", "Timiș", "Tulcea", "Vaslui", "Vâlcea", "Vrancea", "București"
+];
+
+export const COUNTRY_DATA: Record<string, { name: string, states: string[] }> = {
+  "DZ": { name: "Algeria", states: ALGERIA_WILAYAS },
+  "ES": { name: "Spain", states: SPAIN_PROVINCES },
+  "RO": { name: "Romania", states: ROMANIA_COUNTIES }
+};
 
 // --- Mappers: camelCase Store ↔ snake_case Supabase row ---
 function storeToRow(store: Partial<Store> & { id?: string }) {
@@ -75,6 +94,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     oto_product_id: p.otoProductId || null,
     disable_out_of_stock_purchases: p.disableOutOfStockPurchases,
     disable_coupons: p.disableCoupons,
+    delivery_agency: p.deliveryAgency,
     cost_price: p.costPrice,
     weight: p.weight,
     shipping_cost: p.shippingCost,
@@ -109,8 +129,9 @@ function rowToProduct(row: any): Product {
     reviewsCount: row.reviews_count,
     otoProductId: row.oto_product_id,
     disableOutOfStockPurchases: row.disable_out_of_stock_purchases,
-    disableCoupons: row.disable_coupons,
-    costPrice: row.cost_price,
+    disableCoupons: !!row.disable_coupons,
+    deliveryAgency: row.delivery_agency || undefined,
+    costPrice: row.cost_price || undefined,
     weight: row.weight,
     shippingCost: row.shipping_cost,
     isBundle: row.is_bundle,
@@ -361,6 +382,7 @@ export interface Product {
   otoProductId?: string;
   disableOutOfStockPurchases?: boolean;
   disableCoupons?: boolean;
+  deliveryAgency?: string;         // specific fulfillment agency assignment
   // New fields
   costPrice?: number;              // purchase/production cost for margin calc
   weight?: number;                 // weight in grams (for fulfillment APIs)
@@ -409,9 +431,20 @@ export interface Order {
   productId?: string;
   total: number;
   deliveryRate?: number;
+  discountAmount?: number;
+  upsellTotal?: number;
   costPrice?: number;         // purchase cost for margin calc
   status: string;
+  step?: string;
   date: string;
+  trackingNumber?: string;
+  paymentMethod?: string;
+  fraudScore?: number;
+  fraudFlags?: string[];
+  ipAddress?: string;
+  fulfillmentProvider?: string;
+  fulfillmentStatus?: string;
+  customFields?: any;
   confirmedBy?: string;       // agent name who confirmed
   variantLabel?: string;      // selected variant label
   notes?: OrderNote[];        // internal agent comments
@@ -619,6 +652,9 @@ interface AdminStore {
 
   staffAccounts: StaffAccount[];
   setStaffAccounts: (updater: (prev: StaffAccount[]) => StaffAccount[]) => void;
+  addStaffAccount: (account: Omit<StaffAccount, 'id'>) => Promise<void>;
+  updateStaffAccount: (id: string, data: Partial<Omit<StaffAccount, 'id'>>) => Promise<void>;
+  deleteStaffAccount: (id: string) => Promise<void>;
 
   // New: Call Logs
   callLogs: CallLog[];
@@ -709,21 +745,43 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         
         if (error) {
           console.error("Supabase Add Store Error:", error);
-          notify(`Failed to add store: ${error.message || 'Check console'}`, 'error');
+          useNotificationStore.getState().notify(`Failed to add store: ${error.message || 'Check console'}`, 'error');
           return;
         }
 
         if (!data || data.length === 0) {
           console.error("Supabase returned no data after insert");
-          notify("Failed to add store: No data returned", 'error');
+          useNotificationStore.getState().notify("Failed to add store: No data returned", 'error');
           return;
         }
 
         // Use the real UUID from Supabase as the store id
         const finalStore = { ...storeWithTrans, id: data[0].id };
+
+        // --- NEW: Auto-populate Shipping Zones based on Region ---
+        const regionCode = finalStore.region.toUpperCase();
+        const countryInfo = COUNTRY_DATA[regionCode] || COUNTRY_DATA["DZ"];
+        
+        const defaultZones: ShippingZone[] = countryInfo.states.map(stateName => ({
+          id: `zone_${Math.random().toString(36).substr(2, 9)}`,
+          storeId: finalStore.id,
+          wilaya: stateName,
+          commune: '',
+          deliveryRate: 0
+        }));
+
+        const { error: zonesError } = await supabase
+          .from('shipping_zones')
+          .insert(defaultZones.map(shippingZoneToRow));
+
+        if (zonesError) {
+          console.error("Failed to auto-populate shipping zones:", zonesError);
+        }
+
         set((state) => ({
           availableStores: [...state.availableStores, finalStore],
-          activeStore: finalStore
+          activeStore: finalStore,
+          shippingZones: [...state.shippingZones, ...defaultZones]
         }));
       },
       updateStore: async (storeId, data) => {
@@ -862,7 +920,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
         if (error) {
           console.error("Supabase Add Staff Error:", error);
-          notify(`Failed to add staff: ${error.message || 'Check console'}`, 'error');
+          useNotificationStore.getState().notify(`Failed to add staff: ${error.message || 'Check console'}`, 'error');
           return;
         }
 
@@ -913,7 +971,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         
         if (error) {
           console.error("Error saving checkout config:", error);
-          notify("Failed to save checkout settings", "error");
+          useNotificationStore.getState().notify("Failed to save checkout settings", "error");
           throw error;
         }
 
@@ -944,7 +1002,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
           if (insertError) {
             console.error("Error inserting shipping zones:", insertError.message, insertError.code, insertError.details);
-            notify(`Failed to save shipping zones: ${insertError.message}`, "error");
+            useNotificationStore.getState().notify(`Failed to save shipping zones: ${insertError.message}`, "error");
             throw insertError;
           }
         }

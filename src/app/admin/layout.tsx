@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Settings, LogOut, Store as StoreIcon,
   FileText, MonitorPlay, ShoppingCart, Home, CreditCard, ShieldAlert,
-  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users
+  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe
 } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { ToastContainer } from '@/components/admin/ToastContainer';
@@ -200,6 +200,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `${basePath}/coupons`,   label: 'Coupons',         icon: <Tag size={18} />,             roles: ['admin'] },
     { href: `${basePath}/homepage`,  label: 'Homepage',        icon: <Home size={18} />,            roles: ['admin'] },
     { href: `${basePath}/checkout`,  label: 'Checkout',        icon: <CreditCard size={18} />,      roles: ['admin'] },
+    { href: `${basePath}/translations`,label: 'Translations',    icon: <Globe size={18} />,           roles: ['admin'] },
     { href: `${basePath}/legal`,     label: 'Legal Pages',     icon: <FileText size={18} />,        roles: ['admin'] },
     { href: `${basePath}/promo`,     label: 'Landing Pages',   icon: <MonitorPlay size={18} />,     roles: ['admin'] },
     { href: `${basePath}/agents`,    label: 'AI Agents Hub',   icon: <Bot size={18} />,             roles: ['admin'] },

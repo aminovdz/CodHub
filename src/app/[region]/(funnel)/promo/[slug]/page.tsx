@@ -4,6 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
+import { Loader2 } from 'lucide-react';
 
 // Split HTML content on [CHECKOUT_FORM:productId] shortcodes
 // Returns an array of segments: { type: 'html' | 'form', content: string, productId?: string }
@@ -35,10 +36,18 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
   const resolvedParams = use(params);
   const region = resolvedParams.region as 'dz' | 'ro' | 'co';
   const slug = resolvedParams.slug;
-  
-  const { landingPages, availableStores } = useAdminStore();
+  const { landingPages, availableStores, _hasHydrated } = useAdminStore();
   const store = availableStores.find(s => s.region === region);
   const page = store ? landingPages.find(p => p.storeId === store.id && p.slug === slug) : undefined;
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 text-slate-400">
+        <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
+        <p className="text-slate-500 font-bold">Loading promo...</p>
+      </div>
+    );
+  }
 
   if (!page || !page.published) {
     return (

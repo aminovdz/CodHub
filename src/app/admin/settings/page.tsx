@@ -160,29 +160,16 @@ export default function AdminSettingsPage() {
       requireApprovalForHighValue: false,
       highValueThreshold: 15000
     });
-    setLocalApiKey(globalApiKey || '');
-    setLocalClaudeKey(claudeApiKey || '');
-    setLocalOpenAiKey(openAiApiKey || '');
-    setLocalOpenRouterKey(openRouterApiKey || '');
-    setLocalOpenRouterModel(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
-    setLocalProvider(aiProvider || 'gemini');
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
-  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, checkoutConfigs, activeStore.whatsappConfig, activeStore.fraudConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor]);
+  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor]);
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
     await updateStore(activeStore.id, { 
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
-      whatsappConfig, dzFulfillment, fraudConfig, primaryColor: localPrimaryColor
+      whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor
     });
-
-    // Save Checkout Configs to Supabase
-    const existing = checkoutConfigs.find(c => c.storeId === activeStore.id) || {
-      storeId: activeStore.id, addressAutocomplete: false, customFields: [], fields: { showEmail: false, requireEmail: false, showLastName: false }, enableStep2Upsell: true, enablePostPurchaseOTO: false, countdownMinutes: 5
-    };
-    await saveCheckoutConfig({ ...existing, ...checkoutConfig } as any);
 
     setGlobalApiKey(localApiKey);
     setClaudeApiKey(localClaudeKey);
@@ -515,7 +502,7 @@ export default function AdminSettingsPage() {
         <form onSubmit={async (e) => {
           e.preventDefault();
           if (newStaffName && newStaffPin.length >= 4) {
-            await addStaffAccount({ id: '', name: newStaffName, role: newStaffRole, pin: newStaffPin });
+            await addStaffAccount({ name: newStaffName, role: newStaffRole, pin: newStaffPin });
             setNewStaffName('');
             setNewStaffPin('');
           }
@@ -706,140 +693,6 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* CHECKOUT & CRO */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <ShoppingCart className="text-indigo-400" /> Checkout &amp; Conversion (CRO)
-          </h2>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Enable Step 2: Pre-Purchase Upsells</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Show the upsell step before completing checkout.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={checkoutConfig.enableStep2Upsell} onChange={(e) => setCheckoutConfig({...checkoutConfig, enableStep2Upsell: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Enable Post-Purchase OTO</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Show a one-time offer after order confirmed, before Thank You page.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={checkoutConfig.enablePostPurchaseOTO} onChange={(e) => setCheckoutConfig({...checkoutConfig, enablePostPurchaseOTO: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Urgency Countdown Timer (Minutes on Step 2)</label>
-              <input type="number" min={0} value={checkoutConfig.countdownMinutes} onChange={(e) => setCheckoutConfig({...checkoutConfig, countdownMinutes: parseInt(e.target.value) || 0})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Set to 0 to disable the countdown timer.</p>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Enable Digital Receipt on Thank You Page</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Show the email capture block for digital receipts.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={checkoutConfig.enableDigitalReceipt !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, enableDigitalReceipt: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Thank You Page Custom Message</label>
-              <textarea rows={3} value={checkoutConfig.thankYouMessage || ''} onChange={(e) => setCheckoutConfig({...checkoutConfig, thankYouMessage: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none" placeholder="Your order is now being processed. An agent will call you shortly." />
-            </div>
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Show Address Fields</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Enable Wilaya, Commune, and Address inputs at checkout.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={checkoutConfig.showAddressFields !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, showAddressFields: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-
-            {checkoutConfig.showAddressFields !== false && (
-              <div className="pl-6 border-l-2 border-indigo-100 dark:border-slate-700 space-y-4">
-                <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Address Field Visibility</div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Show City</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={checkoutConfig.fields.showCity !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, fields: { ...checkoutConfig.fields, showCity: e.target.checked }})} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Show Postal Code</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={checkoutConfig.fields.showPostalCode !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, fields: { ...checkoutConfig.fields, showPostalCode: e.target.checked }})} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Show Province/State</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={checkoutConfig.fields.showProvince !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, fields: { ...checkoutConfig.fields, showProvince: e.target.checked }})} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Show Country</span>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={checkoutConfig.fields.showCountry !== false} onChange={(e) => setCheckoutConfig({...checkoutConfig, fields: { ...checkoutConfig.fields, showCountry: e.target.checked }})} className="sr-only peer" />
-                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* FRAUD RULES */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <ShieldAlert className="text-rose-500" /> Fraud Prevention Rules
-          </h2>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Block Duplicate Orders (Same IP)</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Prevent same IP from placing multiple orders within a time window.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={fraudConfig.blockDuplicateIps} onChange={(e) => setFraudConfig({...fraudConfig, blockDuplicateIps: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-            {fraudConfig.blockDuplicateIps && (
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Duplicate Window (Hours)</label>
-                <input type="number" min={1} value={fraudConfig.duplicateIpTimeframeHours} onChange={(e) => setFraudConfig({...fraudConfig, duplicateIpTimeframeHours: parseInt(e.target.value) || 24})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-              </div>
-            )}
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white">Require Manual Approval for High-Value Orders</div>
-                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Orders above threshold need admin confirmation before shipping.</div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" checked={fraudConfig.requireApprovalForHighValue} onChange={(e) => setFraudConfig({...fraudConfig, requireApprovalForHighValue: e.target.checked})} className="sr-only peer" />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-              </label>
-            </div>
-            {fraudConfig.requireApprovalForHighValue && (
-              <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">High-Value Threshold ({activeStore.currency})</label>
-                <input type="number" min={0} value={fraudConfig.highValueThreshold} onChange={(e) => setFraudConfig({...fraudConfig, highValueThreshold: parseInt(e.target.value) || 0})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* WHATSAPP AUTOMATION */}
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -899,10 +752,10 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Branding & Translations Panel */}
+        {/* Branding Panel */}
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <Globe className="w-6 h-6 text-indigo-600" /> Branding & Translations
+            <Globe className="w-6 h-6 text-indigo-600" /> Branding
           </h2>
           
           <div className="space-y-6">
@@ -923,41 +776,6 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-500 mt-2">This color will be used for main call-to-action buttons.</p>
-            </div>
-
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-600 overflow-hidden">
-              <div className="p-4 border-b border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50">
-                <h4 className="font-bold text-slate-900 dark:text-white">Custom Translations</h4>
-                <p className="text-sm text-slate-500">Override any default text on the storefront.</p>
-              </div>
-              <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto">
-                {Object.entries((DEFAULT_TRANSLATIONS as any)[activeStore.language || 'en'] || {}).map(([key, defaultVal]) => (
-                  <div key={key}>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">{key}</label>
-                    <input 
-                      type="text" 
-                      value={translations[key] || defaultVal as string} 
-                      onChange={e => setTranslations({...translations, [key]: e.target.value})}
-                      className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="p-4 border-t border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 flex justify-end">
-                <button 
-                  onClick={async (e) => { 
-                    e.preventDefault(); 
-                    setIsSaving(true);
-                    await updateStore(activeStore.id, { translations }); 
-                    setIsSaving(false);
-                    notify('Translations Saved!', 'success'); 
-                  }}
-                  disabled={isSaving}
-                  className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  {isSaving ? 'Saving...' : 'Save Translations'}
-                </button>
-              </div>
             </div>
           </div>
         </div>

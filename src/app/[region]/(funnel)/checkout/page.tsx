@@ -49,8 +49,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const addressInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isMounted && checkoutConfig?.addressAutocomplete && checkoutConfig?.autocompleteApiKey && typeof google !== 'undefined' && addressInputRef.current) {
-      const autocomplete = new google.maps.places.Autocomplete(addressInputRef.current, {
+    if (isMounted && checkoutConfig?.addressAutocomplete && checkoutConfig?.autocompleteApiKey && typeof (window as any).google !== 'undefined' && addressInputRef.current) {
+      const autocomplete = new (window as any).google.maps.places.Autocomplete(addressInputRef.current, {
         types: ['address'],
       });
 
@@ -64,7 +64,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           let countryVal = '';
           let postalVal = '';
 
-          place.address_components.forEach(comp => {
+          place.address_components.forEach((comp: any) => {
             const types = comp.types;
             if (types.includes('street_number')) streetNumber = comp.long_name;
             if (types.includes('route')) route = comp.long_name;

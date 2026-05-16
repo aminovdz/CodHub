@@ -59,8 +59,7 @@ export default function AdminHomepageEditor() {
       ]);
     }
 
-    // Load Translations & Analytics from Store
-    setTranslations(activeStore.translations || {});
+    // Load Analytics from Store
     setAnalytics({
       google: activeStore.analytics?.google || '',
       facebook: activeStore.analytics?.facebook || '',
@@ -68,7 +67,7 @@ export default function AdminHomepageEditor() {
       snapchat: activeStore.analytics?.snapchat || '',
       pinterest: activeStore.analytics?.pinterest || ''
     });
-  }, [activeStore.id, homepages, activeStore.translations, activeStore.analytics]);
+  }, [activeStore.id, homepages, activeStore.analytics]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +83,8 @@ export default function AdminHomepageEditor() {
       return [...prev, newConfig];
     });
 
-    // Save Translations & Analytics to Store
+    // Save Analytics to Store
     await updateStore(activeStore.id, { 
-      translations,
       analytics 
     });
 
@@ -155,8 +153,8 @@ export default function AdminHomepageEditor() {
         <button onClick={() => setActiveTab('footer')} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'footer' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           <Layout size={18} /> Footer
         </button>
-        <button onClick={() => setActiveTab('translations')} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'translations' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          <Globe size={18} /> Translations
+        <button onClick={() => setActiveTab('pixels')} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'pixels' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+          <Globe size={18} /> Tracking Pixels
         </button>
       </div>
 
@@ -310,37 +308,7 @@ export default function AdminHomepageEditor() {
           </div>
         )}
 
-        {/* ================= TRANSLATIONS TAB ================= */}
-        {activeTab === 'translations' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-slate-50 p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Translations</h2>
-              <p className="text-sm text-slate-500">Override the hardcoded English text in your storefront and checkout funnel. These apply only to <strong className="text-indigo-600">{activeStore.name}</strong>.</p>
-            </div>
-            
-            <div className="p-6">
-              {['Storefront', 'Checkout - Step 1', 'Checkout - Step 2 (Upsell)', 'Checkout - Step 3 (Shipping)'].map((group) => (
-                <div key={group} className="mb-10 last:mb-0">
-                  <h3 className="font-black text-slate-900 uppercase tracking-widest text-sm mb-4 pb-2 border-b-2 border-slate-100 text-indigo-600">{group}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {PREDEFINED_KEYS.filter(k => k.group === group).map(({ key, default: def }) => (
-                      <div key={key} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <label className="block text-xs font-bold text-slate-500 mb-1">{key}</label>
-                        <input 
-                          type="text" 
-                          value={translations[key] ?? def} 
-                          onChange={(e) => setTranslations({ ...translations, [key]: e.target.value })}
-                          placeholder={def}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none text-sm font-medium" 
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         {/* ================= PIXELS TAB ================= */}
         {activeTab === 'pixels' && (

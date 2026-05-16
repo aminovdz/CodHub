@@ -351,14 +351,26 @@ export default function AdminProductsPage() {
                       <input type="number" value={editingProduct.reviewsCount || ''} onChange={(e) => setEditingProduct({...editingProduct, reviewsCount: Number(e.target.value)})} min="0" className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium" placeholder="e.g. 124" />
                     </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-bold text-slate-700 mb-1">Post-Purchase OTO Product</label>
-                    <select value={editingProduct.otoProductId || ''} onChange={(e) => setEditingProduct({...editingProduct, otoProductId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white">
-                      <option value="">None (Disable OTO)</option>
-                      {filteredProducts.filter(p => p.id !== editingProduct.id).map(p => (
-                        <option key={p.id} value={p.id}>{p.title}</option>
-                      ))}
-                    </select>
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Post-Purchase OTO Product</label>
+                      <select value={editingProduct.otoProductId || ''} onChange={(e) => setEditingProduct({...editingProduct, otoProductId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white">
+                        <option value="">None (Disable OTO)</option>
+                        {filteredProducts.filter(p => p.id !== editingProduct.id).map(p => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Delivery Agency (Fulfillment)</label>
+                      <select value={editingProduct.deliveryAgency || ''} onChange={(e) => setEditingProduct({...editingProduct, deliveryAgency: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white">
+                        <option value="">Manual / Default</option>
+                        <option value="yalidine">Yalidine Express</option>
+                        <option value="dhd">DHD Delivery</option>
+                        <option value="maystro">Maystro Delivery</option>
+                        <option value="zajil">Zajil Express</option>
+                      </select>
+                    </div>
                   </div>
                   <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">

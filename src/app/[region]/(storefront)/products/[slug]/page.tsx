@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useAdminStore } from '@/lib/store/useAdminStore';
@@ -68,7 +68,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const { t } = useTranslation(region);
   // Currency will be initialized after store is fetched
   
-  const { products, availableStores } = useAdminStore();
+  const { products, availableStores, _hasHydrated } = useAdminStore();
   const store = availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
   const product = products.find(p => p.seoSlug === slug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug) || PRODUCTS.find(p => p.slug === slug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
@@ -102,6 +102,15 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
       metaDesc.setAttribute('content', desc);
     }
   }, [product]);
+
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-400">
+        <Loader2 className="animate-spin text-indigo-600 mr-2" size={32} />
+        <span className="font-bold text-lg">Loading Product...</span>
+      </div>
+    );
+  }
 
   if (!product) {
     return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-slate-400">Product not found</div>;
