@@ -1,0 +1,1049 @@
+import { create } from 'zustand';
+
+import { DEFAULT_TRANSLATIONS } from '../translations';
+import { supabase } from '../supabase';
+
+// --- Mappers: camelCase Store ↔ snake_case Supabase row ---
+function storeToRow(store: Partial<Store> & { id?: string }) {
+  return {
+    ...(store.id && !store.id.startsWith('store_') ? { id: store.id } : {}), // only pass UUID ids
+    region: store.region,
+    name: store.name,
+    currency: store.currency,
+    language: store.language,
+    phone_prefix: store.phonePrefix,
+    primary_color: store.primaryColor,
+    translations: store.translations,
+    analytics: store.analytics,
+    resend_api_key: store.resendApiKey,
+    notify_email: store.notifyEmail,
+    yalidine_api_key: store.yalidineApiKey,
+    yalidine_api_token: store.yalidineApiToken,
+    generic_webhook_url: store.genericWebhookUrl,
+    whatsapp_config: store.whatsappConfig,
+    dz_fulfillment: store.dzFulfillment,
+    fraud_config: store.fraudConfig,
+  };
+}
+
+function rowToStore(row: any): Store {
+  return {
+    id: row.id,
+    region: row.region,
+    name: row.name,
+    currency: row.currency,
+    language: row.language,
+    phonePrefix: row.phone_prefix,
+    primaryColor: row.primary_color,
+    translations: row.translations,
+    analytics: row.analytics,
+    resendApiKey: row.resend_api_key,
+    notifyEmail: row.notify_email,
+    yalidineApiKey: row.yalidine_api_key,
+    yalidineApiToken: row.yalidine_api_token,
+    genericWebhookUrl: row.generic_webhook_url,
+    whatsappConfig: row.whatsapp_config,
+    dzFulfillment: row.dz_fulfillment,
+    fraudConfig: row.fraud_config,
+  };
+}
+
+// --- Product mappers ---
+function productToRow(p: Partial<Product> & { id?: string }) {
+  return {
+    store_id: (p as any).storeId,
+    title: p.title,
+    category: p.category,
+    price: p.price,
+    compare_at_price: p.compareAtPrice,
+    active: p.active,
+    image: p.image,
+    short_desc: p.shortDesc,
+    main_desc: p.mainDesc,
+    stock: p.stock,
+    low_stock_threshold: p.lowStockThreshold,
+    variants: p.variants,
+    enable_variants: p.enableVariants,
+    related_products: p.relatedProducts,
+    maximizer_upsells: p.maximizerUpsells,
+    blocks: p.blocks,
+    seo_title: p.seoTitle,
+    seo_description: p.seoDescription,
+    seo_slug: p.seoSlug || null,
+    stars_rate: p.starsRate,
+    reviews_count: p.reviewsCount,
+    oto_product_id: p.otoProductId || null,
+    disable_out_of_stock_purchases: p.disableOutOfStockPurchases,
+    disable_coupons: p.disableCoupons,
+    cost_price: p.costPrice,
+    weight: p.weight,
+    shipping_cost: p.shippingCost,
+    is_bundle: p.isBundle,
+    bundle_items: p.bundleItems,
+  };
+}
+
+function rowToProduct(row: any): Product {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    title: row.title,
+    category: row.category,
+    price: row.price,
+    compareAtPrice: row.compare_at_price,
+    active: row.active,
+    image: row.image || '',
+    shortDesc: row.short_desc || '',
+    mainDesc: row.main_desc || '',
+    stock: row.stock,
+    lowStockThreshold: row.low_stock_threshold,
+    variants: row.variants,
+    enableVariants: row.enable_variants,
+    relatedProducts: row.related_products,
+    maximizerUpsells: row.maximizer_upsells || [],
+    blocks: row.blocks,
+    seoTitle: row.seo_title,
+    seoDescription: row.seo_description,
+    seoSlug: row.seo_slug,
+    starsRate: row.stars_rate,
+    reviewsCount: row.reviews_count,
+    otoProductId: row.oto_product_id,
+    disableOutOfStockPurchases: row.disable_out_of_stock_purchases,
+    disableCoupons: row.disable_coupons,
+    costPrice: row.cost_price,
+    weight: row.weight,
+    shippingCost: row.shipping_cost,
+    isBundle: row.is_bundle,
+    bundleItems: row.bundle_items,
+  };
+}
+
+// --- Staff mappers ---
+function staffToRow(s: Partial<StaffAccount> & { id?: string }) {
+  return {
+    name: s.name,
+    role: s.role,
+    pin: s.pin,
+  };
+}
+
+function rowToStaff(row: any): StaffAccount {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role,
+    pin: row.pin,
+  };
+}
+
+// --- ShippingZone mappers ---
+function rowToShippingZone(row: any): ShippingZone {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    wilaya: row.wilaya,
+    commune: row.commune,
+    deliveryRate: row.delivery_rate ?? row.home_delivery_rate ?? 0,
+  };
+}
+
+function shippingZoneToRow(z: ShippingZone) {
+  return {
+    store_id: z.storeId,
+    wilaya: z.wilaya,
+    commune: z.commune,
+    delivery_rate: z.deliveryRate
+  };
+}
+
+function checkoutConfigToRow(c: CheckoutConfig) {
+  return {
+    store_id: c.storeId,
+    address_autocomplete: c.addressAutocomplete,
+    autocomplete_api_key: c.autocompleteApiKey,
+    fields: c.fields,
+    custom_fields: c.customFields,
+    enable_step2_upsell: c.enableStep2Upsell,
+    enable_post_purchase_oto: c.enablePostPurchaseOTO,
+    countdown_minutes: c.countdownMinutes,
+    enable_digital_receipt: c.enableDigitalReceipt,
+    thank_you_message: c.thankYouMessage,
+    show_address_fields: c.showAddressFields
+  };
+}
+
+function rowToCheckoutConfig(row: any): CheckoutConfig {
+  return {
+    storeId: row.store_id,
+    addressAutocomplete: row.address_autocomplete,
+    autocompleteApiKey: row.autocomplete_api_key,
+    fields: row.fields || { showEmail: false, requireEmail: false, showLastName: false },
+    customFields: row.custom_fields || [],
+    enableStep2Upsell: row.enable_step2_upsell ?? true,
+    enablePostPurchaseOTO: row.enable_post_purchase_oto ?? false,
+    countdownMinutes: row.countdown_minutes ?? 5,
+    enableDigitalReceipt: row.enable_digital_receipt ?? true,
+    thankYouMessage: row.thank_you_message || '',
+    showAddressFields: row.show_address_fields ?? true
+  };
+}
+
+function rowToOrder(row: any): Order {
+  let cleanAddress = row.address;
+  let cleanCity = row.city;
+  let cleanPostalCode = row.postal_code;
+  let cleanProvince = row.province;
+  let cleanCountry = row.country;
+  let cleanWilaya = row.wilaya;
+  let cleanCommune = row.commune;
+
+  // Fix: Handle JSON stringified address if it exists
+  if (typeof row.address === 'string' && row.address.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(row.address);
+      cleanAddress = parsed.landmark || parsed.address || cleanAddress;
+      cleanCity = parsed.city || cleanCity;
+      cleanPostalCode = parsed.postalCode || cleanPostalCode;
+      cleanProvince = parsed.province || cleanProvince;
+      cleanCountry = parsed.country || cleanCountry;
+      cleanWilaya = parsed.wilaya || cleanWilaya;
+      cleanCommune = parsed.commune || cleanCommune;
+    } catch (e) {}
+  }
+
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    customer: row.customer,
+    phone: row.phone,
+    address: cleanAddress,
+    wilaya: cleanWilaya,
+    commune: cleanCommune,
+    product: row.product,
+    total: row.total,
+    deliveryRate: row.delivery_rate,
+    status: row.status,
+    date: row.date,
+    discountAmount: row.discount_amount,
+    upsellTotal: row.upsell_total,
+    trackingNumber: row.tracking_number,
+    notes: row.notes,
+    paymentMethod: row.payment_method,
+    fraudScore: row.fraud_score,
+    fraudFlags: row.fraud_flags,
+    ipAddress: row.ip_address,
+    fulfillmentProvider: row.fulfillment_provider,
+    fulfillmentStatus: row.fulfillment_status,
+    customFields: row.custom_fields,
+    city: cleanCity,
+    postalCode: cleanPostalCode,
+    province: cleanProvince,
+    country: cleanCountry,
+    step: row.step || row.custom_fields?.step || 'Checkout',
+    quantity: row.quantity,
+    costPrice: row.cost_price,
+    source: row.source,
+    claimedBy: row.claimed_by,
+    confirmedBy: row.confirmed_by,
+    variantLabel: row.variant_label,
+  };
+}
+
+function rowToAbandonedCart(row: any): AbandonedCart {
+  return {
+    id: row.id,
+    storeId: row.store_id,
+    customer: row.customer,
+    phone: row.phone,
+    product: row.product,
+    total: row.total,
+    step: row.step || row.custom_fields?.step || 'Checkout',
+    date: row.date,
+  };
+}
+
+
+export interface Store {
+  id: string;
+  region: string;
+  name: string;
+  currency: string;
+  language?: string;
+  phonePrefix?: string;
+  primaryColor?: string;
+  translations?: Record<string, string>;
+  analytics?: {
+    google?: string;
+    facebook?: string;
+    tiktok?: string;
+    snapchat?: string;
+    pinterest?: string;
+  };
+  resendApiKey?: string;
+  notifyEmail?: string;
+  yalidineApiKey?: string;
+  yalidineApiToken?: string;
+  genericWebhookUrl?: string;
+  whatsappConfig?: {
+    abandonedCartEnabled?: boolean;
+    abandonedCartDelayMinutes?: number;
+    abandonedCartScript: string;
+    thankYouEnabled: boolean;
+    thankYouNumber: string;
+    thankYouMessage: string;
+  };
+  dzFulfillment?: {
+    defaultProvider: 'yalidine' | 'zrexpress' | 'mayestro' | 'dhd';
+    yalidine?: { apiKey: string; apiToken: string };
+    zrexpress?: { apiKey: string; apiToken: string; branchId: string };
+    mayestro?: { apiKey: string };
+    dhd?: { apiKey: string; apiToken: string };
+  };
+  fraudConfig?: {
+    blockDuplicateIps: boolean;
+    duplicateIpTimeframeHours: number;
+    requireApprovalForHighValue: boolean;
+    highValueThreshold: number;
+  };
+}
+
+export interface StaffAccount {
+  id: string;
+  name: string;
+  role: 'admin' | 'fulfillment' | 'confirmation';
+  pin: string;
+}
+
+export interface MaximizerUpsell {
+  id: string; // Unique ID for this upsell config
+  targetProductId: string; // The product being upsold
+  customPrice: number; // Discounted price just for the upsell
+  customImage?: string; // Optional image override
+  titleOverride?: string; // e.g. "Add 1 More for 50% Off!"
+}
+
+export interface ProductVariant {
+  id: string;
+  label: string;          // e.g. "Large", "Red"
+  sku?: string;
+  stock: number;
+  priceModifier: number;  // +/- from base price
+}
+
+export interface BundleItem {
+  productId: string;
+  qty: number;
+}
+
+export interface Product {
+  id: string;
+  storeId: string;
+  title: string;
+  category: string;
+  price: number;
+  compareAtPrice?: number;
+  active: boolean;
+  image: string;
+  shortDesc: string;
+  mainDesc: string;
+  stock?: number;                  // total stock (used when no variants)
+  lowStockThreshold?: number;      // alert threshold, default 5
+  variants?: ProductVariant[];     // optional size/color/model variants
+  enableVariants?: boolean;
+  relatedProducts?: string;
+  maximizerUpsells?: MaximizerUpsell[];
+  blocks?: HomepageBlock[];
+  seoTitle?: string;
+  seoDescription?: string;
+  seoSlug?: string;
+  starsRate?: number;
+  reviewsCount?: number;
+  otoProductId?: string;
+  disableOutOfStockPurchases?: boolean;
+  disableCoupons?: boolean;
+  // New fields
+  costPrice?: number;              // purchase/production cost for margin calc
+  weight?: number;                 // weight in grams (for fulfillment APIs)
+  shippingCost?: number;           // product-specific delivery fee override
+  isBundle?: boolean;              // is this a bundle/combo product?
+  bundleItems?: BundleItem[];      // products included in bundle
+}
+
+export interface LandingPage {
+  id: string;
+  storeId: string;
+  title?: string;
+  slug: string;
+  htmlContent: string;
+  published: boolean;
+}
+
+export interface LegalPage {
+  id: string;
+  storeId: string;
+  title?: string;
+  slug: string;
+  htmlContent: string;
+}
+
+export interface OrderNote {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface Order {
+  id: string;
+  storeId: string;
+  customer: string;
+  phone: string;
+  address: string;
+  city?: string;
+  postalCode?: string;
+  province?: string;
+  country?: string;
+  wilaya?: string;
+  commune?: string;
+  product: string;
+  productId?: string;
+  total: number;
+  deliveryRate?: number;
+  costPrice?: number;         // purchase cost for margin calc
+  status: string;
+  date: string;
+  confirmedBy?: string;       // agent name who confirmed
+  variantLabel?: string;      // selected variant label
+  notes?: OrderNote[];        // internal agent comments
+  callAttempts?: number;      // number of call attempts
+  claimedBy?: string;         // agent who claimed this order
+  source?: 'facebook' | 'tiktok' | 'snapchat' | 'direct' | 'other';
+  shippedDate?: string;
+  deliveredDate?: string;
+  quantity?: number;          // number of units ordered
+}
+
+export interface AbandonedCart {
+  id: string;
+  storeId: string;
+  customer: string;
+  phone: string;
+  product: string;
+  total: number;
+  step: string;
+  date: string;
+}
+
+export interface CallLog {
+  id: string;
+  orderId: string;
+  storeId: string;
+  agentName: string;
+  result: 'answered' | 'no_answer' | 'confirmed' | 'canceled' | 'rescheduled';
+  note: string;
+  calledAt: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  storeId: string;
+  user: string;
+  action: string;
+  detail: string;
+  timestamp: string;
+}
+
+export interface Coupon {
+  id: string;
+  storeId: string;
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  minOrderValue?: number;
+  maxUses?: number;
+  usedCount: number;
+  active: boolean;
+  expiresAt?: string;
+}
+
+export interface BlacklistedCustomer {
+  id: string;
+  storeId: string;
+  phone: string;
+  name?: string;
+  reason: string;
+  addedAt: string;
+  addedBy: string;
+}
+
+export interface StaffGoal {
+  id: string;
+  storeId: string;
+  agentName: string;
+  targetOrders: number;
+  targetRevenue: number;
+  month: string;             // YYYY-MM format
+  createdAt: string;
+}
+
+export interface CommissionEntry {
+  id: string;
+  storeId: string;
+  agentName: string;
+  amount: number;
+  reason: string;
+  type: 'COMMISSION' | 'BONUS' | 'PENALTY';
+  date: string;
+}
+
+export interface ShippingZone {
+  id: string;
+  storeId: string;
+  wilaya: string;
+  commune: string;
+  deliveryRate: number;
+}
+
+// Keep legacy for existing, but new features use Store.fraudConfig
+export interface FraudRules {
+  storeId: string;
+  requirePhone: boolean;
+  blockDuplicateIps: boolean;
+  duplicateIpAttempts: number;
+  duplicateIpTimeframeHours: number;
+  allowedCountries: string; // comma separated country codes
+  autoApproveLowRisk: boolean;
+  requireAgentHighValue: boolean;
+  highValueThreshold: number;
+}
+
+export interface HomepageBlock {
+  id: string;
+  type: 'hero' | 'text' | 'html' | 'product_grid' | 'category_grid' | 'features';
+  content: string; // For text/html/hero
+  productIds?: string[]; // For product_grid
+  categoryIds?: string[]; // For category_grid
+  features?: { title: string, description: string, icon: string }[]; // For features block
+}
+
+export interface FooterConfig {
+  aboutText: string;
+  contactEmail: string;
+  contactPhone: string;
+  socialLinks: { platform: string; url: string }[];
+  storeLinks?: { label: string; url: string }[];
+  legalLinks?: { label: string; url: string }[];
+}
+
+export interface HomepageConfig {
+  storeId: string;
+  blocks: HomepageBlock[];
+  footer: FooterConfig;
+}
+
+export interface CustomCheckoutField {
+  id: string;
+  label: string;
+  required: boolean;
+}
+
+export interface CheckoutConfig {
+  storeId: string;
+  addressAutocomplete: boolean;
+  autocompleteApiKey?: string;
+  showAddressFields?: boolean;
+  fields: {
+    showEmail: boolean;
+    requireEmail: boolean;
+    showLastName: boolean;
+    showCity?: boolean;
+    showPostalCode?: boolean;
+    showProvince?: boolean;
+    showCountry?: boolean;
+  };
+  customFields: CustomCheckoutField[];
+  enableStep2Upsell: boolean;
+  countdownMinutes: number;
+  enablePostPurchaseOTO: boolean;
+  enableDigitalReceipt?: boolean;
+  thankYouMessage?: string;
+}
+
+interface AdminStore {
+  _hasHydrated: boolean;
+  setHasHydrated: (v: boolean) => void;
+
+  activeStore: Store;
+  availableStores: Store[];
+  setActiveStore: (storeId: string) => void;
+  addStore: (store: Store) => Promise<void>;
+  updateStore: (storeId: string, data: Partial<Store>) => Promise<void>;
+  removeStore: (storeId: string) => Promise<void>;
+
+  categories: string[];
+  setCategories: (updater: (prev: string[]) => string[]) => void;
+
+  orderStatuses: string[];
+  addOrderStatus: (status: string) => void;
+  removeOrderStatus: (status: string) => void;
+
+  products: Product[];
+  setProducts: (updater: (prev: Product[]) => Product[]) => void;
+  addProduct: (product: Product) => Promise<void>;
+  updateProduct: (productId: string, data: Partial<Product>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
+
+  landingPages: LandingPage[];
+  setLandingPages: (updater: (prev: LandingPage[]) => LandingPage[]) => void;
+
+  legalPages: LegalPage[];
+  setLegalPages: (updater: (prev: LegalPage[]) => LegalPage[]) => void;
+
+  orders: Order[];
+  setOrders: (updater: (prev: Order[]) => Order[]) => void;
+
+  abandonedCarts: AbandonedCart[];
+  setAbandonedCarts: (updater: (prev: AbandonedCart[]) => AbandonedCart[]) => void;
+
+  shippingZones: ShippingZone[];
+  setShippingZones: (updater: (prev: ShippingZone[]) => ShippingZone[]) => void;
+
+  fraudRules: FraudRules[];
+  setFraudRules: (updater: (prev: FraudRules[]) => FraudRules[]) => void;
+
+  homepages: HomepageConfig[];
+  setHomepages: (updater: (prev: HomepageConfig[]) => HomepageConfig[]) => void;
+
+  checkoutConfigs: CheckoutConfig[];
+  setCheckoutConfigs: (updater: (prev: CheckoutConfig[]) => CheckoutConfig[]) => void;
+
+  staffAccounts: StaffAccount[];
+  setStaffAccounts: (updater: (prev: StaffAccount[]) => StaffAccount[]) => void;
+
+  // New: Call Logs
+  callLogs: CallLog[];
+  setCallLogs: (updater: (prev: CallLog[]) => CallLog[]) => void;
+
+  // New: Activity Logs
+  activityLogs: ActivityLog[];
+  addActivityLog: (log: Omit<ActivityLog, 'id' | 'timestamp'>) => void;
+
+  // New: Coupons
+  coupons: Coupon[];
+  setCoupons: (updater: (prev: Coupon[]) => Coupon[]) => void;
+
+  // Persistent Save Methods
+  saveCheckoutConfig: (config: CheckoutConfig) => Promise<void>;
+  saveShippingZones: (storeId: string, zones: ShippingZone[]) => Promise<void>;
+
+  // AI Chat History
+  agentChats: Record<string, any[]>;
+  setAgentChat: (storeId: string, agentId: string, messages: any[]) => void;
+
+  globalApiKey?: string; // This will act as Gemini Key for backward compatibility
+  setGlobalApiKey: (key: string) => void;
+
+  claudeApiKey?: string;
+  setClaudeApiKey: (key: string) => void;
+
+  openAiApiKey?: string;
+  setOpenAiApiKey: (key: string) => void;
+
+  openRouterApiKey?: string;
+  setOpenRouterApiKey: (key: string) => void;
+
+  openRouterModel?: string;
+  setOpenRouterModel: (model: string) => void;
+
+  aiProvider: 'gemini' | 'claude' | 'openai' | 'openrouter';
+  setAiProvider: (provider: 'gemini' | 'claude' | 'openai' | 'openrouter') => void;
+
+  // Customer Intelligence
+  customerBlacklist: BlacklistedCustomer[];
+  setCustomerBlacklist: (updater: (prev: BlacklistedCustomer[]) => BlacklistedCustomer[]) => void;
+
+  // Staff Goals & Commissions
+  staffGoals: StaffGoal[];
+  setStaffGoals: (updater: (prev: StaffGoal[]) => StaffGoal[]) => void;
+
+  commissionEntries: CommissionEntry[];
+  setCommissionEntries: (updater: (prev: CommissionEntry[]) => CommissionEntry[]) => void;
+
+  fetchInitialData: () => Promise<void>;
+}
+
+const MOCK_STORES: Store[] = [];
+const MOCK_PRODUCTS: Product[] = [];
+const MOCK_ORDERS: Order[] = [];
+
+const DEFAULT_STATUSES = [
+  'DRAFT', 'PENDING_AGENT_CONFIRMATION', 'HIGH_RISK_ADMIN_APPROVAL',
+  'CONFIRMED', 'DELIVERED', 'CONTINUITY_SUBSCRIBED', 'CANCELED', 'RTO'
+];
+
+
+export const useAdminStore = create<AdminStore>()((set, get) => ({
+      _hasHydrated: false,
+      setHasHydrated: (v) => set({ _hasHydrated: v }),
+
+      activeStore: {} as Store,
+      availableStores: [],
+      setActiveStore: (storeId) => set((state) => ({
+        activeStore: state.availableStores.find(s => s.id === storeId) || state.availableStores[0]
+      })),
+      addStore: async (store) => {
+        const lang = store.language || 'en';
+        const defaultTrans = DEFAULT_TRANSLATIONS[lang] || DEFAULT_TRANSLATIONS['en'];
+        const storeWithTrans = {
+          ...store,
+          translations: store.translations || defaultTrans
+        };
+        // Log the exact payload for debugging
+        const row = storeToRow(storeWithTrans);
+        console.log("Inserting store row:", row);
+
+        const { data, error } = await supabase
+          .from('stores')
+          .insert(row)
+          .select('id');
+        
+        if (error) {
+          console.error("Supabase Add Store Error:", error);
+          notify(`Failed to add store: ${error.message || 'Check console'}`, 'error');
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          console.error("Supabase returned no data after insert");
+          notify("Failed to add store: No data returned", 'error');
+          return;
+        }
+
+        // Use the real UUID from Supabase as the store id
+        const finalStore = { ...storeWithTrans, id: data[0].id };
+        set((state) => ({
+          availableStores: [...state.availableStores, finalStore],
+          activeStore: finalStore
+        }));
+      },
+      updateStore: async (storeId, data) => {
+        set((state) => {
+          const updatedStores = state.availableStores.map(s => s.id === storeId ? { ...s, ...data } : s);
+          return {
+            availableStores: updatedStores,
+            activeStore: state.activeStore.id === storeId ? { ...state.activeStore, ...data } : state.activeStore
+          };
+        });
+        // Remove undefined values and map to snake_case
+        const row = storeToRow(data as Partial<Store>);
+        const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
+        const { error } = await supabase.from('stores').update(cleanRow).eq('id', storeId);
+        if (error) console.error("Failed to update store in Supabase", error);
+      },
+      removeStore: async (storeId) => {
+        set((state) => {
+          const updated = state.availableStores.filter(s => s.id !== storeId);
+          return {
+            availableStores: updated,
+            activeStore: state.activeStore.id === storeId ? updated[0] : state.activeStore
+          };
+        });
+        const { error } = await supabase.from('stores').delete().eq('id', storeId);
+        if (error) {
+          console.error("Failed to delete store from Supabase:", error.message, error.details, error.hint);
+        }
+      },
+      
+      categories: ['Health & Wellness', 'Smart Home', 'Fitness', 'Electronics'],
+      setCategories: (updater) => set((state) => ({
+        categories: updater(state.categories)
+      })),
+
+      orderStatuses: DEFAULT_STATUSES,
+      addOrderStatus: (status) => set((state) => ({
+        orderStatuses: [...state.orderStatuses, status.toUpperCase().replace(/\s+/g, '_')]
+      })),
+      removeOrderStatus: (status) => set((state) => ({
+        orderStatuses: state.orderStatuses.filter(s => s !== status || DEFAULT_STATUSES.includes(status))
+      })),
+
+      products: MOCK_PRODUCTS,
+      setProducts: (updater) => set((state) => ({
+        products: updater(state.products)
+      })),
+      addProduct: async (product) => {
+        // Insert to Supabase first (let DB generate UUID)
+        const row = productToRow(product);
+        const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined && v !== null));
+        const { data, error } = await supabase
+          .from('products')
+          .insert(cleanRow)
+          .select('id')
+          .single();
+        if (error) {
+          console.error("Failed to add product to Supabase", error);
+          return;
+        }
+        // Add to local state with real UUID from DB
+        const finalProduct = { ...product, id: data.id };
+        set((state) => ({ products: [...state.products, finalProduct] }));
+      },
+      updateProduct: async (productId, data) => {
+        // Optimistic local update
+        set((state) => ({
+          products: state.products.map(p => p.id === productId ? { ...p, ...data } : p)
+        }));
+        // Map to snake_case and strip undefined
+        const row = productToRow(data as Partial<Product>);
+        const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
+        const { error } = await supabase.from('products').update(cleanRow).eq('id', productId);
+        if (error) console.error("Failed to update product in Supabase", error);
+      },
+      deleteProduct: async (productId) => {
+        set((state) => ({
+          products: state.products.filter(p => p.id !== productId)
+        }));
+        const { error } = await supabase.from('products').delete().eq('id', productId);
+        if (error) console.error("Failed to delete product from Supabase", error);
+      },
+
+      landingPages: [],
+      setLandingPages: (updater) => set((state) => ({
+        landingPages: updater(state.landingPages)
+      })),
+
+      legalPages: [],
+      setLegalPages: (updater) => set((state) => ({
+        legalPages: updater(state.legalPages)
+      })),
+
+      orders: MOCK_ORDERS,
+      setOrders: (updater) => set((state) => ({
+        orders: updater(state.orders)
+      })),
+
+      abandonedCarts: [],
+      setAbandonedCarts: (updater) => set((state) => ({
+        abandonedCarts: updater(state.abandonedCarts)
+      })),
+
+      shippingZones: [],
+      setShippingZones: (updater) => set((state) => ({
+        shippingZones: updater(state.shippingZones)
+      })),
+
+      fraudRules: [],
+      setFraudRules: (updater) => set((state) => ({
+        fraudRules: updater(state.fraudRules)
+      })),
+
+      homepages: [],
+      setHomepages: (updater) => set((state) => ({
+        homepages: updater(state.homepages)
+      })),
+
+      checkoutConfigs: [],
+      setCheckoutConfigs: (updater) => set((state) => ({
+        checkoutConfigs: updater(state.checkoutConfigs)
+      })),
+
+      staffAccounts: [],
+      setStaffAccounts: (updater) => set((state) => ({
+        staffAccounts: updater(state.staffAccounts)
+      })),
+      addStaffAccount: async (account) => {
+        const row = staffToRow(account);
+        console.log("Inserting staff row:", row);
+
+        const { data, error } = await supabase
+          .from('staff_accounts')
+          .insert(row)
+          .select('id');
+
+        if (error) {
+          console.error("Supabase Add Staff Error:", error);
+          notify(`Failed to add staff: ${error.message || 'Check console'}`, 'error');
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          console.error("Supabase returned no data after staff insert");
+          return;
+        }
+
+        const finalAccount = { ...account, id: data[0].id };
+        set((state) => ({ staffAccounts: [...state.staffAccounts, finalAccount] }));
+      },
+      updateStaffAccount: async (id, data) => {
+        set((state) => ({
+          staffAccounts: state.staffAccounts.map(a => a.id === id ? { ...a, ...data } : a)
+        }));
+        const row = staffToRow(data as Partial<StaffAccount>);
+        const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
+        const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
+        if (error) console.error("Failed to update staff account", error);
+      },
+      deleteStaffAccount: async (id) => {
+        set((state) => ({
+          staffAccounts: state.staffAccounts.filter(a => a.id !== id)
+        }));
+        const { error } = await supabase.from('staff_accounts').delete().eq('id', id);
+        if (error) console.error("Failed to delete staff account", error);
+      },
+
+      callLogs: [],
+      setCallLogs: (updater) => set((state) => ({
+        callLogs: updater(state.callLogs)
+      })),
+
+      activityLogs: [],
+      addActivityLog: (log) => set((state) => ({
+        activityLogs: [{
+          ...log,
+          id: `act_${Date.now()}`,
+          timestamp: new Date().toISOString()
+        }, ...state.activityLogs].slice(0, 500) // keep last 500
+      })),
+
+      saveCheckoutConfig: async (config) => {
+        const row = checkoutConfigToRow(config);
+        const { error } = await supabase
+          .from('checkout_configs')
+          .upsert(row, { onConflict: 'store_id' });
+        
+        if (error) {
+          console.error("Error saving checkout config:", error);
+          notify("Failed to save checkout settings", "error");
+          throw error;
+        }
+
+        set(state => ({
+          checkoutConfigs: state.checkoutConfigs.map(c => c.storeId === config.storeId ? config : c).concat(
+            state.checkoutConfigs.find(c => c.storeId === config.storeId) ? [] : [config]
+          )
+        }));
+      },
+
+      saveShippingZones: async (storeId, zones) => {
+        // 1. Delete existing zones for this store
+        const { error: deleteError } = await supabase
+          .from('shipping_zones')
+          .delete()
+          .eq('storeId', storeId);
+        
+        if (deleteError) {
+          console.error("Error clearing shipping zones:", deleteError);
+          throw deleteError;
+        }
+
+        // 2. Insert new zones (if any)
+        if (zones.length > 0) {
+          const { error: insertError } = await supabase
+            .from('shipping_zones')
+            .insert(zones.map(shippingZoneToRow));
+
+          if (insertError) {
+            console.error("Error inserting shipping zones:", insertError);
+            throw insertError;
+          }
+        }
+
+        // 3. Update local state
+        set(state => ({
+          shippingZones: [
+            ...state.shippingZones.filter(z => z.storeId !== storeId),
+            ...zones
+          ]
+        }));
+      },
+
+      coupons: [],
+      setCoupons: (updater) => set((state) => ({
+        coupons: updater(state.coupons)
+      })),
+
+      agentChats: {},
+      setAgentChat: (storeId, agentId, messages) => set((state) => ({
+        agentChats: {
+          ...state.agentChats,
+          [`${storeId}_${agentId}`]: messages
+        }
+      })),
+
+      globalApiKey: '',
+      setGlobalApiKey: (key) => set({ globalApiKey: key }),
+
+      claudeApiKey: '',
+      setClaudeApiKey: (key) => set({ claudeApiKey: key }),
+
+      openAiApiKey: '',
+      setOpenAiApiKey: (key) => set({ openAiApiKey: key }),
+
+      openRouterApiKey: '',
+      setOpenRouterApiKey: (key) => set({ openRouterApiKey: key }),
+
+      openRouterModel: 'meta-llama/llama-3.3-70b-instruct:free',
+      setOpenRouterModel: (model) => set({ openRouterModel: model }),
+
+      aiProvider: 'gemini',
+      setAiProvider: (provider) => set({ aiProvider: provider }),
+
+      customerBlacklist: [],
+      setCustomerBlacklist: (updater) => set((state) => ({
+        customerBlacklist: updater(state.customerBlacklist)
+      })),
+
+      staffGoals: [],
+      setStaffGoals: (updater) => set((state) => ({
+        staffGoals: updater(state.staffGoals)
+      })),
+
+      commissionEntries: [],
+      setCommissionEntries: (updater) => set((state) => ({
+        commissionEntries: updater(state.commissionEntries)
+      })),
+
+      fetchInitialData: async () => {
+        console.log("Fetching initial data from Supabase...");
+        try {
+          const [
+            { data: stores },
+            { data: products },
+            { data: orders },
+            { data: zones },
+            { data: configs },
+            { data: landingPages },
+            { data: staff }
+          ] = await Promise.all([
+            supabase.from('stores').select('*'),
+            supabase.from('products').select('*'),
+            supabase.from('orders').select('*').order('date', { ascending: false }),
+            supabase.from('shipping_zones').select('*'),
+            supabase.from('checkout_configs').select('*'),
+            supabase.from('landing_pages').select('*'),
+            supabase.from('staff_accounts').select('*')
+          ]);
+          
+          if (stores && stores.length > 0) {
+            const mapped = stores.map(rowToStore);
+            set({ availableStores: mapped, activeStore: mapped[0] });
+          }
+          if (products) set({ products: products.map(rowToProduct) });
+          if (orders) {
+            const allOrders = orders.map(rowToOrder);
+            const mainOrders = allOrders.filter(o => o.status !== 'DRAFT');
+            const drafts = orders.filter(o => o.status === 'DRAFT').map(rowToAbandonedCart);
+            set({ orders: mainOrders, abandonedCarts: drafts });
+          }
+          if (zones) set({ shippingZones: zones.map(rowToShippingZone) });
+          if (configs) set({ checkoutConfigs: configs.map(rowToCheckoutConfig) });
+          if (landingPages) set({ landingPages: landingPages as LandingPage[] });
+          if (staff) set({ staffAccounts: staff.map(rowToStaff) });
+          
+          set({ _hasHydrated: true });
+        } catch (error) {
+          console.error("Failed to fetch initial data from Supabase:", error);
+          set({ _hasHydrated: true });
+        }
+      }
+}));
