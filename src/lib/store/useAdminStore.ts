@@ -143,7 +143,7 @@ function rowToShippingZone(row: any): ShippingZone {
     storeId: row.store_id,
     wilaya: row.wilaya,
     commune: row.commune,
-    deliveryRate: row.delivery_rate ?? row.home_delivery_rate ?? 0,
+    deliveryRate: row.home_delivery_rate ?? row.delivery_rate ?? 0,
   };
 }
 
@@ -152,7 +152,6 @@ function shippingZoneToRow(z: ShippingZone) {
     store_id: z.storeId,
     wilaya: z.wilaya,
     commune: z.commune,
-    delivery_rate: z.deliveryRate,
     home_delivery_rate: z.deliveryRate
   };
 }
