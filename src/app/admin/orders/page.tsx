@@ -13,12 +13,34 @@ const CALL_RESULTS = [
   { value: 'rescheduled', label: 'Rescheduled', icon: '🔄', color: 'bg-amber-100 text-amber-700' },
 ] as const;
 
+const formatStatus = (status: string) => {
+  if (status === 'PENDING_AGENT_CONFIRMATION') return 'PENDING';
+  return status.replace(/_/g, ' ');
+};
+
 export default function AdminOrdersPage() {
   const { activeStore, orderStatuses, orders, setOrders, callLogs, setCallLogs, staffAccounts, addActivityLog } = useAdminStore();
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [callLogOrderId, setCallLogOrderId] = useState<string | null>(null);
   const [newCall, setNewCall] = useState({ result: 'answered' as CallLog['result'], note: '' });
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  const [whatsappModal, setWhatsappModal] = useState<{
+    phone: string;
+    message: string;
+  } | null>(null);
+
+  const handleTriggerConfirmWhatsApp = (order: Order) => {
+    let message = activeStore.whatsappConfig?.thankYouMessage || "Hello *[NAME]*, this is *[STORE_NAME]*. We are pleased to confirm your Cash on Delivery order for *[PRODUCT]*! We are preparing it for shipment. Order: #[ORDER_ID]";
+    message = message.replace(/\[NAME\]/g, order.customer || '')
+                     .replace(/\[ORDER_ID\]/g, order.id || '')
+                     .replace(/\[PRODUCT\]/g, order.product || '')
+                     .replace(/\[STORE_NAME\]/g, activeStore.name || '');
+    setWhatsappModal({
+      phone: order.phone,
+      message: message
+    });
+  };
   
   // Bulk Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -245,7 +267,7 @@ export default function AdminOrdersPage() {
         {['ALL', ...orderStatuses].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-colors ${statusFilter === s ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
-            {s.replace(/_/g, ' ')}
+            {formatStatus(s)}
             {s !== 'ALL' && <span className="ml-1.5 opacity-70">{orders.filter(o => o.storeId === activeStore.id && o.status === s).length}</span>}
           </button>
         ))}
@@ -260,7 +282,7 @@ export default function AdminOrdersPage() {
             {bulkStatusMenu && (
               <div className="absolute bottom-full mb-2 right-0 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-1 z-20">
                 {orderStatuses.map(s => (
-                  <button key={s} onClick={() => handleBulkStatus(s)} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Mark as {s.replace(/_/g, ' ')}</button>
+                  <button key={s} onClick={() => handleBulkStatus(s)} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700">Mark as {formatStatus(s)}</button>
                 ))}
               </div>
             )}
@@ -282,18 +304,20 @@ export default function AdminOrdersPage() {
                 </th>
                 <th className="p-4 font-bold">Order Details</th>
                 <th className="p-4 font-bold">Customer</th>
-                <th className="p-4 font-bold">Phone</th>
-                <th className="p-4 font-bold">Location</th>
-                <th className="p-4 font-bold">Wilaya/Prov</th>
-                <th className="p-4 font-bold">Country</th>
-                <th className="p-4 font-bold">Product / Upsells</th>
+                <th className="p-4 font-bold">Detailed Address</th>
+                <th className="p-4 font-bold">City</th>
+                <th className="p-4 font-bold">State / Country</th>
+                <th className="p-4 font-bold">Product</th>
+                <th className="p-4 font-bold">Upsells</th>
                 <th className="p-4 font-bold">Total</th>
+                <th className="p-4 font-bold">Notes</th>
+                <th className="p-4 font-bold">Claimed By</th>
                 <th className="p-4 font-bold">Status</th>
                 <th className="p-4 font-bold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-sm font-medium text-slate-700">
-              {filteredOrders.length === 0 && <tr><td colSpan={10} className="p-10 text-center text-slate-400">No orders found.</td></tr>}
+              {filteredOrders.length === 0 && <tr><td colSpan={13} className="p-10 text-center text-slate-400">No orders found.</td></tr>}
               {filteredOrders.map(o => {
                 const calls = callLogs.filter(c => c.orderId === o.id);
                 return (
@@ -308,34 +332,66 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="p-4 font-bold text-slate-900">
                       <div>{o.customer}</div>
-                      {o.claimedBy ? (
-                        <div className="text-[10px] text-indigo-600 font-bold mt-1 flex items-center gap-1"><UserCheck size={10}/> {o.claimedBy === sessionUser ? 'Your Claim' : o.claimedBy}</div>
-                      ) : (
-                        <button onClick={() => handleClaimOrder(o.id)} className="mt-1 text-[9px] bg-white border border-indigo-200 text-indigo-600 px-1.5 py-0.5 rounded hover:bg-indigo-50 transition-colors font-bold">CLAIM ORDER</button>
+                      <div className="text-xs font-bold text-indigo-600 mt-1">{o.phone}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-xs font-bold text-slate-800 break-words max-w-[200px]" title={o.address}>{o.address}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-900">{o.commune || o.city || '—'}</div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-xs font-bold text-slate-600">{o.wilaya || o.province || '—'}</div>
+                      {o.country && (
+                        <div className="text-[10px] text-slate-400 font-bold uppercase mt-0.5 tracking-wider">{o.country}</div>
                       )}
                     </td>
-                    <td className="p-4 text-indigo-600 font-bold">{o.phone}</td>
                     <td className="p-4">
-                      <div className="text-xs font-bold text-slate-800 truncate max-w-[120px]" title={o.address}>{o.address}</div>
-                      <div className="text-[10px] text-slate-400">{o.commune || o.city || '—'}</div>
+                      <div className="text-xs font-bold text-slate-900 truncate max-w-[150px]" title={o.product}>
+                        {o.product.split(',')[0]}
+                      </div>
                     </td>
-                    <td className="p-4 text-xs font-bold text-slate-600">{o.wilaya || o.province || '—'}</td>
-                    <td className="p-4 text-xs font-bold text-slate-400 uppercase tracking-tighter">{o.country || '—'}</td>
                     <td className="p-4">
-                      <div className="text-xs font-bold text-slate-900 truncate max-w-[150px]" title={o.product}>{o.product.split(',')[0]}</div>
-                      {o.product.includes(',') && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {o.product.split(',').slice(1).map((up, i) => <span key={i} className="text-[8px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-black tracking-tighter uppercase">+{up.trim()}</span>)}
+                      {o.product.includes(',') ? (
+                        <div className="flex flex-wrap gap-1">
+                          {o.product.split(',').slice(1).map((up, i) => (
+                            <span key={i} className="text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 font-black tracking-tighter uppercase">
+                              +{up.trim()}
+                            </span>
+                          ))}
                         </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-medium">—</span>
                       )}
                     </td>
                     <td className="p-4 font-bold text-indigo-600">{o.total} {activeStore.currency}</td>
+                    <td className="p-4 max-w-[150px]">
+                      {o.notes && o.notes.length > 0 ? (
+                        <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-2 text-xs text-amber-800" title={o.notes.map(n => `[${n.author}]: ${n.text}`).join('\n')}>
+                          <div className="font-bold text-[9px] uppercase tracking-wider text-amber-700 mb-0.5">{o.notes[o.notes.length - 1].author}</div>
+                          <div className="truncate font-medium">{o.notes[o.notes.length - 1].text}</div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-xs italic">No notes</span>
+                      )}
+                    </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{o.status.replace(/_/g, ' ')}</span>
+                      {o.claimedBy ? (
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${o.claimedBy === sessionUser ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                          <UserCheck size={12}/>
+                          <span>{o.claimedBy === sessionUser ? 'You' : o.claimedBy}</span>
+                        </div>
+                      ) : (
+                        <button onClick={() => handleClaimOrder(o.id)} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl transition-colors font-bold shadow-sm">Claim</button>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{formatStatus(o.status)}</span>
                       {calls.length > 0 && <div className="mt-1 text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={8}/> {calls[0].result}</div>}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-1.5">
+                        <button type="button" onClick={() => handleTriggerConfirmWhatsApp(o)} className="p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg shadow-sm transition-colors animate-all active:scale-95" title="Send WhatsApp Confirmation"><MessageSquare size={16} /></button>
                         {o.status === 'CONFIRMED' && <button onClick={() => handlePushToFulfillment(o)} className="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"><Send size={16} /></button>}
                         <button onClick={() => setEditingOrder(o)} className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-100 rounded-lg"><Edit2 size={16} /></button>
                         <button onClick={() => setCallLogOrderId(o.id)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-100 rounded-lg relative"><Phone size={16} />{calls.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full"/>}</button>
@@ -404,7 +460,7 @@ export default function AdminOrdersPage() {
                 <div>
                   <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Status</label>
                   <select value={editingOrder.status} onChange={e => setEditingOrder({...editingOrder, status: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none">
-                    {orderStatuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                    {orderStatuses.map(s => <option key={s} value={s}>{formatStatus(s)}</option>)}
                   </select>
                 </div>
                 <div>
@@ -526,6 +582,37 @@ export default function AdminOrdersPage() {
               </div>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* WhatsApp Modal */}
+      {whatsappModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setWhatsappModal(null)}>
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
+              <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                💬 Customize WhatsApp Message
+              </h3>
+              <button type="button" onClick={() => setWhatsappModal(null)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Recipient Phone</label>
+                <input type="text" value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>
+                <textarea value={whatsappModal.message} onChange={e => setWhatsappModal({...whatsappModal, message: e.target.value})} rows={6} className="w-full p-4 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-indigo-600 outline-none resize-none" />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+              <button type="button" onClick={() => setWhatsappModal(null)} className="px-5 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button>
+              <button type="button" onClick={() => {
+                window.open(`https://wa.me/${whatsappModal.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappModal.message)}`, '_blank');
+                setWhatsappModal(null);
+              }} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Send on WhatsApp</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

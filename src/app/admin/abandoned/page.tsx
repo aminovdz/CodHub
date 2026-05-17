@@ -3,20 +3,28 @@
 import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { supabase } from '@/lib/supabase';
-import { Ghost, PhoneCall, MessageCircle, Trash2, RefreshCw } from 'lucide-react';
+import { Ghost, PhoneCall, MessageCircle, Trash2, RefreshCw, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function AdminAbandonedCartsPage() {
   const { activeStore, abandonedCarts, setAbandonedCarts } = useAdminStore();
   const storeCarts = abandonedCarts.filter(c => c.storeId === activeStore.id);
 
+  const [whatsappModal, setWhatsappModal] = useState<{
+    phone: string;
+    message: string;
+  } | null>(null);
+
   const handleRecover = (cart: any) => {
-    let message = activeStore.whatsappConfig?.abandonedCartScript || 'Hello, I noticed you left something in your cart...';
+    let message = activeStore.whatsappConfig?.abandonedCartScript || "Hello *[NAME]*, this is *[STORE_NAME]*. We noticed you were interested in *[PRODUCT]* but didn't complete your order. We still have it reserved for you! Would you like us to confirm this Cash on Delivery order and ship it to you? Order: #[ORDER_ID]";
     message = message.replace(/\[NAME\]/g, cart.customer || '')
                      .replace(/\[ORDER_ID\]/g, cart.id || '')
-                     .replace(/\[PRODUCT\]/g, cart.product || '');
-    // Open WhatsApp
-    window.open(`https://wa.me/${cart.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
+                     .replace(/\[PRODUCT\]/g, cart.product || '')
+                     .replace(/\[STORE_NAME\]/g, activeStore.name || '');
+    setWhatsappModal({
+      phone: cart.phone,
+      message: message
+    });
   };
 
   const handleRemove = async (id: string) => {
@@ -92,6 +100,37 @@ export default function AdminAbandonedCartsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* WhatsApp Modal */}
+      {whatsappModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setWhatsappModal(null)}>
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b flex justify-between items-center bg-slate-900 text-white shrink-0">
+              <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                💬 Customize WhatsApp Message
+              </h3>
+              <button type="button" onClick={() => setWhatsappModal(null)} className="text-slate-400 hover:text-white"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Recipient Phone</label>
+                <input type="text" value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>
+                <textarea value={whatsappModal.message} onChange={e => setWhatsappModal({...whatsappModal, message: e.target.value})} rows={6} className="w-full p-4 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-indigo-600 outline-none resize-none" />
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
+              <button type="button" onClick={() => setWhatsappModal(null)} className="px-5 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button>
+              <button type="button" onClick={() => {
+                window.open(`https://wa.me/${whatsappModal.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappModal.message)}`, '_blank');
+                setWhatsappModal(null);
+              }} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Send on WhatsApp</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

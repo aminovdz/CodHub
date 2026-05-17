@@ -20,6 +20,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [addingNote, setAddingNote] = useState(false);
   const [countdownSecs, setCountdownSecs] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Always mark as mounted on client — do NOT rely on external script onLoad for this
+  useEffect(() => { setIsMounted(true); }, []);
   
   // Local Address State
   const [wilaya, setWilaya] = useState('');
@@ -84,8 +87,27 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     }
   }, [isMounted, checkoutConfig]);
 
+  // Automatically capture country based on store/region
+  useEffect(() => {
+    const regionNames: Record<string, string> = {
+      dz: 'Algeria',
+      es: 'Spain',
+      ro: 'Romania',
+      co: 'Colombia',
+      fr: 'France',
+      it: 'Italy'
+    };
+    if (store?.region) {
+      const resolved = regionNames[store.region.toLowerCase()] || store.region.toUpperCase();
+      setCountry(resolved);
+    } else if (region) {
+      const resolved = regionNames[region.toLowerCase()] || region.toUpperCase();
+      setCountry(resolved);
+    }
+  }, [store?.region, region]);
+
   // Derive unique Wilayas and their Communes from admin config
-  const uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya)));
+  const uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya).filter(w => w && w.trim() !== '')));
   const communesByWilaya = (w: string) => zones.filter(z => z.wilaya === w).map(z => z.commune);
   
   const { 
@@ -106,8 +128,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       }
       return zone ? zone.deliveryRate : 0;
     }
+    if (province) {
+      const zone = zones.find(z => z.wilaya.trim().toLowerCase() === province.trim().toLowerCase());
+      if (zone) return zone.deliveryRate;
+    }
     return 0;
-  }, [wilaya, commune, zones, region, checkoutConfig]);
+  }, [wilaya, commune, province, zones, region, checkoutConfig]);
 
   // Calculate discount
   const discountAmount = useMemo(() => {
@@ -713,29 +739,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                               </div>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-4">
                             {checkoutConfig?.fields?.showProvince !== false && (
                               <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.province', 'Province / State')}</label>
-                                <input 
-                                  type="text"
-                                  value={province}
-                                  onChange={(e) => setProvince(e.target.value)}
-                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.province', 'Province')}
-                                />
-                              </div>
-                            )}
-                            {checkoutConfig?.fields?.showCountry !== false && (
-                              <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.country', 'Country')}</label>
-                                <input 
-                                  type="text"
-                                  value={country}
-                                  onChange={(e) => setCountry(e.target.value)}
-                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.country', 'Country')}
-                                />
+                                <label className="block text-sm font-bold text-slate-700 mb-2">
+                                  {t('checkout.province', 'Province / State')} *
+                                </label>
+                                {uniqueWilayas.length > 0 ? (
+                                  <select 
+                                    value={province}
+                                    onChange={(e) => setProvince(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900 bg-white cursor-pointer"
+                                  >
+                                    <option value="">{t('checkout.selectProvince', 'Select Province / State')}</option>
+                                    {uniqueWilayas.map(w => (
+                                      <option key={w} value={w}>{w}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input 
+                                    type="text"
+                                    value={province}
+                                    onChange={(e) => setProvince(e.target.value)}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
+                                    placeholder={t('checkout.province', 'Province')}
+                                  />
+                                )}
                               </div>
                             )}
                           </div>
@@ -747,7 +776,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   {checkoutConfig?.addressAutocomplete && checkoutConfig?.autocompleteApiKey && (
                     <Script 
                       src={`https://maps.googleapis.com/maps/api/js?key=${checkoutConfig.autocompleteApiKey}&libraries=places`}
-                      onLoad={() => setIsMounted(true)} // Trigger re-effect
                     />
                   )}
 
@@ -840,7 +868,19 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   </button>
                   <button 
                     onClick={handleComplete}
-                    disabled={checkoutConfig?.showAddressFields !== false ? ((region === 'dz' && !checkoutConfig?.addressAutocomplete) ? (!wilaya || !commune || !detailedAddress) : !detailedAddress) : false}
+                    disabled={
+                      checkoutConfig?.showAddressFields !== false 
+                        ? (
+                            region === 'dz' && !checkoutConfig?.addressAutocomplete
+                              ? (!wilaya || !commune || !detailedAddress)
+                              : (
+                                  !detailedAddress ||
+                                  (checkoutConfig?.fields?.showCity !== false && !city) ||
+                                  (checkoutConfig?.fields?.showProvince !== false && !province)
+                                )
+                          )
+                        : false
+                    }
                     style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
                     className={`flex-1 py-5 px-6 text-white ${!store?.primaryColor && 'bg-green-600 hover:bg-green-700 active:bg-green-800'} disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl font-black text-xl transition-all shadow-[0_8px_30px_rgb(22,163,74,0.3)] hover:shadow-[0_8px_30px_rgb(22,163,74,0.5)] flex justify-center items-center gap-2`}
                   >

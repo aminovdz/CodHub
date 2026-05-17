@@ -29,6 +29,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // storeReady: true once Zustand has loaded data from localStorage
   const storeReady = _hasHydrated;
 
+  const currentStaffAccount = !isSuperAdminRoute && isAuthenticated && username
+    ? staffAccounts.find(a => a.name.trim().toLowerCase() === username.trim().toLowerCase())
+    : null;
+  const isRestrictedStaff = currentStaffAccount && currentStaffAccount.storeId;
+  const restrictedStoreId = currentStaffAccount?.storeId;
+
   // Detect route type once on mount (pathname is stable from here)
   useEffect(() => {
     const superRoute = pathname.startsWith('/superadmin');
@@ -61,6 +67,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     setIsSuperAdminRoute(pathname.startsWith('/superadmin'));
   }, [pathname]);
+
+  // Enforce store-specific staff restriction
+  useEffect(() => {
+    if (storeReady && isAuthenticated && username && !isSuperAdminRoute) {
+      const usernameClean = username.trim().toLowerCase();
+      const account = staffAccounts.find(
+        a => a.name.trim().toLowerCase() === usernameClean
+      );
+      if (account && account.storeId) {
+        const hasStore = availableStores.some(s => s.id === account.storeId);
+        if (hasStore && activeStore?.id !== account.storeId) {
+          setActiveStore(account.storeId);
+        }
+      }
+    }
+  }, [storeReady, isAuthenticated, username, staffAccounts, availableStores, activeStore?.id, isSuperAdminRoute, setActiveStore]);
 
   const basePath = isSuperAdminRoute ? '/superadmin' : '/admin';
 
@@ -99,6 +121,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         sessionStorage.setItem('codadmin-auth', JSON.stringify({
           auth: true, role: account.role, user: account.name, isSuperAdmin: false
         }));
+        // Switch immediately to assigned store on login
+        if (account.storeId) {
+          setActiveStore(account.storeId);
+        }
       } else {
         setError('Invalid staff username or PIN. Check Settings → Staff Accounts.');
         setPin('');
@@ -274,14 +300,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <StoreIcon size={10} /> Active Store
             </div>
             <select
+              disabled={!!isRestrictedStaff}
               value={activeStore?.id || ''}
               onChange={(e) => setActiveStore(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {availableStores.length > 0 ? (
-                availableStores.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
-                ))
+                availableStores
+                  .filter(s => !isRestrictedStaff || s.id === restrictedStoreId)
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
+                  ))
               ) : (
                 <option value="" disabled>No stores found</option>
               )}

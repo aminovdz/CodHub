@@ -12,6 +12,8 @@ export default function AdminPromoPage() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('flash-sale');
+  // originalSlug tracks the slug the page was LOADED with, so we can find it for updates even if user edits the slug
+  const [originalSlug, setOriginalSlug] = useState('flash-sale');
   const [htmlContent, setHtmlContent] = useState(`<div class="bg-rose-600 text-white text-center py-2 font-bold">
   ⚡ FLASH SALE: 50% OFF
 </div>
@@ -51,7 +53,8 @@ export default function AdminPromoPage() {
     }
   };
 
-  const existingPage = landingPages.find(p => p.storeId === activeStore.id && p.slug === slug);
+  // Use originalSlug so we can still find the page even if the user edits the slug field
+  const existingPage = landingPages.find(p => p.storeId === activeStore.id && p.slug === originalSlug);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,12 +69,15 @@ export default function AdminPromoPage() {
         published: true
       };
       if (existingPage) {
-        return prev.map(p => p.id === pageId ? updatedPage : p);
+        // Update by id, not slug, so slug changes work correctly
+        return prev.map(p => p.id === existingPage.id ? updatedPage : p);
       } else {
         return [...prev, updatedPage];
       }
     });
-    notify(`Landing Page saved to store! Slug: /${activeStore.region}/promo/${slug}`, "success");
+    // After saving, originalSlug should reflect the new slug
+    setOriginalSlug(slug);
+    notify(`Landing Page saved! Slug: /${activeStore.region}/promo/${slug}`, "success");
   };
 
   const handleCopyUrl = () => {
@@ -89,6 +95,7 @@ export default function AdminPromoPage() {
     if (page) {
       setTitle(page.title || '');
       setSlug(page.slug);
+      setOriginalSlug(page.slug); // Track original so edits don't create duplicate pages
       setHtmlContent(page.htmlContent);
     }
   };
@@ -98,8 +105,8 @@ export default function AdminPromoPage() {
     const newContent = `<!-- Start fresh -->\n<div class="max-w-4xl mx-auto p-8 text-center">\n  <h1 class="text-4xl font-black">Your New Campaign</h1>\n</div>`;
     setTitle('New Campaign');
     setSlug(newSlug);
+    setOriginalSlug(newSlug); // Reset original slug for a new page
     setHtmlContent(newContent);
-    // Removed auto-save so delete doesn't instantly recreate a page
   };
 
   const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout') => {
@@ -188,7 +195,14 @@ export default function AdminPromoPage() {
                 <input 
                   type="text" 
                   value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
+                  onChange={(e) => {
+                    // Auto-convert spaces to dashes and lowercase
+                    const formatted = e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, '-')
+                      .replace(/[^a-z0-9-]/g, '');
+                    setSlug(formatted);
+                  }}
                   className="flex-1 px-4 py-3 border border-slate-300 rounded-r-xl focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900"
                   placeholder="e.g. summer-sale"
                 />

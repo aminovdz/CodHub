@@ -38,8 +38,12 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
   const slug = resolvedParams.slug;
   const { landingPages, availableStores, _hasHydrated } = useAdminStore();
   const store = resolveStore(availableStores, region);
-  const page = store ? landingPages.find(p => p.storeId === store.id && p.slug === slug) : undefined;
+  // Case-insensitive slug match so /dz/promo/Flash-Sale works regardless of casing saved in DB
+  const page = store
+    ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
+    : undefined;
 
+  // Show spinner while data is still loading from Supabase
   if (!_hasHydrated) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 text-slate-400">
@@ -58,6 +62,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
       </div>
     );
   }
+
 
   const segments = parseShortcodes(page.htmlContent);
   const hasShortcodes = segments.some(s => s.type === 'form');

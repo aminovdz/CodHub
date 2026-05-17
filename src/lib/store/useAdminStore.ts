@@ -156,6 +156,7 @@ function staffToRow(s: Partial<StaffAccount> & { id?: string }) {
     name: s.name,
     role: s.role,
     pin: s.pin,
+    store_id: s.storeId || null,
   };
 }
 
@@ -165,6 +166,7 @@ function rowToStaff(row: any): StaffAccount {
     name: row.name,
     role: row.role,
     pin: row.pin,
+    storeId: row.store_id || undefined,
   };
 }
 
@@ -304,7 +306,7 @@ export interface Store {
   language?: string;
   phonePrefix?: string;
   primaryColor?: string;
-  translations?: Record<string, string>;
+  translations?: Record<string, any>;
   analytics?: {
     google?: string;
     facebook?: string;
@@ -345,6 +347,7 @@ export interface StaffAccount {
   name: string;
   role: 'admin' | 'fulfillment' | 'confirmation';
   pin: string;
+  storeId?: string;
 }
 
 export interface MaximizerUpsell {
@@ -736,9 +739,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
       activeStore: {} as Store,
       availableStores: [],
-      setActiveStore: (storeId) => set((state) => ({
-        activeStore: state.availableStores.find(s => s.id === storeId) || state.availableStores[0]
-      })),
+      setActiveStore: (storeId) => {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('codadmin-active-store-id', storeId);
+        }
+        set((state) => ({
+          activeStore: state.availableStores.find(s => s.id === storeId) || state.availableStores[0]
+        }));
+      },
       addStore: async (store) => {
         const lang = store.language || 'en';
         const defaultTrans = DEFAULT_TRANSLATIONS[lang] || DEFAULT_TRANSLATIONS['en'];
@@ -798,14 +806,29 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       },
       updateStore: async (storeId, data) => {
         set((state) => {
-          const updatedStores = state.availableStores.map(s => s.id === storeId ? { ...s, ...data } : s);
+          const oldStore = state.availableStores.find(s => s.id === storeId);
+          const nextTranslations = data.translations && oldStore
+            ? { ...oldStore.translations, ...data.translations }
+            : data.translations;
+
+          const updatedData = {
+            ...data,
+            ...(nextTranslations ? { translations: nextTranslations } : {})
+          };
+
+          const updatedStores = state.availableStores.map(s => s.id === storeId ? { ...s, ...updatedData } : s);
           return {
             availableStores: updatedStores,
-            activeStore: state.activeStore.id === storeId ? { ...state.activeStore, ...data } : state.activeStore
+            activeStore: state.activeStore.id === storeId ? { ...state.activeStore, ...updatedData } : state.activeStore
           };
         });
-        // Remove undefined values and map to snake_case
-        const row = storeToRow(data as Partial<Store>);
+
+        // Get the latest merged state to send to Supabase
+        const latestStore = get().availableStores.find(s => s.id === storeId);
+        const row = storeToRow({
+          ...data,
+          ...(latestStore?.translations ? { translations: latestStore.translations } : {})
+        } as Partial<Store>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
         const { error } = await supabase.from('stores').update(cleanRow).eq('id', storeId);
         if (error) console.error("Failed to update store in Supabase", error);
@@ -878,14 +901,76 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       },
 
       landingPages: [],
-      setLandingPages: (updater) => set((state) => ({
-        landingPages: updater(state.landingPages)
-      })),
+      setLandingPages: (updater) => set((state) => {
+        const prev = state.landingPages;
+        
+        // Helper to generate RFC 4122 v4 UUID
+        const generateUUID = () => {
+          if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
+            return window.crypto.randomUUID();
+          }
+          return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+        };
+
+        // Rewrite non-UUIDs to valid UUIDs in next array
+        const next = updater(prev).map(p => {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(p.id);
+          if (!isUuid) {
+            return { ...p, id: generateUUID() };
+          }
+          return p;
+        });
+        
+        // Determine deleted pages
+        const deleted = prev.filter(p => !next.some(n => n.id === p.id));
+        // Determine added or updated pages
+        const addedOrUpdated = next.filter(n => {
+          const old = prev.find(p => p.id === n.id);
+          return !old || JSON.stringify(old) !== JSON.stringify(n);
+        });
+
+        // Run background DB operations
+        deleted.forEach(async (p) => {
+          const { error } = await supabase
+            .from('landing_pages')
+            .delete()
+            .eq('id', p.id);
+          if (error) console.error("Failed to delete landing page from Supabase:", error);
+        });
+
+        addedOrUpdated.forEach(async (p) => {
+          const row = {
+            id: p.id,
+            store_id: p.storeId,
+            title: p.title,
+            slug: p.slug,
+            html_content: p.htmlContent,
+            published: p.published
+          };
+          const { error } = await supabase
+            .from('landing_pages')
+            .upsert(row);
+          if (error) console.error("Failed to save landing page to Supabase:", error);
+        });
+
+        return { landingPages: next };
+      }),
 
       legalPages: [],
-      setLegalPages: (updater) => set((state) => ({
-        legalPages: updater(state.legalPages)
-      })),
+      setLegalPages: (updater) => set((state) => {
+        const next = updater(state.legalPages);
+        const storePages = next.filter(p => p.storeId === state.activeStore.id);
+        const nextTranslations = {
+          ...state.activeStore.translations,
+          legalPages: storePages
+        };
+        // Update database with the new legalPages stored inside the store's translations jsonb field
+        state.updateStore(state.activeStore.id, { translations: nextTranslations });
+        return { legalPages: next };
+      }),
 
       orders: MOCK_ORDERS,
       setOrders: (updater) => set((state) => ({
@@ -908,9 +993,19 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       })),
 
       homepages: [],
-      setHomepages: (updater) => set((state) => ({
-        homepages: updater(state.homepages)
-      })),
+      setHomepages: (updater) => set((state) => {
+        const next = updater(state.homepages);
+        const activeConfig = next.find(h => h.storeId === state.activeStore.id);
+        if (activeConfig) {
+          const nextTranslations = {
+            ...state.activeStore.translations,
+            homepageConfig: activeConfig
+          };
+          // Update database with the new homepageConfig stored inside the store's translations jsonb field
+          state.updateStore(state.activeStore.id, { translations: nextTranslations });
+        }
+        return { homepages: next };
+      }),
 
       checkoutConfigs: [],
       setCheckoutConfigs: (updater) => set((state) => ({
@@ -1041,23 +1136,41 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         }
       })),
 
-      globalApiKey: '',
-      setGlobalApiKey: (key) => set({ globalApiKey: key }),
+      globalApiKey: typeof window !== 'undefined' ? localStorage.getItem('codadmin-global-api-key') || '' : '',
+      setGlobalApiKey: (key) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-global-api-key', key);
+        set({ globalApiKey: key });
+      },
 
-      claudeApiKey: '',
-      setClaudeApiKey: (key) => set({ claudeApiKey: key }),
+      claudeApiKey: typeof window !== 'undefined' ? localStorage.getItem('codadmin-claude-api-key') || '' : '',
+      setClaudeApiKey: (key) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-claude-api-key', key);
+        set({ claudeApiKey: key });
+      },
 
-      openAiApiKey: '',
-      setOpenAiApiKey: (key) => set({ openAiApiKey: key }),
+      openAiApiKey: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openai-api-key') || '' : '',
+      setOpenAiApiKey: (key) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-openai-api-key', key);
+        set({ openAiApiKey: key });
+      },
 
-      openRouterApiKey: '',
-      setOpenRouterApiKey: (key) => set({ openRouterApiKey: key }),
+      openRouterApiKey: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openrouter-api-key') || '' : '',
+      setOpenRouterApiKey: (key) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-openrouter-api-key', key);
+        set({ openRouterApiKey: key });
+      },
 
-      openRouterModel: 'meta-llama/llama-3.3-70b-instruct:free',
-      setOpenRouterModel: (model) => set({ openRouterModel: model }),
+      openRouterModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openrouter-model') || 'meta-llama/llama-3.3-70b-instruct:free' : 'meta-llama/llama-3.3-70b-instruct:free',
+      setOpenRouterModel: (model) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-openrouter-model', model);
+        set({ openRouterModel: model });
+      },
 
-      aiProvider: 'gemini',
-      setAiProvider: (provider) => set({ aiProvider: provider }),
+      aiProvider: typeof window !== 'undefined' ? (localStorage.getItem('codadmin-ai-provider') as any) || 'gemini' : 'gemini',
+      setAiProvider: (provider) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-ai-provider', provider);
+        set({ aiProvider: provider });
+      },
 
       customerBlacklist: [],
       setCustomerBlacklist: (updater) => set((state) => ({
@@ -1097,7 +1210,22 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           
           if (stores && stores.length > 0) {
             const mapped = stores.map(rowToStore);
-            set({ availableStores: mapped, activeStore: mapped[0] });
+            const savedStoreId = typeof window !== 'undefined' ? localStorage.getItem('codadmin-active-store-id') : null;
+            const savedStore = savedStoreId ? mapped.find(s => s.id === savedStoreId) : null;
+            set({ availableStores: mapped, activeStore: savedStore || mapped[0] });
+
+            // Extract homepages and legalPages from store translations!
+            const extractedHomepages: HomepageConfig[] = [];
+            const extractedLegalPages: LegalPage[] = [];
+            mapped.forEach(s => {
+              if (s.translations && (s.translations as any).homepageConfig) {
+                extractedHomepages.push((s.translations as any).homepageConfig as HomepageConfig);
+              }
+              if (s.translations && (s.translations as any).legalPages) {
+                extractedLegalPages.push(...((s.translations as any).legalPages as LegalPage[]));
+              }
+            });
+            set({ homepages: extractedHomepages, legalPages: extractedLegalPages });
           }
           if (products) set({ products: products.map(rowToProduct) });
           if (orders) {
@@ -1108,7 +1236,16 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           }
           if (zones) set({ shippingZones: zones.map(rowToShippingZone) });
           if (configs) set({ checkoutConfigs: configs.map(rowToCheckoutConfig) });
-          if (landingPages) set({ landingPages: landingPages as LandingPage[] });
+          if (landingPages) set({
+            landingPages: landingPages.map((row: any) => ({
+              id: row.id,
+              storeId: row.store_id,
+              title: row.title,
+              slug: row.slug,
+              htmlContent: row.html_content,
+              published: row.published
+            } as LandingPage))
+          });
           if (staff) set({ staffAccounts: staff.map(rowToStaff) });
           
           set({ _hasHydrated: true });

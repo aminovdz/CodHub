@@ -89,7 +89,7 @@ export default function AdminSettingsPage() {
   const [whatsappConfig, setWhatsappConfig] = useState({
     abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
     abandonedCartDelayMinutes: activeStore.whatsappConfig?.abandonedCartDelayMinutes ?? 30,
-    abandonedCartScript: activeStore.whatsappConfig?.abandonedCartScript || 'Hello, I noticed you left something in your cart...',
+    abandonedCartScript: activeStore.whatsappConfig?.abandonedCartScript || "Hello *[NAME]*, this is *[STORE_NAME]*. We noticed you were interested in *[PRODUCT]* but didn't complete your order. We still have it reserved for you! Would you like us to confirm this Cash on Delivery order and ship it to you? Order: #[ORDER_ID]",
     thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
     thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
     thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
@@ -108,6 +108,7 @@ export default function AdminSettingsPage() {
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
   const [newStaffPin, setNewStaffPin] = useState('');
+  const [newStaffStoreId, setNewStaffStoreId] = useState('');
 
   // Category State
   const { notify } = useNotificationStore();
@@ -150,7 +151,7 @@ export default function AdminSettingsPage() {
     setWhatsappConfig({
       abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
       abandonedCartDelayMinutes: activeStore.whatsappConfig?.abandonedCartDelayMinutes ?? 30,
-      abandonedCartScript: activeStore.whatsappConfig?.abandonedCartScript || 'Hello, I noticed you left something in your cart...',
+      abandonedCartScript: activeStore.whatsappConfig?.abandonedCartScript || "Hello *[NAME]*, this is *[STORE_NAME]*. We noticed you were interested in *[PRODUCT]* but didn't complete your order. We still have it reserved for you! Would you like us to confirm this Cash on Delivery order and ship it to you? Order: #[ORDER_ID]",
       thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
       thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
       thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
@@ -492,7 +493,12 @@ export default function AdminSettingsPage() {
             <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
               <div>
                 <div className="font-bold text-slate-900">{acc.name}</div>
-                <div className="text-xs font-mono text-slate-500 uppercase tracking-widest">{acc.role}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                    {acc.storeId ? availableStores.find(s => s.id === acc.storeId)?.name || 'Restricted Store' : 'All Stores'}
+                  </span>
+                </div>
               </div>
               <button 
                 type="button" 
@@ -508,16 +514,22 @@ export default function AdminSettingsPage() {
         <form onSubmit={async (e) => {
           e.preventDefault();
           if (newStaffName && newStaffPin.length >= 4) {
-            await addStaffAccount({ name: newStaffName, role: newStaffRole, pin: newStaffPin });
+            await addStaffAccount({ 
+              name: newStaffName, 
+              role: newStaffRole, 
+              pin: newStaffPin,
+              storeId: newStaffStoreId || undefined
+            });
             setNewStaffName('');
             setNewStaffPin('');
+            setNewStaffStoreId('');
           }
-        }} className="flex items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-          <div className="flex-1">
+        }} className="flex flex-wrap items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex-1 min-w-[150px]">
             <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
             <input type="text" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="Agent Name" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-[150px]">
             <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
             <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
               <option value="fulfillment">Fulfillment Agent</option>
@@ -525,11 +537,20 @@ export default function AdminSettingsPage() {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment</label>
+            <select value={newStaffStoreId} onChange={e => setNewStaffStoreId(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+              <option value="">All Stores (Global)</option>
+              {availableStores.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1 min-w-[100px]">
             <label className="block text-xs font-bold text-slate-500 mb-1">PIN (Login)</label>
             <input type="password" value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="4+ digits" />
           </div>
-          <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px]">
+          <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px] min-w-[120px] justify-center">
             <Plus size={16} /> Add Staff
           </button>
         </form>
