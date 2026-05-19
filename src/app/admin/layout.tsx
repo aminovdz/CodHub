@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Settings, LogOut, Store as StoreIcon,
   FileText, MonitorPlay, ShoppingCart, Home, CreditCard, ShieldAlert,
-  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe
+  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe, Calculator
 } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { ToastContainer } from '@/components/admin/ToastContainer';
@@ -32,8 +32,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const currentStaffAccount = !isSuperAdminRoute && isAuthenticated && username
     ? staffAccounts.find(a => a.name.trim().toLowerCase() === username.trim().toLowerCase())
     : null;
-  const isRestrictedStaff = currentStaffAccount && currentStaffAccount.storeId;
-  const restrictedStoreId = currentStaffAccount?.storeId;
+  const allowedStoreIds = currentStaffAccount 
+    ? (currentStaffAccount.storeIds && currentStaffAccount.storeIds.length > 0 
+        ? currentStaffAccount.storeIds 
+        : currentStaffAccount.storeId ? [currentStaffAccount.storeId] : [])
+    : [];
+  const isGlobalStaff = currentStaffAccount && allowedStoreIds.length === 0;
+  const isSingleStoreStaff = currentStaffAccount && allowedStoreIds.length === 1;
 
   // Detect route type once on mount (pathname is stable from here)
   useEffect(() => {
@@ -53,11 +58,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setIsAuthenticated(auth);
           setActiveRole(role);
           setUsername(user);
+        } else {
+          window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
         }
-        // If types don't match, just ignore (don't wipe—user may open both panels)
       } catch {
         sessionStorage.removeItem('codadmin-auth');
+        window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
       }
+    } else {
+      window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
     }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,10 +84,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const account = staffAccounts.find(
         a => a.name.trim().toLowerCase() === usernameClean
       );
-      if (account && account.storeId) {
-        const hasStore = availableStores.some(s => s.id === account.storeId);
-        if (hasStore && activeStore?.id !== account.storeId) {
-          setActiveStore(account.storeId);
+      if (account) {
+        const accountStoreIds = account.storeIds && account.storeIds.length > 0 
+          ? account.storeIds 
+          : account.storeId ? [account.storeId] : [];
+
+        if (accountStoreIds.length > 0) {
+          const isCurrentlyAllowed = activeStore && accountStoreIds.includes(activeStore.id);
+          if (!isCurrentlyAllowed) {
+            const firstValidStore = availableStores.find(s => accountStoreIds.includes(s.id));
+            if (firstValidStore) {
+              setActiveStore(firstValidStore.id);
+            }
+          }
         }
       }
     }
@@ -92,125 +110,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     localStorage.setItem('codadmin-dark', String(next));
   };
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const usernameClean = username.trim().toLowerCase();
-
-    if (isSuperAdminRoute) {
-      // /superadmin → only master admin credentials work
-      if (usernameClean === 'admin' && pin === ADMIN_PIN) {
-        setIsAuthenticated(true);
-        setActiveRole('admin');
-        setError('');
-        sessionStorage.setItem('codadmin-auth', JSON.stringify({
-          auth: true, role: 'admin', user: 'admin', isSuperAdmin: true
-        }));
-      } else {
-        setError('Invalid Super Admin credentials.');
-        setPin('');
-      }
-    } else {
-      // /admin → only staff accounts work (master admin cannot log in here)
-      const account = staffAccounts.find(
-        a => a.name.trim().toLowerCase() === usernameClean && a.pin === pin
-      );
-      if (account) {
-        setIsAuthenticated(true);
-        setActiveRole(account.role);
-        setError('');
-        sessionStorage.setItem('codadmin-auth', JSON.stringify({
-          auth: true, role: account.role, user: account.name, isSuperAdmin: false
-        }));
-        // Switch immediately to assigned store on login
-        if (account.storeId) {
-          setActiveStore(account.storeId);
-        }
-      } else {
-        setError('Invalid staff username or PIN. Check Settings → Staff Accounts.');
-        setPin('');
-      }
+  const handleLogout = async () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('codadmin-auth');
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error(e);
     }
+    window.location.href = isSuperAdminRoute ? '/superadmin/login' : '/admin/login';
   };
 
   if (!isAuthenticated) {
     return (
-      <div
-        className={`min-h-screen flex items-center justify-center p-4 transition-colors duration-300 ${isDark ? 'bg-slate-950' : 'bg-slate-900'}`}
-        style={{ backgroundImage: 'radial-gradient(ellipse at 60% 50%, rgba(99,102,241,0.15) 0%, transparent 70%)' }}
-      >
-        <div className="absolute top-4 right-4">
-          <button onClick={toggleDark} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors">
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
+        <div className="animate-pulse flex flex-col items-center">
+          <StoreIcon size={32} className="text-indigo-500 mb-4" />
+          <p>Verifying session...</p>
         </div>
-
-        <form onSubmit={handleLogin} className={`p-8 rounded-3xl shadow-2xl max-w-sm w-full border transition-colors duration-300 ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
-              <StoreIcon size={30} className="text-white" />
-            </div>
-            <h1 className={`text-2xl font-black tracking-tighter ${isDark ? 'text-white' : 'text-slate-900'}`}>
-              COD<span className="text-indigo-500">ADMIN</span>
-            </h1>
-            <p className={`text-sm mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-              {isSuperAdminRoute ? 'Super Admin Access' : 'Staff Portal Login'}
-            </p>
-            {isSuperAdminRoute && (
-              <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-black">
-                <ShieldAlert size={12} /> SUPERADMIN PANEL
-              </div>
-            )}
-          </div>
-
-          <div className="mb-4">
-            <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              {isSuperAdminRoute ? 'Admin Username' : 'Staff Name'}
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={`w-full px-4 py-4 rounded-xl border focus:ring-2 focus:ring-indigo-500 outline-none transition-colors font-bold ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-              placeholder={isSuperAdminRoute ? 'admin' : 'Your staff name'}
-              autoFocus
-              autoComplete="off"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label className={`block text-sm font-bold mb-2 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
-              PIN / Password
-            </label>
-            <input
-              type="password"
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-              className={`w-full px-4 py-4 rounded-xl border focus:ring-2 focus:ring-indigo-500 outline-none text-center tracking-[0.5em] font-mono text-2xl transition-colors ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-              placeholder="••••"
-              maxLength={8}
-              autoComplete="off"
-            />
-            {error && (
-              <p className="text-rose-500 text-xs font-bold mt-3 text-center flex items-center justify-center gap-1">
-                <span>⚠️</span> {error}
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={!isSuperAdminRoute && !storeReady}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-60 disabled:cursor-wait"
-          >
-            {!isSuperAdminRoute && !storeReady ? 'Loading...' : 'Unlock Console'}
-          </button>
-
-          {!isSuperAdminRoute && (
-            <p className="text-center text-xs text-slate-500 mt-4">
-              Use the name and PIN set in <strong>Settings → Staff Accounts</strong>.
-            </p>
-          )}
-        </form>
       </div>
     );
   }
@@ -220,6 +137,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `${basePath}/orders`,    label: 'Orders',          icon: <ShoppingCart size={18} />,    roles: ['admin', 'fulfillment', 'confirmation'] },
     { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />,           roles: ['admin', 'confirmation'] },
     { href: `${basePath}/analytics`, label: 'Analytics',       icon: <BarChart2 size={18} />,       roles: ['admin'] },
+    { href: `${basePath}/calculator`,label: 'Profit Calculator',icon: <Calculator size={18} />,     roles: ['admin'] },
     { href: `${basePath}/customers`, label: 'Customers',       icon: <Users size={18} />,           roles: ['admin'] },
     { href: `${basePath}/stock`,     label: 'Stock',           icon: <Boxes size={18} />,           roles: ['admin', 'fulfillment'] },
     { href: `${basePath}/products`,  label: 'Products',        icon: <Package size={18} />,         roles: ['admin'] },
@@ -300,14 +218,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <StoreIcon size={10} /> Active Store
             </div>
             <select
-              disabled={!!isRestrictedStaff}
+              disabled={!!isSingleStoreStaff}
               value={activeStore?.id || ''}
               onChange={(e) => setActiveStore(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
             >
               {availableStores.length > 0 ? (
                 availableStores
-                  .filter(s => !isRestrictedStaff || s.id === restrictedStoreId)
+                  .filter(s => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
                   .map(s => (
                     <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
                   ))
@@ -331,7 +249,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           {/* Lock */}
           <button
-            onClick={() => setIsAuthenticated(false)}
+            onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all w-full"
           >
             <LogOut size={18} /> Lock Console
@@ -353,7 +271,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button onClick={toggleDark} className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors">
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <button onClick={() => { setIsAuthenticated(false); sessionStorage.removeItem('codadmin-auth'); }} className="p-2 text-slate-400 hover:text-rose-400 rounded-lg transition-colors">
+            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-rose-400 rounded-lg transition-colors">
               <LogOut size={18} />
             </button>
           </div>

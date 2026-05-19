@@ -394,6 +394,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       }
     }
 
+    // Fire Purchase Pixels
+    if (typeof window !== 'undefined') {
+      const val = finalTotal;
+      const curr = store?.currency || 'DZD';
+      if ((window as any).fbq) (window as any).fbq('track', 'Purchase', { value: val, currency: curr });
+      if ((window as any).ttq) (window as any).ttq.track('CompletePayment', { value: val, currency: curr });
+      if ((window as any).snaptr) (window as any).snaptr('track', 'PURCHASE', { price: val, currency: curr });
+      if ((window as any).pintrk) (window as any).pintrk('track', 'checkout', { value: val, order_quantity: 1, currency: curr });
+      if ((window as any).gtag) (window as any).gtag('event', 'purchase', { value: val, currency: curr, transaction_id: finalOrderId });
+    }
+
     // Redirect user instantly for snappy UI
     setStatus('SUCCESS');
     router.push(`/${region}/thank-you`);
@@ -404,7 +415,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
         await submitOrder(draftOrderId, region, {
           address: finalAddress,
           instructions: addingNote ? deliveryInstructions : '',
-          cart
+          cart,
+          total: finalTotal,
+          discountAmount: discountAmount,
+          deliveryRate: deliveryRate,
+          couponCode: appliedCoupon ? appliedCoupon.code : '',
+          customFields: customFieldsData
         });
       } catch (err) {
         console.warn("Server submitOrder failed or is not configured, using local fallback", err);

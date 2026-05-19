@@ -10,6 +10,12 @@ export default function AdminAbandonedCartsPage() {
   const { activeStore, abandonedCarts, setAbandonedCarts } = useAdminStore();
   const storeCarts = abandonedCarts.filter(c => c.storeId === activeStore.id);
 
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionRole = (sessionData.role || 'admin') as 'admin' | 'fulfillment' | 'confirmation';
+  const isAdmin = sessionRole === 'admin' || sessionData.isSuperAdmin;
+
   const [whatsappModal, setWhatsappModal] = useState<{
     phone: string;
     message: string;
@@ -114,7 +120,8 @@ export default function AdminAbandonedCartsPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Recipient Phone</label>
-                <input type="text" value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none" />
+                <input type="text" disabled={!isAdmin} value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
+                {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Staff members cannot modify recipient phone numbers.</p>}
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>

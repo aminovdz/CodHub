@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart } from 'lucide-react';
+import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
@@ -104,11 +104,18 @@ export default function AdminSettingsPage() {
   });
 
   // Staff Accounts State
-  const { staffAccounts, addStaffAccount, deleteStaffAccount } = useAdminStore();
+  const { staffAccounts, addStaffAccount, updateStaffAccount, deleteStaffAccount } = useAdminStore();
   const [newStaffName, setNewStaffName] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
   const [newStaffPin, setNewStaffPin] = useState('');
-  const [newStaffStoreId, setNewStaffStoreId] = useState('');
+  const [newStaffStoreIds, setNewStaffStoreIds] = useState<string[]>([]);
+
+  // Editing Staff State
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editStaffName, setEditStaffName] = useState('');
+  const [editStaffRole, setEditStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
+  const [editStaffPin, setEditStaffPin] = useState('');
+  const [editStaffStoreIds, setEditStaffStoreIds] = useState<string[]>([]);
 
   // Category State
   const { notify } = useNotificationStore();
@@ -489,27 +496,136 @@ export default function AdminSettingsPage() {
           <Users className="text-indigo-600" /> Staff Accounts
         </h2>
         <div className="space-y-3 mb-6">
-          {staffAccounts.map(acc => (
-            <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
-              <div>
-                <div className="font-bold text-slate-900">{acc.name}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                    {acc.storeId ? availableStores.find(s => s.id === acc.storeId)?.name || 'Restricted Store' : 'All Stores'}
-                  </span>
+          {staffAccounts.map(acc => {
+            if (editingStaffId === acc.id) {
+              return (
+                <form key={acc.id} onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (editStaffName && editStaffPin.length >= 4) {
+                    await updateStaffAccount(acc.id, {
+                      name: editStaffName,
+                      role: editStaffRole,
+                      pin: editStaffPin,
+                      storeId: editStaffStoreIds.length === 1 ? editStaffStoreIds[0] : undefined,
+                      storeIds: editStaffStoreIds
+                    });
+                    setEditingStaffId(null);
+                    notify('Staff account updated successfully!', 'success');
+                  } else {
+                    notify('PIN must be at least 4 digits', 'error');
+                  }
+                }} className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-indigo-100">
+                    <div className="font-bold text-indigo-900">Edit Staff Account</div>
+                    <button type="button" onClick={() => setEditingStaffId(null)} className="text-slate-400 hover:text-slate-600">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+                      <input type="text" value={editStaffName} onChange={e => setEditStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="Agent Name" />
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+                      <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+                        <option value="fulfillment">Fulfillment Agent</option>
+                        <option value="confirmation">Confirmation Agent</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">PIN / Password</label>
+                      <input type="text" value={editStaffPin} onChange={e => setEditStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="e.g. 1234" />
+                    </div>
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
+                    <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
+                      <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={editStaffStoreIds.length === 0}
+                          onChange={() => setEditStaffStoreIds([])}
+                          className="accent-indigo-600"
+                        />
+                        All Stores (Global)
+                      </label>
+                      {availableStores.map(s => {
+                        const isSelected = editStaffStoreIds.includes(s.id);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setEditStaffStoreIds(editStaffStoreIds.filter(id => id !== s.id));
+                                } else {
+                                  setEditStaffStoreIds([...editStaffStoreIds, s.id]);
+                                }
+                              }}
+                              className="accent-indigo-600"
+                            />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setEditingStaffId(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              );
+            }
+
+            return (
+              <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <div className="font-bold text-slate-900">{acc.name}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                      {acc.storeIds && acc.storeIds.length > 0
+                        ? acc.storeIds.map(sid => availableStores.find(s => s.id === sid)?.name || 'Store').join(', ')
+                        : acc.storeId ? availableStores.find(s => s.id === acc.storeId)?.name || 'Restricted Store' : 'All Stores (Global)'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingStaffId(acc.id);
+                      setEditStaffName(acc.name);
+                      setEditStaffRole(acc.role);
+                      setEditStaffPin(acc.pin || '');
+                      setEditStaffStoreIds(acc.storeIds || (acc.storeId ? [acc.storeId] : []));
+                    }}
+                    className="p-2 text-slate-500 hover:bg-slate-200/60 rounded-lg transition-colors"
+                    title="Edit Staff Account"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => deleteStaffAccount(acc.id)}
+                    className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
+                    disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
+                    title="Delete Staff Account"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
-              <button 
-                type="button" 
-                onClick={() => deleteStaffAccount(acc.id)}
-                className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
-                disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <form onSubmit={async (e) => {
           e.preventDefault();
@@ -518,11 +634,12 @@ export default function AdminSettingsPage() {
               name: newStaffName, 
               role: newStaffRole, 
               pin: newStaffPin,
-              storeId: newStaffStoreId || undefined
+              storeId: newStaffStoreIds.length === 1 ? newStaffStoreIds[0] : undefined,
+              storeIds: newStaffStoreIds
             });
             setNewStaffName('');
             setNewStaffPin('');
-            setNewStaffStoreId('');
+            setNewStaffStoreIds([]);
           }
         }} className="flex flex-wrap items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
           <div className="flex-1 min-w-[150px]">
@@ -537,14 +654,39 @@ export default function AdminSettingsPage() {
               <option value="admin">Admin</option>
             </select>
           </div>
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment</label>
-            <select value={newStaffStoreId} onChange={e => setNewStaffStoreId(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
-              <option value="">All Stores (Global)</option>
-              {availableStores.map(s => (
-                <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
-              ))}
-            </select>
+          <div className="w-full">
+            <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
+            <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
+              <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={newStaffStoreIds.length === 0}
+                  onChange={() => setNewStaffStoreIds([])}
+                  className="accent-indigo-600"
+                />
+                All Stores (Global)
+              </label>
+              {availableStores.map(s => {
+                const isSelected = newStaffStoreIds.includes(s.id);
+                return (
+                  <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      onChange={() => {
+                        if (isSelected) {
+                          setNewStaffStoreIds(newStaffStoreIds.filter(id => id !== s.id));
+                        } else {
+                          setNewStaffStoreIds([...newStaffStoreIds, s.id]);
+                        }
+                      }}
+                      className="accent-indigo-600"
+                    />
+                    {s.name} ({s.region.toUpperCase()})
+                  </label>
+                );
+              })}
+            </div>
           </div>
           <div className="flex-1 min-w-[100px]">
             <label className="block text-xs font-bold text-slate-500 mb-1">PIN (Login)</label>

@@ -74,27 +74,30 @@ export default function InlineOrderForm({ productId, region }: Props) {
       await submitOrder(orderId, region, {
         address: { wilaya, commune: '', detailedAddress: '' },
         instructions: '',
-        cart: [{ id: product.id, name: product.title, price: product.price, isUpsell: false }],
+        cart: [{ id: product.id, name: product.title, price: product.price * qty, isUpsell: false }],
+        total: total,
+        deliveryRate: deliveryRate,
       });
     } catch {
       // Non-blocking — order is logged client-side even if server action fails
     }
 
     // Save to admin store
-    setOrders((prev: any[]) => [...prev, {
+    setOrders((prev: any[]) => [{
       id: orderId,
       storeId: store?.id,
-      customerName: name,
+      customer: name,
       phone: fullPhone,
+      address: wilaya,
       wilaya,
       commune: '',
-      items: [{ id: product.id, name: product.title, price: product.price, qty }],
-      totalPrice: total,
+      product: `${product.title} (x${qty})`,
+      total: total,
       deliveryRate,
-      status: 'NEW',
-      createdAt: new Date().toISOString(),
+      status: 'PENDING_AGENT_CONFIRMATION',
+      date: new Date().toISOString(),
       source: 'landing-page',
-    }]);
+    }, ...prev]);
 
     setStatus('SUCCESS');
     setSubmitting(false);

@@ -5,16 +5,29 @@ import { useAdminStore, StaffGoal, CommissionEntry } from '@/lib/store/useAdminS
 import { Target, DollarSign, Award, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
 
 export default function AdminStaffPage() {
-  const { activeStore, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries } = useAdminStore();
+  const { activeStore, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries, staffAccounts } = useAdminStore();
   
   const [newGoal, setNewGoal] = useState({ agentName: '', targetOrders: 100, targetRevenue: 5000, month: new Date().toISOString().slice(0, 7) });
   const [newCommission, setNewCommission] = useState({ agentName: '', amount: 0, reason: '', type: 'BONUS' as const });
 
-  // Get active agents based on call logs
+  // Get active agents based on staff accounts, call logs, and claimed orders
   const activeAgents = useMemo(() => {
-    const storeLogs = callLogs.filter(c => c.storeId === activeStore.id);
-    return Array.from(new Set(storeLogs.map(c => c.agentName)));
-  }, [callLogs, activeStore.id]);
+    // 1. Get agents from staffAccounts assigned to this store (or global)
+    const storeStaff = staffAccounts.filter(acc => {
+      if (!acc.storeId && (!acc.storeIds || acc.storeIds.length === 0)) return true; // global
+      if (acc.storeId === activeStore.id) return true;
+      if (acc.storeIds && acc.storeIds.includes(activeStore.id)) return true;
+      return false;
+    }).map(acc => acc.name);
+
+    // 2. Get agents from call logs for this store
+    const storeLogs = callLogs.filter(c => c.storeId === activeStore.id).map(c => c.agentName);
+
+    // 3. Get agents from claimed orders for this store
+    const storeOrders = orders.filter(o => o.storeId === activeStore.id && o.claimedBy).map(o => o.claimedBy!);
+
+    return Array.from(new Set([...storeStaff, ...storeLogs, ...storeOrders])).filter(Boolean);
+  }, [staffAccounts, callLogs, orders, activeStore.id]);
 
   // Compute performance for current month
   const currentMonth = new Date().toISOString().slice(0, 7);

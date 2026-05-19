@@ -348,6 +348,7 @@ export interface StaffAccount {
   role: 'admin' | 'fulfillment' | 'confirmation';
   pin: string;
   storeId?: string;
+  storeIds?: string[];
 }
 
 export interface MaximizerUpsell {
@@ -1036,8 +1037,27 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           return;
         }
 
-        const finalAccount = { ...account, id: data[0].id };
+        const newId = data[0].id;
+        const finalAccount = { ...account, id: newId, storeIds: account.storeIds || (account.storeId ? [account.storeId] : []) };
         set((state) => ({ staffAccounts: [...state.staffAccounts, finalAccount] }));
+
+        // Persist multi-store assignments to activeStore.translations.staffAssignments
+        const state = get();
+        if (finalAccount.storeIds && finalAccount.storeIds.length > 0) {
+          const activeStore = state.activeStore || state.availableStores[0];
+          if (activeStore) {
+            const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
+            const updatedTranslations = {
+              ...(activeStore.translations as any || {}),
+              staffAssignments: { ...currentAssignments, [newId]: finalAccount.storeIds }
+            };
+            supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
+            set(st => ({
+              availableStores: st.availableStores.map(s => s.id === activeStore.id ? { ...s, translations: updatedTranslations } : s),
+              activeStore: st.activeStore?.id === activeStore.id ? { ...st.activeStore, translations: updatedTranslations } : st.activeStore
+            }));
+          }
+        }
       },
       updateStaffAccount: async (id, data) => {
         set((state) => ({
@@ -1045,8 +1065,27 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         }));
         const row = staffToRow(data as Partial<StaffAccount>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
-        const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
-        if (error) console.error("Failed to update staff account", error);
+        if (Object.keys(cleanRow).length > 0) {
+          const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
+          if (error) console.error("Failed to update staff account", error);
+        }
+
+        if (data.storeIds !== undefined) {
+          const state = get();
+          const activeStore = state.activeStore || state.availableStores[0];
+          if (activeStore) {
+            const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
+            const updatedTranslations = {
+              ...(activeStore.translations as any || {}),
+              staffAssignments: { ...currentAssignments, [id]: data.storeIds }
+            };
+            supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
+            set(st => ({
+              availableStores: st.availableStores.map(s => s.id === activeStore.id ? { ...s, translations: updatedTranslations } : s),
+              activeStore: st.activeStore?.id === activeStore.id ? { ...st.activeStore, translations: updatedTranslations } : st.activeStore
+            }));
+          }
+        }
       },
       deleteStaffAccount: async (id) => {
         set((state) => ({
@@ -1124,9 +1163,33 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       },
 
       coupons: [],
-      setCoupons: (updater) => set((state) => ({
-        coupons: updater(state.coupons)
-      })),
+      setCoupons: (updater) => set((state) => {
+        const nextCoupons = updater(state.coupons);
+        const byStore: Record<string, Coupon[]> = {};
+        nextCoupons.forEach(c => {
+          if (!byStore[c.storeId]) byStore[c.storeId] = [];
+          byStore[c.storeId].push(c);
+        });
+
+        state.availableStores.forEach(store => {
+          const storeCoupons = byStore[store.id] || [];
+          const updatedTranslations = {
+            ...(store.translations as any || {}),
+            coupons: storeCoupons
+          };
+          supabase.from('stores').update({ translations: updatedTranslations }).eq('id', store.id).then();
+        });
+
+        const nextStores = state.availableStores.map(store => ({
+          ...store,
+          translations: {
+            ...(store.translations as any || {}),
+            coupons: byStore[store.id] || []
+          }
+        }));
+
+        return { coupons: nextCoupons, availableStores: nextStores, activeStore: state.activeStore ? nextStores.find(s => s.id === state.activeStore?.id) || state.activeStore : state.activeStore };
+      }),
 
       agentChats: {},
       setAgentChat: (storeId, agentId, messages) => set((state) => ({
@@ -1214,9 +1277,12 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             const savedStore = savedStoreId ? mapped.find(s => s.id === savedStoreId) : null;
             set({ availableStores: mapped, activeStore: savedStore || mapped[0] });
 
-            // Extract homepages and legalPages from store translations!
+            // Extract homepages, legalPages, coupons, and staffAssignments from store translations!
             const extractedHomepages: HomepageConfig[] = [];
             const extractedLegalPages: LegalPage[] = [];
+            const extractedCoupons: Coupon[] = [];
+            const staffAssignments: Record<string, string[]> = {};
+
             mapped.forEach(s => {
               if (s.translations && (s.translations as any).homepageConfig) {
                 extractedHomepages.push((s.translations as any).homepageConfig as HomepageConfig);
@@ -1224,8 +1290,31 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
               if (s.translations && (s.translations as any).legalPages) {
                 extractedLegalPages.push(...((s.translations as any).legalPages as LegalPage[]));
               }
+              if (s.translations && (s.translations as any).coupons) {
+                extractedCoupons.push(...((s.translations as any).coupons as Coupon[]));
+              }
+              if (s.translations && (s.translations as any).staffAssignments) {
+                const sAssign = (s.translations as any).staffAssignments;
+                Object.keys(sAssign).forEach(staffId => {
+                  const existing = staffAssignments[staffId] || [];
+                  const incoming = sAssign[staffId] || [];
+                  staffAssignments[staffId] = Array.from(new Set([...existing, ...incoming]));
+                });
+              }
             });
-            set({ homepages: extractedHomepages, legalPages: extractedLegalPages });
+            set({ homepages: extractedHomepages, legalPages: extractedLegalPages, coupons: extractedCoupons });
+
+            if (staff) {
+              const mappedStaff = staff.map(row => {
+                const baseStaff = rowToStaff(row);
+                const assigned = staffAssignments[baseStaff.id];
+                return {
+                  ...baseStaff,
+                  storeIds: assigned || (baseStaff.storeId ? [baseStaff.storeId] : [])
+                };
+              });
+              set({ staffAccounts: mappedStaff });
+            }
           }
           if (products) set({ products: products.map(rowToProduct) });
           if (orders) {
@@ -1246,7 +1335,8 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
               published: row.published
             } as LandingPage))
           });
-          if (staff) set({ staffAccounts: staff.map(rowToStaff) });
+          // staff is already set inside the stores block above if stores exist, but fallback if no stores
+          if (staff && (!stores || stores.length === 0)) set({ staffAccounts: staff.map(rowToStaff) });
           
           set({ _hasHydrated: true });
         } catch (error) {

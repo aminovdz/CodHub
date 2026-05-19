@@ -5,12 +5,12 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * We INCLUDE /api so we can protect it, but we bypass auth routes inside the middleware logic.
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };
 
@@ -19,9 +19,60 @@ const SUPPORTED_REGIONS = ['dz', 'ro', 'co'];
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   
+  // --- AUTHENTICATION LAYER ---
+  const isApiAuthRoute = url.pathname.startsWith('/api/auth');
+  const isApiNotifyRoute = url.pathname.startsWith('/api/notify'); // Webhooks/Public
+  const isAdminRoute = url.pathname.startsWith('/admin') || url.pathname.startsWith('/superadmin');
+  const isLoginRoute = url.pathname === '/admin/login' || url.pathname === '/superadmin/login';
+  const isProtectedApi = url.pathname.startsWith('/api') && !isApiAuthRoute && !isApiNotifyRoute;
+
+  // If going to a protected route (admin or api)
+  if ((isAdminRoute || isProtectedApi) && !isLoginRoute) {
+    const token = req.cookies.get('codadmin_token')?.value;
+
+    if (!token) {
+      if (isProtectedApi) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL(url.pathname.startsWith('/superadmin') ? '/superadmin/login' : '/admin/login', req.url));
+    }
+
+    try {
+      // In Edge runtime, we use jose to verify the JWT
+      const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+      const key = new TextEncoder().encode(JWT_SECRET);
+      const { jwtVerify } = await import('jose');
+      await jwtVerify(token, key);
+    } catch (err) {
+      if (isProtectedApi) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      }
+      return NextResponse.redirect(new URL(url.pathname.startsWith('/superadmin') ? '/superadmin/login' : '/admin/login', req.url));
+    }
+  }
+
+  // If going to login but already authenticated, redirect to dashboard
+  if (isLoginRoute) {
+    const token = req.cookies.get('codadmin_token')?.value;
+    if (token) {
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+        const key = new TextEncoder().encode(JWT_SECRET);
+        const { jwtVerify } = await import('jose');
+        await jwtVerify(token, key);
+        const basePath = url.pathname.startsWith('/superadmin') ? '/superadmin' : '/admin';
+        return NextResponse.redirect(new URL(basePath, req.url));
+      } catch (err) {
+        // Token invalid, let them see login page
+      }
+    }
+  }
+
+  // --- STOREFRONT REWRITE LAYER ---
   // Skip system routes that do not need storefront rewriting
   if (
     url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/superadmin') ||
     url.pathname.startsWith('/agent') ||
     url.pathname.startsWith('/api') ||
     url.pathname.startsWith('/_next') ||

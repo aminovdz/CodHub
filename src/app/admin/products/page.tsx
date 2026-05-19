@@ -286,7 +286,7 @@ export default function AdminProductsPage() {
               <div className="space-y-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Product Image</label>
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-6 mb-2">
                     <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
                       {editingProduct.image ? (
                         <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
@@ -294,10 +294,13 @@ export default function AdminProductsPage() {
                         <ImageIcon size={32} className="text-slate-400" />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <button type="button" onClick={handleImageUploadMock} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors mb-2">
+                    <div className="flex-1 space-y-2">
+                      <button type="button" onClick={handleImageUploadMock} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors">
                         <UploadCloud size={18} /> Enter Image URL
                       </button>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                        💡 <strong className="text-slate-700">How to upload:</strong> Use a free image host like <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">postimages.org</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">imgur.com</a>, upload your image file, and paste the direct image URL here.
+                      </p>
                     </div>
                   </div>
                 </div>

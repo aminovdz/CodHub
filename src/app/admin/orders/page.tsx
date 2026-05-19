@@ -135,9 +135,15 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const handleBulkStatus = (status: string) => {
+  const handleBulkStatus = async (status: string) => {
     if (selectedIds.size === 0) return;
+    const idsArray = Array.from(selectedIds);
     setOrders(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, status } : o));
+    try {
+      await supabase.from('orders').update({ status }).in('id', idsArray);
+    } catch (err: any) {
+      console.error("Supabase sync error in bulk status:", err);
+    }
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Status Update', detail: `${selectedIds.size} orders marked as ${status}` });
     setSelectedIds(new Set());
     setBulkStatusMenu(false);
@@ -188,7 +194,7 @@ export default function AdminOrdersPage() {
     });
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingOrder) return;
     const isNew = !orders.find(o => o.id === editingOrder.id);
@@ -196,6 +202,30 @@ export default function AdminOrdersPage() {
       if (!isNew) return prev.map(o => o.id === editingOrder.id ? editingOrder : o);
       return [editingOrder, ...prev];
     });
+
+    try {
+      const rowPayload = {
+        id: editingOrder.id,
+        store_id: editingOrder.storeId,
+        customer: editingOrder.customer,
+        phone: editingOrder.phone,
+        product: editingOrder.product,
+        total: editingOrder.total,
+        status: editingOrder.status,
+        notes: editingOrder.notes || [],
+        claimed_by: editingOrder.claimedBy || null,
+        confirmed_by: editingOrder.confirmedBy || null
+      };
+
+      if (isNew) {
+        await supabase.from('orders').insert(rowPayload);
+      } else {
+        await supabase.from('orders').update(rowPayload).eq('id', editingOrder.id);
+      }
+    } catch (err: any) {
+      console.error("Supabase sync error in handleSave:", err);
+    }
+
     addActivityLog({
       storeId: activeStore.id, user: sessionUser,
       action: isNew ? 'Order Created' : 'Order Updated',
@@ -205,7 +235,7 @@ export default function AdminOrdersPage() {
   };
 
   // --- Call Logs ---
-  const addCallLog = () => {
+  const addCallLog = async () => {
     if (!callLogOrderId) return;
     const entry: CallLog = {
       id: `call_${Date.now()}`, orderId: callLogOrderId,
@@ -214,11 +244,40 @@ export default function AdminOrdersPage() {
       calledAt: new Date().toISOString()
     };
     setCallLogs(prev => [entry, ...prev]);
+
+    const currentOrder = orders.find(o => o.id === callLogOrderId);
+    const existingNotes = currentOrder?.notes || [];
+    const newNoteObj = {
+      id: `note_${Date.now()}`,
+      author: sessionUser,
+      text: `[Call - ${newCall.result.toUpperCase()}]: ${newCall.note || 'No note'}`,
+      createdAt: new Date().toISOString()
+    };
+    const updatedNotes = [...existingNotes, newNoteObj];
+
+    let newStatus = currentOrder?.status || 'PENDING_AGENT_CONFIRMATION';
+    let newConfirmedBy = currentOrder?.confirmedBy || null;
+
     if (newCall.result === 'confirmed') {
-      setOrders(prev => prev.map(o => o.id === callLogOrderId ? { ...o, status: 'CONFIRMED', confirmedBy: sessionUser } : o));
+      newStatus = 'CONFIRMED';
+      newConfirmedBy = sessionUser;
+      setOrders(prev => prev.map(o => o.id === callLogOrderId ? { ...o, status: 'CONFIRMED', confirmedBy: sessionUser, notes: updatedNotes } : o));
     } else if (newCall.result === 'canceled') {
-      setOrders(prev => prev.map(o => o.id === callLogOrderId ? { ...o, status: 'CANCELED' } : o));
+      newStatus = 'CANCELED';
+      setOrders(prev => prev.map(o => o.id === callLogOrderId ? { ...o, status: 'CANCELED', notes: updatedNotes } : o));
+    } else {
+      setOrders(prev => prev.map(o => o.id === callLogOrderId ? { ...o, notes: updatedNotes } : o));
     }
+
+    try {
+      const updatePayload: any = { notes: updatedNotes, status: newStatus };
+      if (newConfirmedBy) updatePayload.confirmed_by = newConfirmedBy;
+
+      await supabase.from('orders').update(updatePayload).eq('id', callLogOrderId);
+    } catch (err: any) {
+      console.error("Supabase sync error in addCallLog:", err);
+    }
+
     setNewCall({ result: 'answered', note: '' });
   };
 
@@ -379,7 +438,7 @@ export default function AdminOrdersPage() {
                       {o.claimedBy ? (
                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${o.claimedBy === sessionUser ? 'bg-indigo-50 text-indigo-600 border border-indigo-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
                           <UserCheck size={12}/>
-                          <span>{o.claimedBy === sessionUser ? 'You' : o.claimedBy}</span>
+                          <span>{o.claimedBy === sessionUser ? 'You' : isAdmin ? o.claimedBy : 'Claimed'}</span>
                         </div>
                       ) : (
                         <button onClick={() => handleClaimOrder(o.id)} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl transition-colors font-bold shadow-sm">Claim</button>
@@ -393,7 +452,19 @@ export default function AdminOrdersPage() {
                       <div className="flex justify-end gap-1.5">
                         <button type="button" onClick={() => handleTriggerConfirmWhatsApp(o)} className="p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg shadow-sm transition-colors animate-all active:scale-95" title="Send WhatsApp Confirmation"><MessageSquare size={16} /></button>
                         {o.status === 'CONFIRMED' && <button onClick={() => handlePushToFulfillment(o)} className="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"><Send size={16} /></button>}
-                        <button onClick={() => setEditingOrder(o)} className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-100 rounded-lg"><Edit2 size={16} /></button>
+                        <button 
+                          onClick={() => {
+                            if (!isAdmin && o.claimedBy !== sessionUser) {
+                              alert("You must claim this order first before editing.");
+                              return;
+                            }
+                            setEditingOrder(o);
+                          }} 
+                          className={`p-2 rounded-lg ${!isAdmin && o.claimedBy !== sessionUser ? 'text-slate-300 bg-slate-50 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600 bg-slate-100'}`}
+                          title={!isAdmin && o.claimedBy !== sessionUser ? "Claim order first to edit" : "Edit Order"}
+                        >
+                          <Edit2 size={16} />
+                        </button>
                         <button onClick={() => setCallLogOrderId(o.id)} className="p-2 text-slate-400 hover:text-blue-600 bg-slate-100 rounded-lg relative"><Phone size={16} />{calls.length > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full"/>}</button>
                         {isAdmin && <button onClick={() => handleDeleteOrder(o.id)} className="p-2 text-slate-400 hover:text-rose-600 bg-slate-100 rounded-lg"><Trash2 size={16} /></button>}
                       </div>
@@ -598,7 +669,8 @@ export default function AdminOrdersPage() {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Recipient Phone</label>
-                <input type="text" value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none" />
+                <input type="text" disabled={!isAdmin} value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
+                {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Staff members cannot modify recipient phone numbers.</p>}
               </div>
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>

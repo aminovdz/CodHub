@@ -319,24 +319,24 @@ export default function AdminHomepageEditor() {
             </div>
             <div className="p-6 space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Google Analytics ID</label>
-                <input type="text" placeholder="G-XXXXXXXXXX" value={analytics.google} onChange={e => setAnalytics({...analytics, google: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Google Analytics Snippet / ID</label>
+                <textarea rows={3} placeholder="Paste full <script> snippet or G-XXXXXXXXXX ID" value={analytics.google} onChange={e => setAnalytics({...analytics, google: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Facebook Pixel ID</label>
-                <input type="text" placeholder="123456789012345" value={analytics.facebook} onChange={e => setAnalytics({...analytics, facebook: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Facebook Pixel Snippet / ID</label>
+                <textarea rows={3} placeholder="Paste full <script> snippet or 123456789012345 ID" value={analytics.facebook} onChange={e => setAnalytics({...analytics, facebook: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">TikTok Pixel ID</label>
-                <input type="text" placeholder="CXXXXXXX..." value={analytics.tiktok} onChange={e => setAnalytics({...analytics, tiktok: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">TikTok Pixel Snippet / ID</label>
+                <textarea rows={3} placeholder="Paste full <script> snippet or CXXXXXXX... ID" value={analytics.tiktok} onChange={e => setAnalytics({...analytics, tiktok: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Snapchat Pixel ID</label>
-                <input type="text" placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" value={analytics.snapchat} onChange={e => setAnalytics({...analytics, snapchat: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Snapchat Pixel Snippet / ID</label>
+                <textarea rows={3} placeholder="Paste full <script> snippet or XXXXXXXX-XXXX... ID" value={analytics.snapchat} onChange={e => setAnalytics({...analytics, snapchat: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Pinterest Tag ID</label>
-                <input type="text" placeholder="261..." value={analytics.pinterest} onChange={e => setAnalytics({...analytics, pinterest: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600" />
+                <label className="block text-sm font-bold text-slate-700 mb-1">Pinterest Tag Snippet / ID</label>
+                <textarea rows={3} placeholder="Paste full <script> snippet or 261... ID" value={analytics.pinterest} onChange={e => setAnalytics({...analytics, pinterest: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
             </div>
           </div>

@@ -80,28 +80,38 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
   address: any,
   instructions: string,
   cart: { id: string, name: string, price: number, isUpsell: boolean }[],
+  total?: number,
+  discountAmount?: number,
+  deliveryRate?: number,
+  couponCode?: string,
+  customFields?: any
 }) {
   try {
     const totalPrice = payload.cart.reduce((acc, curr) => acc + curr.price, 0);
     const upsellTotal = payload.cart.filter(i => i.isUpsell).reduce((acc, curr) => acc + curr.price, 0);
     const productNames = payload.cart.map(i => i.name).join(', ');
 
+    const finalTotal = payload.total !== undefined ? payload.total : totalPrice;
+
     // Update the master order
     const { error: orderError } = await supabase
       .from('orders')
       .update({
-        address: payload.address.landmark || payload.address.address || (typeof payload.address === 'string' ? payload.address : ''),
-        wilaya: payload.address.wilaya,
-        commune: payload.address.commune,
-        city: payload.address.city,
-        postal_code: payload.address.postalCode,
-        province: payload.address.province,
-        country: payload.address.country,
+        address: payload.address?.landmark || payload.address?.address || (typeof payload.address === 'string' ? payload.address : ''),
+        wilaya: payload.address?.wilaya,
+        commune: payload.address?.commune,
+        city: payload.address?.city,
+        postal_code: payload.address?.postalCode,
+        province: payload.address?.province,
+        country: payload.address?.country,
         product: productNames,
-        total: totalPrice,
+        total: finalTotal,
         upsell_total: upsellTotal,
+        discount_amount: payload.discountAmount || 0,
+        delivery_rate: payload.deliveryRate || 0,
         status: 'PENDING_AGENT_CONFIRMATION',
-        notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null
+        notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
+        custom_fields: { step: 'Completed', coupon: payload.couponCode || '', ...(payload.customFields || {}) }
       })
       .eq('id', orderId);
 

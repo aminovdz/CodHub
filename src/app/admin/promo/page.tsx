@@ -109,7 +109,7 @@ export default function AdminPromoPage() {
     setHtmlContent(newContent);
   };
 
-  const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout') => {
+  const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout' | 'image') => {
     let block = '';
     if (type === 'hero') {
       block = `\n<!-- Hero Section -->\n<div class="py-16 text-center bg-slate-50">\n  <h1 class="text-5xl font-black text-slate-900 mb-4">Your Main Headline</h1>\n  <p class="text-xl text-slate-600 mb-8">Supporting subheadline goes here to drive interest.</p>\n  <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800" alt="Hero" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover aspect-video">\n</div>\n`;
@@ -126,6 +126,11 @@ export default function AdminPromoPage() {
       const productLabel = prod ? prod.title : 'Selected Product';
       // Generate a real HTML button linking directly to checkout with the product ID
       block = `\n<!-- Order Button: links directly to checkout (bypasses product page) -->\n<div class="max-w-xl mx-auto py-10 px-4 text-center">\n  <a href="/${activeStore.region}/checkout?product=${productIdParam}" class="inline-flex items-center justify-center gap-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-2xl py-6 px-12 rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.3)] transition-all" style="text-decoration:none;display:block;border-radius:16px;background:#4f46e5;color:#fff;font-weight:900;font-size:1.5rem;padding:24px 48px;text-align:center;">\n    🛒 Order Now — Pay on Delivery\n  </a>\n  <p style="margin-top:12px;font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:0.08em;">${prod ? `Product: ${productLabel}` : 'Select a product from the dropdown first'}</p>\n</div>\n`;
+    } else if (type === 'image') {
+      const url = prompt('Enter Image URL:');
+      if (url) {
+        block = `\n<!-- Custom Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${url}" alt="Campaign Image" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
+      }
     }
     setHtmlContent(prev => prev + block);
   };
@@ -232,6 +237,9 @@ export default function AdminPromoPage() {
               <button type="button" onClick={() => injectSection('features')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
                 <AlignLeft size={16} className="text-emerald-500" /> Features Grid
               </button>
+              <button type="button" onClick={() => injectSection('image')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
+                <ImageIcon size={16} /> Inject Image URL
+              </button>
               <div className="w-px h-6 bg-slate-300 mx-1 self-center"></div>
               <div className="flex items-center gap-2">
                 <select 
@@ -255,11 +263,17 @@ export default function AdminPromoPage() {
             
             <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
               <span className="text-amber-500 mt-0.5">💡</span>
-              <div className="text-sm font-medium text-amber-800 space-y-1">
-                <strong className="block font-bold text-amber-900">Two ways to add a purchase option:</strong>
-                <p>🔵 <strong>Inject Order Button</strong> — generates a styled link/button that redirects customer to the full checkout page.</p>
-                <p>🟢 <strong>Inject Full Form</strong> — embeds a complete Name/Phone/Wilaya order form directly on this page. Customer orders without leaving.</p>
-                <p className="text-amber-600 text-xs">Both require selecting a product from the dropdown first.</p>
+              <div className="text-sm font-medium text-amber-800 space-y-2">
+                <div>
+                  <strong className="block font-bold text-amber-900 mb-1">Two ways to add a purchase option:</strong>
+                  <p>🔵 <strong>Inject Order Button</strong> — generates a styled link/button that redirects customer to the full checkout page.</p>
+                  <p>🟢 <strong>Inject Full Form</strong> — embeds a complete Name/Phone/Wilaya order form directly on this page. Customer orders without leaving.</p>
+                  <p className="text-amber-600 text-xs mt-0.5">Both require selecting a product from the dropdown first.</p>
+                </div>
+                <div className="pt-2 border-t border-amber-200/60">
+                  <strong className="block font-bold text-amber-900 mb-0.5">🖼️ How to upload images:</strong>
+                  <p className="text-xs text-amber-800">Use a free image host like <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">postimages.org</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">imgur.com</a>, upload your image file, click <strong>Inject Image URL</strong> above, and paste the direct image URL.</p>
+                </div>
               </div>
             </div>
             

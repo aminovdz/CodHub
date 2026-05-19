@@ -103,8 +103,8 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 <MessageCircle size={32} className="text-white" />
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h3 className="text-2xl font-black mb-1">Get Priority Shipping! 🚀</h3>
-                <p className="text-green-100 text-lg">Click to confirm your order on WhatsApp and jump the queue for fast delivery.</p>
+                <h3 className="text-2xl font-black mb-1">{t('thankyou.priorityShipping', 'Get Priority Shipping! 🚀')}</h3>
+                <p className="text-green-100 text-lg">{t('thankyou.priorityDesc', 'Click to confirm your order on WhatsApp and jump the queue for fast delivery.')}</p>
               </div>
               <a
                 href={`https://wa.me/${whatsappConfig.thankYouNumber.replace(/\D/g, '')}?text=${buildWhatsAppMessage()}`}
@@ -112,7 +112,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 rel="noopener noreferrer"
                 className="flex-shrink-0 bg-white text-green-700 font-black px-8 py-4 rounded-2xl hover:bg-green-50 transition-all flex items-center gap-2 shadow-lg text-lg active:scale-95"
               >
-                <MessageCircle size={20} /> Confirm on WhatsApp
+                <MessageCircle size={20} /> {t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
               </a>
             </div>
           </div>
@@ -205,9 +205,9 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
         {storeProducts.length > 0 && (
           <div className="mt-4">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-black text-slate-900">You Might Also Like</h3>
+              <h3 className="text-2xl font-black text-slate-900">{t('thankyou.mightAlsoLike', 'You Might Also Like')}</h3>
               <Link href={`/${region}`} className="text-slate-400 text-sm font-bold uppercase cursor-pointer hover:text-slate-600 transition-colors flex items-center gap-1">
-                Back to Store <ExternalLink size={14} />
+                {t('thankyou.backToStore', 'Back to Store')} <ExternalLink size={14} />
               </Link>
             </div>
 
