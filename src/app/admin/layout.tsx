@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isSuperAdminRoute, setIsSuperAdminRoute] = useState(false);
 
   const pathname = usePathname();
+  const isLoginPage = pathname === '/admin/login' || pathname === '/superadmin/login';
   const { activeStore, availableStores, setActiveStore, staffAccounts, _hasHydrated } = useAdminStore();
 
   // storeReady: true once Zustand has loaded data from localStorage
@@ -40,16 +41,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isGlobalStaff = currentStaffAccount && allowedStoreIds.length === 0;
   const isSingleStoreStaff = currentStaffAccount && allowedStoreIds.length === 1;
 
-  // Detect route type once on mount (pathname is stable from here)
+  // Detect route type and manage session redirect / restoration
   useEffect(() => {
     const superRoute = pathname.startsWith('/superadmin');
     setIsSuperAdminRoute(superRoute);
 
-    // Restore session — run only once on mount
+    // Restore session — run only once on mount / pathname change
     const saved = localStorage.getItem('codadmin-dark');
     if (saved === 'true') setIsDark(true);
 
     const sessionAuth = sessionStorage.getItem('codadmin-auth');
+    const isLogin = pathname === '/admin/login' || pathname === '/superadmin/login';
+
     if (sessionAuth) {
       try {
         const { auth, role, user, isSuperAdmin } = JSON.parse(sessionAuth);
@@ -58,19 +61,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setIsAuthenticated(auth);
           setActiveRole(role);
           setUsername(user);
+          if (isLogin) {
+            window.location.href = superRoute ? '/superadmin' : '/admin';
+          }
         } else {
-          window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
+          const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
+          if (pathname !== targetLogin) {
+            window.location.href = targetLogin;
+          }
         }
       } catch {
         sessionStorage.removeItem('codadmin-auth');
-        window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
+        const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
+        if (pathname !== targetLogin) {
+          window.location.href = targetLogin;
+        }
       }
     } else {
-      window.location.href = superRoute ? '/superadmin/login' : '/admin/login';
+      const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
+      if (pathname !== targetLogin) {
+        window.location.href = targetLogin;
+      }
     }
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // ← Empty deps: run once on mount only
+  }, [pathname]);
 
   // Update route type whenever URL changes (for navigation within the layout)
   useEffect(() => {
@@ -120,6 +133,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     window.location.href = isSuperAdminRoute ? '/superadmin/login' : '/admin/login';
   };
+
+  // Render login pages directly without wrapping inside the dashboard layout
+  if (isLoginPage) {
+    return <>{children}</>;
+  }
 
   if (!isAuthenticated) {
     return (
