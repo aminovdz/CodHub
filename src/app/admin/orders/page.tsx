@@ -162,27 +162,30 @@ export default function AdminOrdersPage() {
       return;
     }
     
-    // Check if we have Yalidine config
-    if (activeStore.yalidineApiKey && activeStore.yalidineApiToken) {
-      alert("Connecting to Yalidine... (Implementation requires a secure server action to bypass CORS)");
-      console.log("Pushing to Yalidine API with:", { key: activeStore.yalidineApiKey, token: activeStore.yalidineApiToken, order });
-      // addActivityLog(...)
-    } else if (activeStore.genericWebhookUrl) {
-       try {
-         const res = await fetch(activeStore.genericWebhookUrl, {
-           method: 'POST',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify(order)
-         });
-         if (res.ok) {
-           alert("Order pushed to fulfillment webhook!");
-           addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Fulfillment Push', detail: `Order ${order.id} pushed to webhook` });
-         } else {
-           throw new Error("Webhook error: " + res.status);
-         }
-       } catch (err: any) {
-         alert("Failed: " + err.message);
-       }
+    if ((activeStore.yalidineApiKey && activeStore.yalidineApiToken) || activeStore.genericWebhookUrl) {
+      try {
+        const res = await fetch('/api/fulfillment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order, store: activeStore })
+        });
+        
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          alert(data.message || "Order pushed to fulfillment successfully!");
+          addActivityLog({
+            storeId: activeStore.id,
+            user: sessionUser,
+            action: 'Fulfillment Push',
+            detail: `Order ${order.id} pushed to ${activeStore.yalidineApiKey ? 'Yalidine' : 'Webhook'}`
+          });
+        } else {
+          throw new Error(data.error || "Fulfillment request failed");
+        }
+      } catch (err: any) {
+        alert("Failed: " + err.message);
+      }
     } else {
       alert("No fulfillment integration (Yalidine or Webhook) found in Settings.");
     }
