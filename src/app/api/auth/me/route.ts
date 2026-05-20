@@ -3,7 +3,8 @@ import { cookies } from 'next/headers';
 import { decrypt } from '@/lib/auth';
 
 export async function GET() {
-  const token = cookies().get('codadmin_token')?.value;
+  const cookieStore = await cookies();
+  const token = cookieStore.get('codadmin_token')?.value;
 
   if (!token) {
     return NextResponse.json({ authenticated: false }, { status: 401 });

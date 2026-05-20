@@ -60,7 +60,7 @@ export default function ProfitCalculatorPage() {
       totalLeads, confirmedOrders, deliveredOrders, rtoOrders,
       grossRevenue, cogs, shippingCosts, rtoCosts, codFees, totalCosts,
       netProfit, netMargin, realCpa, breakevenCpa,
-      monthlyRevenue, monthlyProfit
+      monthlyRevenue, monthlyProfit, adSpendDay
     };
   }, [sellingPrice, productCost, adSpendDay, cpa, confRate, deliveryRate, fulfillmentCost, codFeePct, returnCost, upsellPrice, upsellTakeRate]);
 

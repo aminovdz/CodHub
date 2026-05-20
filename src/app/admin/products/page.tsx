@@ -1,15 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical } from 'lucide-react';
+import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical, Loader2 } from 'lucide-react';
 import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
+import { uploadImageToSupabase } from '@/lib/storage';
 
 export default function AdminProductsPage() {
   const { activeStore, products, addProduct, updateProduct, deleteProduct, categories, setCategories } = useAdminStore();
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [descMode, setDescMode] = useState<'text' | 'html'>('text');
   const [isGenerating, setIsGenerating] = useState(false);
   const { notify } = useNotificationStore();
@@ -83,10 +85,27 @@ export default function AdminProductsPage() {
     setDeleteModal({ isOpen: true, productId: id, title });
   };
 
-  const handleImageUploadMock = () => {
+  const handleImageEnterUrl = () => {
     const url = prompt('Enter Image URL:');
     if (url) {
       setEditingProduct(prev => prev ? {...prev, image: url} : null);
+    }
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadImageToSupabase(file, 'images');
+      setEditingProduct(prev => prev ? { ...prev, image: url } : null);
+      notify('Image uploaded successfully!', 'success');
+    } catch (error: any) {
+      console.error(error);
+      notify(error.message || 'Failed to upload image', 'error');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -295,11 +314,38 @@ export default function AdminProductsPage() {
                       )}
                     </div>
                     <div className="flex-1 space-y-2">
-                      <button type="button" onClick={handleImageUploadMock} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition-colors">
-                        <UploadCloud size={18} /> Enter Image URL
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm">
+                          {isUploading ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <UploadCloud size={16} />
+                              Upload Image
+                            </>
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleImageFileChange} 
+                            disabled={isUploading}
+                            className="hidden" 
+                          />
+                        </label>
+                        <button 
+                          type="button" 
+                          onClick={handleImageEnterUrl} 
+                          className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm border border-slate-200"
+                        >
+                          <LinkIcon size={16} />
+                          Enter URL
+                        </button>
+                      </div>
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        💡 <strong className="text-slate-700">How to upload:</strong> Use a free image host like <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">postimages.org</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">imgur.com</a>, upload your image file, and paste the direct image URL here.
+                        💡 Recommended: Upload a clean JPG/PNG image under 5MB for the best display on the checkout page.
                       </p>
                     </div>
                   </div>

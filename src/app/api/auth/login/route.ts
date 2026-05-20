@@ -78,7 +78,8 @@ export async function POST(req: Request) {
     const token = await encrypt(sessionPayload as any);
 
     // Set HttpOnly Cookie
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
       name: 'codadmin_token',
       value: token,
       httpOnly: true,

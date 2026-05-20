@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, ShoppingCart, AlignLeft, Copy, X, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, ShoppingCart, AlignLeft, Copy, X, Plus, Trash2, Sparkles, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { uploadImageToSupabase } from '@/lib/storage';
 
 export default function AdminPromoPage() {
   const { activeStore, landingPages, setLandingPages, products } = useAdminStore();
@@ -24,8 +25,27 @@ export default function AdminPromoPage() {
 
   const [previewMode, setPreviewMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const { notify } = useNotificationStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const handlePromoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const url = await uploadImageToSupabase(file, 'images');
+      const block = `\n<!-- Custom Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${url}" alt="Campaign Image" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
+      setHtmlContent(prev => prev + block);
+      notify('Image uploaded and injected successfully!', 'success');
+    } catch (error: any) {
+      console.error(error);
+      notify(error.message || 'Failed to upload image', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleAIGenerate = async () => {
     if (!selectedProduct) {
@@ -237,8 +257,28 @@ export default function AdminPromoPage() {
               <button type="button" onClick={() => injectSection('features')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
                 <AlignLeft size={16} className="text-emerald-500" /> Features Grid
               </button>
-              <button type="button" onClick={() => injectSection('image')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
-                <ImageIcon size={16} /> Inject Image URL
+              <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
+                {isUploading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-indigo-600" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud size={16} className="text-indigo-600" />
+                    Upload & Inject Image
+                  </>
+                )}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handlePromoImageUpload} 
+                  disabled={isUploading}
+                  className="hidden" 
+                />
+              </label>
+              <button type="button" onClick={() => injectSection('image')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
+                <LinkIcon size={16} className="text-slate-500" /> Inject Image URL
               </button>
               <div className="w-px h-6 bg-slate-300 mx-1 self-center"></div>
               <div className="flex items-center gap-2">
