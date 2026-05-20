@@ -44,6 +44,7 @@ export default function AdminLoginPage() {
           auth: true, 
           role: data.user.role, 
           user: data.user.username, 
+          username: data.user.username,
           isSuperAdmin: false 
         }));
         router.push('/admin');

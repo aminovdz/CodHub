@@ -60,7 +60,7 @@ export default function InlineOrderForm({ productId, region }: Props) {
     e.preventDefault();
     setSubmitting(true);
 
-    const orderId = `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const orderId = `ORD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const prefix = region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57';
     const fullPhone = phone.startsWith('+') ? phone : `${prefix}${phone.replace(/^0/, '')}`;
 

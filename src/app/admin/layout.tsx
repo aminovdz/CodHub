@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `${basePath}/ads-mcp`,   label: 'Ads MCP Hub',     icon: <Megaphone size={18} />,       roles: ['admin'] },
     { href: `${basePath}/staff`,     label: 'Staff Perf.',     icon: <Users size={18} />,           roles: ['admin'] },
     { href: `${basePath}/activity`,  label: 'Activity Log',    icon: <Activity size={18} />,        roles: ['admin'] },
-    { href: `${basePath}/help`,      label: 'Help & Docs',     icon: <HelpCircle size={18} />,      roles: ['admin', 'fulfillment', 'confirmation'] },
+    { href: `${basePath}/help`,      label: 'Help & Docs',     icon: <HelpCircle size={18} />,      roles: ['admin'] },
     { href: `${basePath}/settings`,  label: 'Settings',        icon: <Settings size={18} />,        roles: ['admin'] },
   ].filter(link => link.roles.includes(activeRole || 'admin'));
 

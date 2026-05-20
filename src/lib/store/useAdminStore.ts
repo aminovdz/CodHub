@@ -1110,14 +1110,53 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         callLogs: updater(state.callLogs)
       })),
 
-      activityLogs: [],
-      addActivityLog: (log) => set((state) => ({
-        activityLogs: [{
+      activityLogs: typeof window !== 'undefined'
+        ? (() => {
+            try {
+              return JSON.parse(localStorage.getItem('codadmin-activity-logs') || '[]');
+            } catch {
+              return [];
+            }
+          })()
+        : [],
+      addActivityLog: (log) => {
+        const newLog = {
           ...log,
           id: `act_${Date.now()}`,
           timestamp: new Date().toISOString()
-        }, ...state.activityLogs].slice(0, 500) // keep last 500
-      })),
+        };
+        set((state) => {
+          const next = [newLog, ...state.activityLogs].slice(0, 500);
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('codadmin-activity-logs', JSON.stringify(next));
+            } catch (e) {
+              console.error("Failed to save activity logs to localStorage", e);
+            }
+          }
+          return { activityLogs: next };
+        });
+
+        // Try persisting to Supabase activity_logs table (handles errors gracefully if table does not exist yet)
+        (async () => {
+          try {
+            const { error } = await supabase
+              .from('activity_logs')
+              .insert({
+                store_id: log.storeId,
+                user: log.user,
+                action: log.action,
+                detail: log.detail,
+                timestamp: newLog.timestamp
+              });
+            if (error) {
+              console.warn("Failed to save activity log to Supabase:", error.message);
+            }
+          } catch (err) {
+            console.warn("Error inserting activity log:", err);
+          }
+        })();
+      },
 
       saveCheckoutConfig: async (config) => {
         const row = checkoutConfigToRow(config);
@@ -1347,6 +1386,31 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           });
           // staff is already set inside the stores block above if stores exist, but fallback if no stores
           if (staff && (!stores || stores.length === 0)) set({ staffAccounts: staff.map(rowToStaff) });
+
+          // Async load activity logs from Supabase if available
+          try {
+            const { data: logsData, error: logsError } = await supabase
+              .from('activity_logs')
+              .select('*')
+              .order('timestamp', { ascending: false })
+              .limit(500);
+            if (!logsError && logsData) {
+              const fetchedLogs = logsData.map(row => ({
+                id: row.id,
+                storeId: row.store_id,
+                user: row.user,
+                action: row.action,
+                detail: row.detail,
+                timestamp: row.timestamp
+              }));
+              set({ activityLogs: fetchedLogs });
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('codadmin-activity-logs', JSON.stringify(fetchedLogs));
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to fetch initial activity logs:", e);
+          }
           
           set({ _hasHydrated: true });
         } catch (error) {

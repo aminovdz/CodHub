@@ -7,7 +7,12 @@ import { AlertTriangle, Package, TrendingDown, CheckCircle2 } from 'lucide-react
 const LOW_STOCK_DEFAULT = 5;
 
 export default function AdminStockPage() {
-  const { activeStore, products, updateProduct } = useAdminStore();
+  const { activeStore, products, updateProduct, addActivityLog } = useAdminStore();
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+
   const [threshold, setThreshold] = useState(LOW_STOCK_DEFAULT);
 
   const storeProducts = products.filter(p => p.storeId === activeStore.id);
@@ -23,7 +28,16 @@ export default function AdminStockPage() {
   };
 
   const updateStock = async (productId: string, stock: number) => {
+    const product = products.find(p => p.id === productId);
     await updateProduct(productId, { stock });
+    if (product) {
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Product Updated',
+        detail: `Updated stock of ${product.title} to ${stock}`
+      });
+    }
   };
 
   const updateVariantStock = async (productId: string, variantId: string, stock: number) => {
@@ -31,6 +45,13 @@ export default function AdminStockPage() {
     if (!product) return;
     const newVariants = (product.variants || []).map(v => v.id === variantId ? { ...v, stock } : v);
     await updateProduct(productId, { variants: newVariants });
+    const variant = product.variants?.find(v => v.id === variantId);
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Product Updated',
+      detail: `Updated stock of ${product.title} (${variant?.label || variantId}) to ${stock}`
+    });
   };
 
   const outOfStock = storeProducts.filter(p => {

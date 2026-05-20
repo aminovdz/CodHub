@@ -13,9 +13,14 @@ const INITIAL_CAMPAIGNS = [
 ];
 
 export default function AdsMcpPage() {
-  const { activeStore, aiProvider, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel } = useAdminStore();
+  const { activeStore, aiProvider, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, addActivityLog } = useAdminStore();
   const [campaigns, setCampaigns] = useState(INITIAL_CAMPAIGNS);
   
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+
   // MCP Credentials State
   const [fbPixelId, setFbPixelId] = useState('');
   const [fbAccessToken, setFbAccessToken] = useState('');
@@ -56,6 +61,12 @@ export default function AdsMcpPage() {
       }));
       setIsSavingConfig(false);
       setAiLogs(prev => [...prev, `[System] Saved MCP configurations for ${activeStore.name}.`]);
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'MCP Configured',
+        detail: `Updated Facebook and TikTok MCP credentials for ${activeStore.name}`
+      });
     }, 800);
   };
 
@@ -64,6 +75,12 @@ export default function AdsMcpPage() {
       if (c.id === id) {
         const nextStatus = c.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
         setAiLogs(logs => [...logs, `[MCP] Action Executed: ${nextStatus === 'ACTIVE' ? 'Resumed' : 'Paused'} Campaign "${c.name}" via API.`]);
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'Campaign Toggled',
+          detail: `${nextStatus === 'ACTIVE' ? 'Resumed' : 'Paused'} campaign "${c.name}" (${c.platform.toUpperCase()})`
+        });
         return { ...c, status: nextStatus };
       }
       return c;
@@ -112,6 +129,12 @@ export default function AdsMcpPage() {
       if (response.ok && data.result) {
         setAiInsights(data.result);
         setAiLogs(prev => [...prev, '[AI Agent] Finished analysis. Dispatching recommendations to console dashboard.']);
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'AI Campaign Audit',
+          detail: `Ran AI campaign diagnostic audit using ${aiProvider.toUpperCase()}`
+        });
       } else {
         throw new Error('API request failed');
       }
@@ -128,6 +151,12 @@ export default function AdsMcpPage() {
         </div>
       `);
       setAiLogs(prev => [...prev, '[AI Agent] Failed to query LLM endpoint. Loaded local simulated model logic instead.']);
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'AI Campaign Audit',
+        detail: `Simulated AI campaign diagnostic audit`
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -138,10 +167,22 @@ export default function AdsMcpPage() {
     setCampaigns(prev => prev.map(c => {
       if (c.id === 'camp-3') {
         setAiLogs(logs => [...logs, `[AI Auto-Pilot] Scaled budget of "${c.name}" from 80$ to 96$ (+20% ROAS adjustment).`]);
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'Campaign Scaled',
+          detail: `Scaled budget of campaign "${c.name}" to 96$`
+        });
         return { ...c, budget: 96 };
       }
       if (c.id === 'camp-4' && c.status === 'ACTIVE') {
         setAiLogs(logs => [...logs, `[AI Auto-Pilot] Automatically paused "${c.name}" due to high CPA.`]);
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'Campaign Paused',
+          detail: `Auto-paused campaign "${c.name}" due to high CPA`
+        });
         return { ...c, status: 'PAUSED' };
       }
       return c;
@@ -179,76 +220,114 @@ export default function AdsMcpPage() {
       {/* Main Grid */}
       <div className="grid lg:grid-cols-3 gap-8">
         
-        {/* Left Form: MCP Config */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 space-y-6 shadow-sm">
-          <div className="flex items-center gap-2 border-b pb-4">
-            <Settings2 className="text-indigo-600" size={20} />
-            <h3 className="font-black text-lg text-slate-900 dark:text-white">MCP Settings</h3>
+        {/* Left Form: MCP Config & Setup Guide */}
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 space-y-6 shadow-sm">
+            <div className="flex items-center gap-2 border-b pb-4">
+              <Settings2 className="text-indigo-600" size={20} />
+              <h3 className="font-black text-lg text-slate-900 dark:text-white">MCP Settings</h3>
+            </div>
+
+            {/* Facebook Config */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-xs text-indigo-600 uppercase tracking-widest">Facebook Business API</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5">Pixel ID / Account ID</label>
+                  <input 
+                    type="text" 
+                    value={fbPixelId} 
+                    onChange={e => setFbPixelId(e.target.value)} 
+                    placeholder="e.g. 84729104820391" 
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5">Access Token</label>
+                  <input 
+                    type="password" 
+                    value={fbAccessToken} 
+                    onChange={e => setFbAccessToken(e.target.value)} 
+                    placeholder="••••••••••••••••••••••••" 
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <hr className="border-slate-100 dark:border-slate-700" />
+
+            {/* TikTok Config */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-xs text-cyan-600 uppercase tracking-widest">TikTok Ads Developer API</h4>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5">Pixel Code / Advertiser ID</label>
+                  <input 
+                    type="text" 
+                    value={ttPixelCode} 
+                    onChange={e => setTtPixelCode(e.target.value)} 
+                    placeholder="e.g. C82J3KL198A" 
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1.5">Developer Secret Token</label>
+                  <input 
+                    type="password" 
+                    value={ttDeveloperToken} 
+                    onChange={e => setTtDeveloperToken(e.target.value)} 
+                    placeholder="••••••••••••••••••••••••" 
+                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleSaveConfig} 
+              disabled={isSavingConfig}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 active:scale-95 transition-all text-xs tracking-widest uppercase flex items-center justify-center gap-2"
+            >
+              {isSavingConfig ? <Loader2 className="animate-spin" size={16} /> : 'Save Integrations'}
+            </button>
           </div>
 
-          {/* Facebook Config */}
-          <div className="space-y-4">
-            <h4 className="font-bold text-xs text-indigo-600 uppercase tracking-widest">Facebook Business API</h4>
+          {/* MCP setup instructions guide */}
+          <div className="bg-slate-900 text-slate-100 rounded-3xl border border-slate-800 p-6 space-y-4 shadow-xl">
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <Cpu className="text-cyan-400 animate-pulse" size={20} />
+              <h3 className="font-black text-xs uppercase tracking-wider text-cyan-400">MCP Integration Guide</h3>
+            </div>
+            
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Model Context Protocol (MCP) provides AI agent workflows with secure, real-time read-write access to Facebook & TikTok ad platforms.
+            </p>
+
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">Pixel ID / Account ID</label>
-                <input 
-                  type="text" 
-                  value={fbPixelId} 
-                  onChange={e => setFbPixelId(e.target.value)} 
-                  placeholder="e.g. 84729104820391" 
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
-                />
+                <h4 className="font-bold text-[10px] text-indigo-300 uppercase tracking-widest mb-1.5">1. Install Platform Server</h4>
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 font-mono text-[9px] text-slate-300">
+                  npm install -g @modelcontextprotocol/server-ads
+                </div>
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">Access Token</label>
-                <input 
-                  type="password" 
-                  value={fbAccessToken} 
-                  onChange={e => setFbAccessToken(e.target.value)} 
-                  placeholder="••••••••••••••••••••••••" 
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
-                />
+                <h4 className="font-bold text-[10px] text-indigo-300 uppercase tracking-widest mb-1.5">2. Run Local Daemon</h4>
+                <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 font-mono text-[9px] text-slate-300 flex flex-col gap-1">
+                  <span className="text-cyan-400"># Start FB/TikTok MCP proxy server</span>
+                  <span>npx @modelcontextprotocol/server-ads --port 8080</span>
+                </div>
+              </div>
+
+              <div className="text-[10px] text-slate-400 bg-slate-950/40 p-3 rounded-xl border border-slate-800/80 space-y-1">
+                <span className="font-black text-slate-200 text-[10px] block mb-1">🤖 AI Agent Automation Capabilities:</span>
+                <p>• Pull real-time ROAS, CPC, CPA, and conversion pixel events.</p>
+                <p>• Automatically scale high-performing budgets by +20%.</p>
+                <p>• Automatically pause underperforming campaigns when CPA exceeds limit.</p>
               </div>
             </div>
           </div>
-
-          <hr className="border-slate-100 dark:border-slate-700" />
-
-          {/* TikTok Config */}
-          <div className="space-y-4">
-            <h4 className="font-bold text-xs text-cyan-600 uppercase tracking-widest">TikTok Ads Developer API</h4>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">Pixel Code / Advertiser ID</label>
-                <input 
-                  type="text" 
-                  value={ttPixelCode} 
-                  onChange={e => setTtPixelCode(e.target.value)} 
-                  placeholder="e.g. C82J3KL198A" 
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-400 mb-1.5">Developer Secret Token</label>
-                <input 
-                  type="password" 
-                  value={ttDeveloperToken} 
-                  onChange={e => setTtDeveloperToken(e.target.value)} 
-                  placeholder="••••••••••••••••••••••••" 
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          <button 
-            onClick={handleSaveConfig} 
-            disabled={isSavingConfig}
-            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 active:scale-95 transition-all text-xs tracking-widest uppercase flex items-center justify-center gap-2"
-          >
-            {isSavingConfig ? <Loader2 className="animate-spin" size={16} /> : 'Save Integrations'}
-          </button>
         </div>
 
         {/* Right Section: Campaigns and AI Optimization (Takes 2 Columns) */}

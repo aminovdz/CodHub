@@ -8,7 +8,13 @@ import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, ShoppingCart
 import { uploadImageToSupabase } from '@/lib/storage';
 
 export default function AdminPromoPage() {
-  const { activeStore, landingPages, setLandingPages, products } = useAdminStore();
+  const { activeStore, landingPages, setLandingPages, products, addActivityLog } = useAdminStore();
+  
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+
   const storeProducts = products.filter(p => p.storeId === activeStore.id);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [title, setTitle] = useState('');
@@ -94,6 +100,12 @@ export default function AdminPromoPage() {
       } else {
         return [...prev, updatedPage];
       }
+    });
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: existingPage ? 'Landing Page Updated' : 'Landing Page Created',
+      detail: `${existingPage ? 'Updated' : 'Created'} landing page "${title}" (slug: /promo/${slug})`
     });
     // After saving, originalSlug should reflect the new slug
     setOriginalSlug(slug);
@@ -367,6 +379,14 @@ export default function AdminPromoPage() {
       isOpen={isDeleteModalOpen}
       onClose={() => setIsDeleteModalOpen(false)}
       onConfirm={() => {
+        if (existingPage) {
+          addActivityLog({
+            storeId: activeStore.id,
+            user: sessionUser,
+            action: 'Landing Page Deleted',
+            detail: `Deleted landing page "${existingPage.title}" (slug: /promo/${existingPage.slug})`
+          });
+        }
         setLandingPages(prev => prev.filter(p => p.id !== existingPage?.id));
         handleCreateNew();
         notify('Landing page deleted!', 'success');

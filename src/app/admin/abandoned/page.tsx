@@ -7,13 +7,14 @@ import { Ghost, PhoneCall, MessageCircle, Trash2, RefreshCw, X } from 'lucide-re
 import { formatDistanceToNow } from 'date-fns';
 
 export default function AdminAbandonedCartsPage() {
-  const { activeStore, abandonedCarts, setAbandonedCarts } = useAdminStore();
+  const { activeStore, abandonedCarts, setAbandonedCarts, addActivityLog } = useAdminStore();
   const storeCarts = abandonedCarts.filter(c => c.storeId === activeStore.id);
 
   const sessionData = typeof window !== 'undefined'
     ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
     : {};
   const sessionRole = (sessionData.role || 'admin') as 'admin' | 'fulfillment' | 'confirmation';
+  const sessionUser = sessionData.user || sessionData.username || 'System';
   const isAdmin = sessionRole === 'admin' || sessionData.isSuperAdmin;
 
   const [whatsappModal, setWhatsappModal] = useState<{
@@ -39,6 +40,7 @@ export default function AdminAbandonedCartsPage() {
         const { error } = await supabase.from('orders').delete().eq('id', id);
         if (error) throw error;
         setAbandonedCarts(prev => prev.filter(c => c.id !== id));
+        addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Cart Deleted', detail: `Abandoned cart ${id} deleted` });
       } catch (err: any) {
         alert("Failed to delete cart: " + err.message);
       }
@@ -132,6 +134,7 @@ export default function AdminAbandonedCartsPage() {
               <button type="button" onClick={() => setWhatsappModal(null)} className="px-5 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button>
               <button type="button" onClick={() => {
                 window.open(`https://wa.me/${whatsappModal.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappModal.message)}`, '_blank');
+                addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Cart Recovery Init', detail: `Initiated WhatsApp recovery for ${whatsappModal.phone}` });
                 setWhatsappModal(null);
               }} className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Send on WhatsApp</button>
             </div>

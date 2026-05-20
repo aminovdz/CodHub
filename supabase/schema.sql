@@ -168,3 +168,15 @@ alter table public.shipping_zones disable row level security;
 alter table public.coupons disable row level security;
 alter table public.checkout_configs disable row level security;
 alter table public.staff_accounts disable row level security;
+
+-- 9. Activity Logs Table
+create table public.activity_logs (
+    id uuid primary key default uuid_generate_v4(),
+    store_id uuid references public.stores(id) on delete cascade,
+    "user" text not null,
+    action text not null,
+    detail text not null,
+    timestamp timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.activity_logs disable row level security;

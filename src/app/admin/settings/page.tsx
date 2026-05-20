@@ -15,8 +15,14 @@ export default function AdminSettingsPage() {
     categories, setCategories, checkoutConfigs, saveCheckoutConfig, 
     globalApiKey, setGlobalApiKey, claudeApiKey, setClaudeApiKey, 
     openAiApiKey, setOpenAiApiKey, openRouterApiKey, setOpenRouterApiKey, 
-    openRouterModel, setOpenRouterModel, aiProvider, setAiProvider 
+    openRouterModel, setOpenRouterModel, aiProvider, setAiProvider,
+    addActivityLog
   } = useAdminStore();
+
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
   
   // Layout & SEO Settings
   const [isRtl, setIsRtl] = useState(true);
@@ -34,6 +40,7 @@ export default function AdminSettingsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
+  const [isWebhookGuideOpen, setIsWebhookGuideOpen] = useState(false);
 
   // New Store State
   const [newStoreName, setNewStoreName] = useState('');
@@ -210,6 +217,7 @@ export default function AdminSettingsPage() {
     setOpenRouterModel(localOpenRouterModel);
     setAiProvider(localProvider);
 
+    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
     setIsSaving(false);
     notify('Settings saved successfully!', 'success');
   };
@@ -228,6 +236,7 @@ export default function AdminSettingsPage() {
       customDomain: newStoreCustomDomain.trim() || undefined,
       translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
     });
+    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
     setNewStoreName('');
     setNewStoreRegion('');
     setNewStorePrefix('');
@@ -246,6 +255,7 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     if (newStatus) {
       addOrderStatus(newStatus);
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Status Added', detail: `Added status ${newStatus}` });
       setNewStatus('');
     }
   };
@@ -459,7 +469,10 @@ export default function AdminSettingsPage() {
               {status}
               <button 
                 type="button" 
-                onClick={() => removeOrderStatus(status)}
+                onClick={() => {
+                  removeOrderStatus(status);
+                  addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Status Deleted', detail: `Removed status ${status}` });
+                }}
                 className="text-slate-400 hover:text-rose-500 transition-colors"
                 title="Remove Custom Status (Default statuses cannot be removed)"
               >
@@ -490,7 +503,10 @@ export default function AdminSettingsPage() {
               {cat}
               <button 
                 type="button" 
-                onClick={() => setCategories(prev => prev.filter(c => c !== cat))}
+                onClick={() => {
+                  setCategories(prev => prev.filter(c => c !== cat));
+                  addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Category Deleted', detail: `Removed category ${cat}` });
+                }}
                 className="text-slate-400 hover:text-rose-500 transition-colors"
                 title="Remove Category"
               >
@@ -499,7 +515,14 @@ export default function AdminSettingsPage() {
             </span>
           ))}
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); if (newCategory) { setCategories(prev => [...prev, newCategory]); setNewCategory(''); } }} className="flex items-end gap-4">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (newCategory) {
+            setCategories(prev => [...prev, newCategory]);
+            addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Category Added', detail: `Added category ${newCategory}` });
+            setNewCategory('');
+          }
+        }} className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-xs font-bold text-slate-500 mb-1">New Category Name</label>
             <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. Beauty & Care" />
@@ -529,6 +552,7 @@ export default function AdminSettingsPage() {
                       storeId: editStaffStoreIds.length === 1 ? editStaffStoreIds[0] : undefined,
                       storeIds: editStaffStoreIds
                     });
+                    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Updated', detail: `Updated staff account ${editStaffName} (${editStaffRole})` });
                     setEditingStaffId(null);
                     notify('Staff account updated successfully!', 'success');
                   } else {
@@ -635,7 +659,10 @@ export default function AdminSettingsPage() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={() => deleteStaffAccount(acc.id)}
+                    onClick={() => {
+                      deleteStaffAccount(acc.id);
+                      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Deleted', detail: `Deleted staff account ${acc.name} (${acc.role})` });
+                    }}
                     className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
                     disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
                     title="Delete Staff Account"
@@ -657,6 +684,7 @@ export default function AdminSettingsPage() {
               storeId: newStaffStoreIds.length === 1 ? newStaffStoreIds[0] : undefined,
               storeIds: newStaffStoreIds
             });
+            addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Created', detail: `Created staff account ${newStaffName} (${newStaffRole})` });
             setNewStaffName('');
             setNewStaffPin('');
             setNewStaffStoreIds([]);
@@ -868,7 +896,16 @@ export default function AdminSettingsPage() {
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
                   <label className="block text-xs font-bold text-slate-700 mb-1">Google Sheets / Generic Webhook URL</label>
                   <input type="text" value={genericWebhookUrl} onChange={e => setGenericWebhookUrl(e.target.value)} placeholder="https://script.google.com/macros/s/..." className="w-full p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 bg-white text-slate-900 font-bold" />
-                  <p className="text-xs text-slate-500 mt-2">When you click "Send to Webhook" on an order, we will POST the order data to this URL.</p>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <p className="text-xs text-slate-500">When you click "Send to Webhook" on an order, we will POST the order data to this URL.</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsWebhookGuideOpen(true)}
+                      className="text-xs font-black text-indigo-600 hover:text-indigo-800 transition-colors underline self-start sm:self-auto flex items-center gap-1 shrink-0"
+                    >
+                      View Setup Guide
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -942,10 +979,23 @@ export default function AdminSettingsPage() {
                 </label>
               </div>
               {whatsappConfig.thankYouEnabled && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">WhatsApp Business Number</label>
+                      <input type="text" value={whatsappConfig.thankYouNumber} onChange={(e) => setWhatsappConfig({...whatsappConfig, thankYouNumber: e.target.value})} placeholder="+213555..." className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">WhatsApp Business Number</label>
-                    <input type="text" value={whatsappConfig.thankYouNumber} onChange={(e) => setWhatsappConfig({...whatsappConfig, thankYouNumber: e.target.value})} placeholder="+213555..." className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">WhatsApp Thank You Message Template</label>
+                    <textarea 
+                      value={whatsappConfig.thankYouMessage} 
+                      onChange={(e) => setWhatsappConfig({...whatsappConfig, thankYouMessage: e.target.value})} 
+                      rows={3} 
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none" 
+                      placeholder="Hello, I want to confirm my order: [ORDER_ID]"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: <strong>[ORDER_ID]</strong>, <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[ADDRESS]</strong></p>
                   </div>
                 </div>
               )}
@@ -1077,6 +1127,7 @@ export default function AdminSettingsPage() {
         onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
         onConfirm={() => {
           removeStore(deleteModal.storeId);
+          addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Deleted', detail: `Store ${deleteModal.name} deleted` });
           notify('Store deleted successfully!', 'success');
         }}
         title="Delete Store?"
@@ -1084,6 +1135,200 @@ export default function AdminSettingsPage() {
         confirmText="Delete Store"
         variant="danger"
       />
+
+      {isWebhookGuideOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden text-slate-800 dark:text-white">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Globe className="text-indigo-600" size={20} /> Webhook & Google Sheets Integration
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold mt-1">Connect your funnels to Google Sheets or custom integrations</p>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsWebhookGuideOpen(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-xl transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-600 dark:text-slate-300">
+              {/* Google Sheets Steps */}
+              <div className="space-y-3">
+                <h4 className="font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Google Sheets Setup Steps
+                </h4>
+                <ol className="list-decimal pl-5 space-y-2 text-xs font-semibold leading-relaxed">
+                  <li>Create a new spreadsheet on <a href="https://sheets.google.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">Google Sheets</a>.</li>
+                  <li>Click <strong>Extensions</strong> &rarr; <strong>Apps Script</strong> from the top menu.</li>
+                  <li>Delete any auto-generated code and paste the Apps Script template shown below.</li>
+                  <li>Click the blue <strong>Deploy</strong> button &rarr; <strong>New deployment</strong>.</li>
+                  <li>Click the cog icon and select <strong>Web app</strong>. Configure:
+                    <ul className="list-disc pl-5 mt-1 space-y-1 text-slate-400">
+                      <li><strong>Execute as:</strong> <code className="bg-slate-100 dark:bg-slate-950 px-1 py-0.5 rounded text-slate-800 dark:text-slate-200">Me</code></li>
+                      <li><strong>Who has access:</strong> <code className="bg-slate-100 dark:bg-slate-950 px-1 py-0.5 text-indigo-500 rounded font-bold">Anyone</code> (required for incoming orders)</li>
+                    </ul>
+                  </li>
+                  <li>Click <strong>Deploy</strong>, authorize permissions, and copy the generated <strong>Web app URL</strong>.</li>
+                  <li>Paste the URL in the Google Sheets / Generic Webhook URL input field.</li>
+                </ol>
+              </div>
+
+              {/* Apps Script Template */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider text-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Google Apps Script Code
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`// Google Sheets Webhook Script for COD-Hub
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var order = payload.order;
+    var storeName = payload.storeName;
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    
+    // Add header row if sheet is empty
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Order ID", 
+        "Date", 
+        "Store", 
+        "Customer Name", 
+        "Phone", 
+        "Product", 
+        "Total Price", 
+        "Address", 
+        "Wilaya/Commune", 
+        "Status"
+      ]);
+    }
+    
+    // Append order info
+    sheet.appendRow([
+      order.id || "",
+      order.createdAt || new Date().toISOString(),
+      storeName || "",
+      order.customer || "",
+      order.phone || "",
+      order.product || "",
+      order.total || order.price || 0,
+      order.address || "",
+      (order.wilaya || "") + " " + (order.commune || ""),
+      order.status || "PENDING"
+    ]);
+    
+    return ContentService.createTextOutput(JSON.stringify({ "success": true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ "success": false, "error": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`);
+                      notify("Apps Script code copied to clipboard!", "success");
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 font-black rounded-lg text-[10px] transition-all"
+                  >
+                    <Copy size={12} /> Copy Code
+                  </button>
+                </div>
+                <pre className="p-4 bg-slate-900 text-slate-100 rounded-2xl text-[10px] font-mono overflow-x-auto max-h-48 border border-slate-800">
+{`// Google Sheets Webhook Script for COD-Hub
+function doPost(e) {
+  try {
+    var payload = JSON.parse(e.postData.contents);
+    var order = payload.order;
+    var storeName = payload.storeName;
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    
+    // Add header row if sheet is empty
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        "Order ID", 
+        "Date", 
+        "Store", 
+        "Customer Name", 
+        "Phone", 
+        "Product", 
+        "Total Price", 
+        "Address", 
+        "Wilaya/Commune", 
+        "Status"
+      ]);
+    }
+    
+    // Append order info
+    sheet.appendRow([
+      order.id || "",
+      order.createdAt || new Date().toISOString(),
+      storeName || "",
+      order.customer || "",
+      order.phone || "",
+      order.product || "",
+      order.total || order.price || 0,
+      order.address || "",
+      (order.wilaya || "") + " " + (order.commune || ""),
+      order.status || "PENDING"
+    ]);
+    
+    return ContentService.createTextOutput(JSON.stringify({ "success": true }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ "success": false, "error": error.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`}
+                </pre>
+              </div>
+
+              {/* Generic Webhook Details */}
+              <div className="space-y-3 bg-slate-50 dark:bg-slate-900/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <h4 className="font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-wider text-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" /> Generic Webhooks (Make/Zapier)
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-500 font-medium">
+                  We will send a POST request with header <code className="bg-slate-100 dark:bg-slate-950 px-1 py-0.5 rounded font-mono">Content-Type: application/json</code> containing this payload structure:
+                </p>
+                <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl text-[10px] font-mono overflow-x-auto border border-slate-800">
+{`{
+  "order": {
+    "id": "A4B7",
+    "customer": "John Doe",
+    "phone": "+1234567890",
+    "address": "123 Street name",
+    "wilaya": "Algiers",
+    "commune": "Hydra",
+    "product": "Premium Watch",
+    "total": 5900,
+    "status": "SELF_CONFIRMED"
+  },
+  "storeName": "Algeria Store"
+}`}
+                </pre>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsWebhookGuideOpen(false)}
+                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black rounded-xl text-xs transition-all"
+              >
+                Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

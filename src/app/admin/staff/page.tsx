@@ -5,8 +5,13 @@ import { useAdminStore, StaffGoal, CommissionEntry } from '@/lib/store/useAdminS
 import { Target, DollarSign, Award, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
 
 export default function AdminStaffPage() {
-  const { activeStore, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries, staffAccounts } = useAdminStore();
+  const { activeStore, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries, staffAccounts, addActivityLog } = useAdminStore();
   
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+
   const [newGoal, setNewGoal] = useState({ agentName: '', targetOrders: 100, targetRevenue: 5000, month: new Date().toISOString().slice(0, 7) });
   const [newCommission, setNewCommission] = useState({ agentName: '', amount: 0, reason: '', type: 'BONUS' as const });
 
@@ -74,6 +79,12 @@ export default function AdminStaffPage() {
     
     // Remove existing goal for same agent/month
     setStaffGoals(prev => [...prev.filter(g => !(g.storeId === activeStore.id && g.agentName === goal.agentName && g.month === goal.month)), goal]);
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Staff Goal Set',
+      detail: `Set goal for ${goal.agentName} (${goal.month}): Target ${goal.targetOrders} orders, ${goal.targetRevenue} revenue`
+    });
     setNewGoal({ agentName: '', targetOrders: 100, targetRevenue: 5000, month: currentMonth });
   };
 
@@ -89,12 +100,27 @@ export default function AdminStaffPage() {
     };
     
     setCommissionEntries(prev => [entry, ...prev]);
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Staff Commission Added',
+      detail: `Added ${entry.type} entry for ${entry.agentName}: ${entry.amount} (${entry.reason})`
+    });
     setNewCommission({ agentName: '', amount: 0, reason: '', type: 'BONUS' });
   };
 
   const handleDeleteCommission = (id: string) => {
+    const entry = commissionEntries.find(c => c.id === id);
     if (confirm('Delete this commission entry?')) {
       setCommissionEntries(prev => prev.filter(c => c.id !== id));
+      if (entry) {
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'Staff Commission Deleted',
+          detail: `Deleted ${entry.type} entry of ${entry.amount} for ${entry.agentName}`
+        });
+      }
     }
   };
 
@@ -281,8 +307,8 @@ export default function AdminStaffPage() {
               </h2>
             </div>
             <div className="p-4 space-y-3 max-h-[400px] overflow-y-auto">
-              {commissionEntries.filter(c => c.storeId === activeStore.id).slice(0, 10).map(c => (
-                <div key={c.id} className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
+              {commissionEntries.filter(c => c.storeId === activeStore.id).slice(0, 10).map((c, idx) => (
+                <div key={c.id || `commission_${idx}`} className="bg-slate-800 rounded-2xl p-4 border border-slate-700">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <div className="font-bold text-white flex items-center gap-2">

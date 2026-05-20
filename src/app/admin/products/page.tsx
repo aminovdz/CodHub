@@ -8,7 +8,12 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { uploadImageToSupabase } from '@/lib/storage';
 
 export default function AdminProductsPage() {
-  const { activeStore, products, addProduct, updateProduct, deleteProduct, categories, setCategories } = useAdminStore();
+  const { activeStore, products, addProduct, updateProduct, deleteProduct, categories, setCategories, addActivityLog } = useAdminStore();
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -73,8 +78,10 @@ export default function AdminProductsPage() {
     const exists = products.find(p => p.id === editingProduct.id);
     if (exists) {
       await updateProduct(editingProduct.id, editingProduct);
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Product Updated', detail: `Product ${editingProduct.title} updated` });
     } else {
       await addProduct(editingProduct);
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Product Created', detail: `Product ${editingProduct.title} created` });
     }
     
     setIsSaving(false);
@@ -665,6 +672,7 @@ export default function AdminProductsPage() {
       onClose={() => setDeleteModal({ ...deleteModal, isOpen: false })}
       onConfirm={async () => {
         await deleteProduct(deleteModal.productId);
+        addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Product Deleted', detail: `Product ${deleteModal.title} deleted` });
         notify('Product deleted successfully!', 'success');
       }}
       title="Delete Product?"

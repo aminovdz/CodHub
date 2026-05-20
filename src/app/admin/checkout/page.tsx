@@ -42,6 +42,11 @@ export default function AdminCheckoutEditor() {
   } = useAdminStore();
   const { notify } = useNotificationStore();
   
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
+  
   const [config, setConfig] = useState<CheckoutConfig>({ ...DEFAULT_CHECKOUT_CONFIG, storeId: activeStore.id });
   const [zones, setZones] = useState<ShippingZone[]>([]);
   const [fraudConfig, setFraudConfig] = useState(activeStore.fraudConfig || {
@@ -94,7 +99,7 @@ export default function AdminCheckoutEditor() {
         action: 'Updated Checkout & Shipping Settings',
         detail: `Updated configuration, fraud rules, and ${zones.length} shipping zones for ${activeStore.name}`,
         storeId: activeStore.id,
-        user: 'Admin'
+        user: sessionUser
       });
     } catch (error) {
       console.error("Save failed:", error);

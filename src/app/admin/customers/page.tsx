@@ -5,11 +5,14 @@ import { useAdminStore, Order, BlacklistedCustomer } from '@/lib/store/useAdminS
 import { AlertTriangle, Search, ShieldBan, UserX, CheckCircle, Package } from 'lucide-react';
 
 export default function AdminCustomersPage() {
-  const { activeStore, orders, customerBlacklist, setCustomerBlacklist } = useAdminStore();
+  const { activeStore, orders, customerBlacklist, setCustomerBlacklist, addActivityLog } = useAdminStore();
   const [searchTerm, setSearchTerm] = useState('');
   
   const sessionUser = typeof window !== 'undefined'
-    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}').user || 'Admin'; } catch { return 'Admin'; } })()
+    ? (() => { try { 
+        const auth = JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}');
+        return auth.username || auth.user || 'Admin';
+      } catch { return 'Admin'; } })()
     : 'Admin';
 
   // Group orders by phone number
@@ -60,11 +63,24 @@ export default function AdminCustomersPage() {
       addedBy: sessionUser
     };
     setCustomerBlacklist(prev => [entry, ...prev]);
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Customer Blacklisted',
+      detail: `Blacklisted customer ${phone} (${name}). Reason: "${reason}"`
+    });
   };
 
   const handleRemoveBlacklist = (id: string) => {
+    const entry = customerBlacklist.find(b => b.id === id);
     if (confirm('Remove this customer from the blacklist?')) {
       setCustomerBlacklist(prev => prev.filter(b => b.id !== id));
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Customer Whitelisted',
+        detail: `Removed customer ${entry?.phone || id} (${entry?.name || 'Unknown'}) from blacklist`
+      });
     }
   };
 

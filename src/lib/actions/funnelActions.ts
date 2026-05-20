@@ -117,11 +117,17 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 
     if (orderError) throw orderError;
 
-    // Trigger AiSensy Automated Campaign confirmation if enabled
+    // Trigger AiSensy Automated Campaign confirmation if enabled (delayed by 60s to allow self-confirmation)
     try {
-      await sendAiSensyConfirmation(orderId);
+      setTimeout(async () => {
+        try {
+          await sendAiSensyConfirmation(orderId);
+        } catch (e) {
+          console.error('[submitOrder delayed] Failed to dispatch AiSensy confirmation:', e);
+        }
+      }, 60000);
     } catch (e) {
-      console.error('[submitOrder] Failed to dispatch AiSensy confirmation:', e);
+      console.error('[submitOrder] Failed to schedule AiSensy confirmation:', e);
     }
 
     return { success: true };

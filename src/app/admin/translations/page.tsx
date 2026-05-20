@@ -7,10 +7,15 @@ import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { PREDEFINED_KEYS, DEFAULT_TRANSLATIONS } from '@/lib/translations';
 
 export default function AdminTranslationsPage() {
-  const { activeStore, updateStore } = useAdminStore();
+  const { activeStore, updateStore, addActivityLog } = useAdminStore();
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const { notify } = useNotificationStore();
+
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
 
   useEffect(() => {
     setTranslations(activeStore.translations || {});
@@ -20,6 +25,12 @@ export default function AdminTranslationsPage() {
     e.preventDefault();
     setIsSaving(true);
     await updateStore(activeStore.id, { translations });
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Translations Updated',
+      detail: `Updated dictionaries for ${activeStore.name}`
+    });
     setIsSaving(false);
     notify('Translations saved successfully!', 'success');
   };
@@ -63,6 +74,12 @@ export default function AdminTranslationsPage() {
               if(confirm('Are you sure you want to reset to default translations? All custom changes will be lost.')) {
                 const defaults = (DEFAULT_TRANSLATIONS as any)[activeStore.language || 'en'] || {};
                 setTranslations(defaults);
+                addActivityLog({
+                  storeId: activeStore.id,
+                  user: sessionUser,
+                  action: 'Translations Reset',
+                  detail: `Reset translations dictionary to defaults for ${activeStore.name}`
+                });
                 notify('Reset to defaults. Please save to apply changes.', 'success');
               }
             }}

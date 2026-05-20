@@ -100,7 +100,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
             <CheckCircle2 size={56} className="text-emerald-500" />
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">
-            {t('thankyou.thankYou', 'Thank you')}, {customerName || 'Customer'}!
+            {t('thankyou.thankYou', 'Thank you')} {customerName || 'Customer'}
           </h1>
           <h2 className="text-lg font-bold text-slate-500 mb-6 flex items-center justify-center gap-1.5">
             {t('thankyou.orderConfirmed', 'Your order has been received!')}

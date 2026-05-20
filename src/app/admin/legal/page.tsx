@@ -7,10 +7,15 @@ import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { Save, FileText, Plus } from 'lucide-react';
 
 export default function AdminLegalPage() {
-  const { activeStore, legalPages, setLegalPages } = useAdminStore();
+  const { activeStore, legalPages, setLegalPages, addActivityLog } = useAdminStore();
   const storePagesRaw = legalPages.filter(p => p.storeId === activeStore.id);
   // Strictly deduplicate by slug to prevent React StrictMode duplicates
   const storePages = Array.from(new Map(storePagesRaw.map(p => [p.slug, p])).values());
+
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
   
   const [selectedSlug, setSelectedSlug] = useState('privacy-policy');
   const [title, setTitle] = useState('');
@@ -52,6 +57,12 @@ export default function AdminLegalPage() {
         slug: selectedSlug, 
         htmlContent: content 
       }];
+    });
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Legal Page Saved',
+      detail: `Saved policy page "${title || selectedSlug}" (slug: /legal/${selectedSlug})`
     });
     notify(`Saved ${selectedSlug} for ${activeStore.name}!`, "success");
   };
@@ -187,6 +198,12 @@ export default function AdminLegalPage() {
       isOpen={isDeleteModalOpen}
       onClose={() => setIsDeleteModalOpen(false)}
       onConfirm={() => {
+        addActivityLog({
+          storeId: activeStore.id,
+          user: sessionUser,
+          action: 'Legal Page Deleted',
+          detail: `Deleted legal page "${title || selectedSlug}" (slug: /legal/${selectedSlug})`
+        });
         setLegalPages(prev => prev.filter(p => !(p.storeId === activeStore.id && p.slug === selectedSlug)));
         setSelectedSlug('privacy-policy');
         notify('Legal page deleted successfully!', 'success');

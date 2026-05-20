@@ -25,9 +25,24 @@ type Message = {
 };
 
 export default function AgentsHubPage() {
-  const { activeStore, aiProvider, setLandingPages, setProducts, agentChats, setAgentChat } = useAdminStore();
+  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog } = useAdminStore();
+  const [previewPageData, setPreviewPageData] = useState<{
+    msgId: string;
+    action: any;
+    title: string;
+    slug: string;
+    productId: string;
+    htmlContent: string;
+  } | null>(null);
+
+  const storeProducts = products.filter(p => p.storeId === activeStore.id);
   const [selectedAgentId, setSelectedAgentId] = useState(AGENTS[0].id);
   const [input, setInput] = useState('');
+
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
   const [attachments, setAttachments] = useState<{ data: string, mimeType: string, name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -101,11 +116,19 @@ export default function AgentsHubPage() {
     };
     
     setMessages(prev => [...prev, userMessage]);
+    const inputForLog = input.trim();
     setInput('');
     setAttachments([]);
     setIsLoading(true);
 
     try {
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Agent Queried',
+        detail: `Consulted ${selectedAgent.name} with input: "${inputForLog.length > 50 ? inputForLog.substring(0, 47) + '...' : inputForLog}"`
+      });
+
       const response = await aiService.chatWithAgent(selectedAgent.promptRole, userMessage.content, getContextForAgent(), userMessage.attachments);
       
       if (response) {
@@ -139,9 +162,21 @@ export default function AgentsHubPage() {
         createdAt: new Date().toISOString()
       };
       setLandingPages(prev => [...prev, newPage as any]);
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Landing Page Created',
+        detail: `Created AI landing page: ${newPage.title}`
+      });
       alert('Landing Page added to your Promo section!');
     } else if (action.type === 'UPDATE_PRODUCT') {
       // In a real scenario, we'd update specific product fields
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Product Updated',
+        detail: `Updated product via AI suggestions`
+      });
       alert('Product updated (simulation)!');
     }
 
@@ -150,7 +185,8 @@ export default function AgentsHubPage() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
+    <>
+      <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-80px)] flex flex-col">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-3">
@@ -159,8 +195,14 @@ export default function AgentsHubPage() {
           </h1>
           <p className="text-slate-500 mt-1">Collaborate with specialized AI agents to build and optimize your store.</p>
         </div>
-        <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl text-indigo-700 dark:text-indigo-400 font-bold text-sm">
-          <Sparkles size={16} /> Using {aiProvider.toUpperCase()} Model
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-2 rounded-xl text-emerald-700 dark:text-emerald-400 font-bold text-sm border border-emerald-100 dark:border-emerald-900/30">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Optimized for {activeStore.region.toUpperCase()} ({activeStore.currency})
+          </div>
+          <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl text-indigo-700 dark:text-indigo-400 font-bold text-sm">
+            <Sparkles size={16} /> Using {aiProvider.toUpperCase()} Model
+          </div>
         </div>
       </div>
 
@@ -249,15 +291,22 @@ export default function AgentsHubPage() {
 
                     {/* Action Proposal Card */}
                     {msg.action && (
-                      <div className="mt-3 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900 rounded-2xl p-4 shadow-sm w-full max-w-md">
+                      <div className="mt-3 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900 rounded-2xl p-4 shadow-sm w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-300">
                         <div className="flex items-center gap-2 mb-3 text-indigo-700 dark:text-indigo-400 font-bold text-sm">
                           <Target size={16} /> 
                           Proposed Action: {msg.action.type.replace(/_/g, ' ')}
                         </div>
                         
-                        <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-400 mb-4 max-h-40 overflow-y-auto">
-                          {JSON.stringify(msg.action.previewData, null, 2)}
-                        </div>
+                        {msg.action.type === 'CREATE_LANDING_PAGE' ? (
+                          <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4 border border-slate-100 dark:border-slate-700">
+                            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1">{msg.action.previewData.title || 'AI Generated Page'}</h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">Contains custom HTML with high-converting headings optimized for {activeStore.region.toUpperCase()} market.</p>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-400 mb-4 max-h-40 overflow-y-auto">
+                            {JSON.stringify(msg.action.previewData, null, 2)}
+                          </div>
+                        )}
 
                         {(msg.action as any).applied ? (
                           <div className="flex items-center gap-2 text-emerald-600 font-bold bg-emerald-50 px-4 py-2 rounded-lg justify-center">
@@ -265,10 +314,23 @@ export default function AgentsHubPage() {
                           </div>
                         ) : (
                           <button 
-                            onClick={() => handleValidateAction(msg.action, msg.id)}
-                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                            onClick={() => {
+                              if (msg.action.type === 'CREATE_LANDING_PAGE') {
+                                setPreviewPageData({
+                                  msgId: msg.id,
+                                  action: msg.action,
+                                  title: msg.action.previewData.title || 'AI Generated Page',
+                                  slug: 'promo-' + Math.random().toString(36).substring(7),
+                                  productId: msg.action.previewData.productId || '',
+                                  htmlContent: msg.action.previewData.htmlContent || '<h1>Missing HTML</h1>'
+                                });
+                              } else {
+                                handleValidateAction(msg.action, msg.id);
+                              }
+                            }}
+                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
                           >
-                            <CheckCircle size={16} /> Validate & Apply
+                            <CheckCircle size={16} /> {msg.action.type === 'CREATE_LANDING_PAGE' ? 'Preview & Confirm' : 'Validate & Apply'}
                           </button>
                         )}
                       </div>
@@ -355,5 +417,167 @@ export default function AgentsHubPage() {
         </div>
       </div>
     </div>
+
+      {/* Landing Page Preview & Confirmation Modal */}
+      {previewPageData && (
+        <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <Sparkles className="text-indigo-600 animate-pulse" size={24} />
+                  Confirm Landing Page Creation
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">Review the AI-generated landing page layout and settings before publishing.</p>
+              </div>
+              <button 
+                onClick={() => setPreviewPageData(null)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-500 dark:text-slate-400"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+              {/* Left Column: Settings Form */}
+              <div className="w-full md:w-1/3 p-6 border-r border-slate-200 dark:border-slate-800 overflow-y-auto space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Page Title</label>
+                  <input 
+                    type="text" 
+                    value={previewPageData.title}
+                    onChange={(e) => setPreviewPageData({ ...previewPageData, title: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm font-semibold"
+                    placeholder="Enter page title..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Slug URL Path</label>
+                  <div className="flex items-center">
+                    <span className="px-3 py-2.5 rounded-l-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs border border-r-0 border-slate-200 dark:border-slate-700 font-mono">
+                      /{activeStore.region}/promo/
+                    </span>
+                    <input 
+                      type="text" 
+                      value={previewPageData.slug}
+                      onChange={(e) => setPreviewPageData({ ...previewPageData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '') })}
+                      className="flex-1 px-4 py-2.5 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none text-xs font-mono"
+                      placeholder="page-slug"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">Lowercase letters, numbers, and dashes only.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Associated Product (Optional)</label>
+                  <select 
+                    value={previewPageData.productId}
+                    onChange={(e) => setPreviewPageData({ ...previewPageData, productId: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-600 focus:outline-none text-xs font-bold"
+                  >
+                    <option value="">-- Select Product --</option>
+                    {storeProducts.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Links shortcodes like [CHECKOUT_FORM] to this product checkout.</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">HTML Source Code</label>
+                  <textarea 
+                    value={previewPageData.htmlContent}
+                    onChange={(e) => setPreviewPageData({ ...previewPageData, htmlContent: e.target.value })}
+                    rows={8}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white font-mono text-[10px] focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Right Column: Live Frame Preview */}
+              <div className="flex-1 bg-slate-100 dark:bg-slate-950 p-6 flex flex-col">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Live Page Preview (Responsive Frame)</span>
+                  <div className="flex gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  </div>
+                </div>
+                <div className="flex-1 bg-white rounded-2xl shadow-inner border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <iframe 
+                    title="Landing Page Preview"
+                    srcDoc={`
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <meta charset="utf-8">
+                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                          <script src="https://cdn.tailwindcss.com"></script>
+                          <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
+                          </style>
+                        </head>
+                        <body>
+                          ${previewPageData.htmlContent.replace(/\[CHECKOUT_FORM(?::([^\]]+))?\]/g, `
+                            <div style="max-width: 450px; margin: 30px auto; padding: 20px; border: 2px dashed #6366f1; border-radius: 16px; text-align: center; background: #e0e7ff; color: #4338ca; font-weight: bold; font-family: sans-serif;">
+                              🛍️ [Interactive COD Checkout Form Here]
+                            </div>
+                          `)}
+                        </body>
+                      </html>
+                    `}
+                    className="w-full h-full border-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end gap-3">
+              <button 
+                onClick={() => setPreviewPageData(null)}
+                className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  const finalPage = {
+                    id: 'promo_' + Date.now().toString(),
+                    storeId: activeStore.id,
+                    title: previewPageData.title,
+                    slug: previewPageData.slug || 'promo-' + Math.random().toString(36).substring(7),
+                    productId: previewPageData.productId,
+                    htmlContent: previewPageData.htmlContent,
+                    published: true,
+                    createdAt: new Date().toISOString()
+                  };
+                  setLandingPages(prev => [...prev, finalPage as any]);
+                  
+                  addActivityLog({
+                    storeId: activeStore.id,
+                    user: sessionUser,
+                    action: 'Landing Page Created',
+                    detail: `Created and published AI landing page "${finalPage.title}" (slug: /promo/${finalPage.slug})`
+                  });
+
+                  // Mark as applied in chat
+                  setMessages(prev => prev.map(m => m.id === previewPageData.msgId ? { ...m, action: { ...m.action!, applied: true } as any } : m));
+                  setPreviewPageData(null);
+                  alert('Landing Page added to your Promo section and published successfully!');
+                }}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm shadow-md transition-all active:scale-95"
+              >
+                Confirm & Publish Landing Page
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

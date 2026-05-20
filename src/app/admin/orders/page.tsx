@@ -54,7 +54,7 @@ export default function AdminOrdersPage() {
   const sessionData = typeof window !== 'undefined'
     ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
     : {};
-  const sessionUser = sessionData.user || 'Admin';
+  const sessionUser = sessionData.user || sessionData.username || 'Admin';
   const sessionRole = (sessionData.role || 'admin') as 'admin' | 'fulfillment' | 'confirmation';
   const isAdmin = sessionRole === 'admin' || sessionData.isSuperAdmin;
 
@@ -68,7 +68,7 @@ export default function AdminOrdersPage() {
     let csv = '';
     if (yalidineFormat) {
       // Yalidine bulk import format (Confirmed only)
-      const confirmedOnly = rows.filter(o => o.status === 'CONFIRMED');
+      const confirmedOnly = rows.filter(o => o.status === 'CONFIRMED' || o.status === 'SELF_CONFIRMED');
       csv = 'Nom,Téléphone,Wilaya,Commune,Adresse,Produit,Prix\n';
       confirmedOnly.forEach(o => {
         csv += `"${o.customer}","${o.phone}","${o.wilaya || o.province || ''}","${o.commune || o.city || ''}","${o.address}","${o.product}","${o.total}"\n`;
@@ -190,7 +190,7 @@ export default function AdminOrdersPage() {
 
   const handleCreateOrder = () => {
     setEditingOrder({
-      id: 'ORD-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+      id: 'ORD-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
       storeId: activeStore.id,
       customer: '', phone: '', address: '', product: '',
       total: 0, status: orderStatuses[0],
@@ -281,6 +281,13 @@ export default function AdminOrdersPage() {
     } catch (err: any) {
       console.error("Supabase sync error in addCallLog:", err);
     }
+
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Call Logged',
+      detail: `Order ${callLogOrderId} — Call Result: ${newCall.result.toUpperCase()}${newCall.note ? ' - ' + newCall.note : ''}`
+    });
 
     setNewCall({ result: 'answered', note: '' });
   };
@@ -449,13 +456,21 @@ export default function AdminOrdersPage() {
                       )}
                     </td>
                     <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700' : o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>{formatStatus(o.status)}</span>
+                      <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${
+                        o.status === 'CONFIRMED' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : o.status === 'SELF_CONFIRMED' 
+                            ? 'bg-teal-100 text-teal-800 border border-teal-200 font-bold' 
+                            : o.status === 'CANCELED' 
+                              ? 'bg-rose-100 text-rose-700' 
+                              : 'bg-amber-100 text-amber-700'
+                      }`}>{formatStatus(o.status)}</span>
                       {calls.length > 0 && <div className="mt-1 text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={8}/> {calls[0].result}</div>}
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-1.5">
                         <button type="button" onClick={() => handleTriggerConfirmWhatsApp(o)} className="p-2 text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg shadow-sm transition-colors animate-all active:scale-95" title="Send WhatsApp Confirmation"><MessageSquare size={16} /></button>
-                        {o.status === 'CONFIRMED' && <button onClick={() => handlePushToFulfillment(o)} className="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"><Send size={16} /></button>}
+                        {(o.status === 'CONFIRMED' || o.status === 'SELF_CONFIRMED') && <button onClick={() => handlePushToFulfillment(o)} className="p-2 text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"><Send size={16} /></button>}
                         <button 
                           onClick={() => {
                             if (!isAdmin && o.claimedBy !== sessionUser) {
@@ -503,8 +518,8 @@ export default function AdminOrdersPage() {
               <button onClick={addCallLog} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all">SAVE CALL LOG</button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {orderCallLogs.map(log => (
-                <div key={log.id} className="bg-white border rounded-2xl p-4 shadow-sm border-slate-100">
+              {orderCallLogs.map((log, idx) => (
+                <div key={log.id || `call_${log.calledAt || idx}_${idx}`} className="bg-white border rounded-2xl p-4 shadow-sm border-slate-100">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">{log.result}</span>
                     <span className="text-[10px] text-slate-400 font-bold">{new Date(log.calledAt).toLocaleString()}</span>
@@ -619,8 +634,8 @@ export default function AdminOrdersPage() {
               <div className="p-6 bg-amber-50 rounded-3xl border border-amber-100">
                 <h3 className="text-sm font-black text-amber-800 uppercase tracking-widest mb-3 flex items-center gap-2"><MessageSquare size={16}/> Staff Notes</h3>
                 <div className="space-y-3 mb-4 max-h-40 overflow-y-auto">
-                  {(editingOrder.notes || []).map(note => (
-                    <div key={note.id} className="bg-white p-3 rounded-2xl border border-amber-100 shadow-sm">
+                  {(editingOrder.notes || []).map((note, idx) => (
+                    <div key={note.id || `note_${note.createdAt || idx}_${idx}`} className="bg-white p-3 rounded-2xl border border-amber-100 shadow-sm">
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[10px] font-black text-amber-800">{note.author}</span>
                         <span className="text-[10px] text-slate-400">{new Date(note.createdAt).toLocaleDateString()}</span>
@@ -645,7 +660,7 @@ export default function AdminOrdersPage() {
 
             <div className="p-8 bg-slate-50 border-t flex justify-between items-center shrink-0">
               <div>
-                {editingOrder.status === 'CONFIRMED' && (
+                {(editingOrder.status === 'CONFIRMED' || editingOrder.status === 'SELF_CONFIRMED') && (
                   <button type="button" onClick={() => handlePushToFulfillment(editingOrder)} className="flex items-center gap-2 px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-2xl shadow-xl shadow-emerald-500/20 transition-all active:scale-95">
                     <Send size={18}/> SYNC TO FULFILLMENT
                   </button>

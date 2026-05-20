@@ -34,11 +34,21 @@ export default function AdminCouponsPage() {
 
   const deleteCoupon = (id: string) => {
     if (!confirm('Delete this coupon?')) return;
+    const coup = coupons.find(c => c.id === id);
     setCoupons(prev => prev.filter(c => c.id !== id));
+    if (coup) {
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Coupon Deleted', detail: `Deleted coupon code: ${coup.code}` });
+    }
   };
 
   const toggleActive = (id: string) => {
-    setCoupons(prev => prev.map(c => c.id === id ? { ...c, active: !c.active } : c));
+    setCoupons(prev => prev.map(c => {
+      if (c.id === id) {
+        addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Coupon Toggled', detail: `Code: ${c.code} is now ${!c.active ? 'Active' : 'Inactive'}` });
+        return { ...c, active: !c.active };
+      }
+      return c;
+    }));
   };
 
   const copyCode = (code: string) => {

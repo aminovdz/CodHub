@@ -7,8 +7,13 @@ import { Save, PlusSquare, Trash2, AlignLeft, LayoutTemplate, Package, GripVerti
 import { PREDEFINED_KEYS } from '@/lib/translations';
 
 export default function AdminHomepageEditor() {
-  const { activeStore, products, homepages, setHomepages, categories, updateStore } = useAdminStore();
+  const { activeStore, products, homepages, setHomepages, categories, updateStore, addActivityLog } = useAdminStore();
   const storeProducts = products.filter(p => p.storeId === activeStore.id);
+  
+  const sessionData = typeof window !== 'undefined'
+    ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
+    : {};
+  const sessionUser = sessionData.user || sessionData.username || 'System';
   
   const [activeTab, setActiveTab] = useState<'blocks' | 'footer' | 'translations' | 'pixels'>('blocks');
   const [isSaving, setIsSaving] = useState(false);
@@ -86,6 +91,13 @@ export default function AdminHomepageEditor() {
     // Save Analytics to Store
     await updateStore(activeStore.id, { 
       analytics 
+    });
+
+    addActivityLog({
+      storeId: activeStore.id,
+      user: sessionUser,
+      action: 'Storefront Config Saved',
+      detail: `Updated homepage config (${blocks.length} blocks, ${footer.storeLinks?.length || 0} links) and tracking pixels`
     });
 
     setIsSaving(false);

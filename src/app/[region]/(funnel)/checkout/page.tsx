@@ -298,7 +298,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     
     // Final Submission
     
-    const finalOrderId = draftOrderId || `ORD-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const finalOrderId = draftOrderId || `ORD-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     // Update Local Dashboard instantly
     if (store) {
