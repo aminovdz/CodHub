@@ -139,7 +139,47 @@ export const aiService = {
    * Universal chat method for AI Agents Hub.
    */
   async chatWithAgent(agentType: string, prompt: string, storeContext: any, images?: {data: string, mimeType: string}[]): Promise<any | null> {
+    const region = (storeContext?.storeRegion || 'dz').toLowerCase();
+    
+    let localizationInstructions = "";
+    if (region === 'dz') {
+      localizationInstructions = `
+CRITICAL LOCALIZATION REQUIREMENT:
+- The target market is Algeria (DZ).
+- Currency: DZD (Algerian Dinar).
+- Language/Dialect: Use Algerian Arabic (Derja) for client-facing slogans, copywriting, and landing page headlines to build trust and feel authentic, combined with standard Arabic or French where appropriate.
+- Optimize all strategies for Cash On Delivery (COD) in Algeria, accounting for high return-to-origin (RTO) rates and logistics specific to wilayas and communes.
+`;
+    } else if (region === 'ro') {
+      localizationInstructions = `
+CRITICAL LOCALIZATION REQUIREMENT:
+- The target market is Romania (RO).
+- Currency: RON (Romanian Leu).
+- Language: Use native Romanian for client-facing copy.
+- Optimize for European COD markets, courier delivery confirmations, and local consumer behavior.
+`;
+    } else if (region === 'co') {
+      localizationInstructions = `
+CRITICAL LOCALIZATION REQUIREMENT:
+- The target market is Colombia (CO).
+- Currency: COP (Colombian Peso).
+- Language: Use local Colombian Spanish for copywriting and support.
+- Optimize for Latin American Cash on Delivery logistics, local delivery confirmation methods, and consumer trust.
+`;
+    } else {
+      localizationInstructions = `
+CRITICAL LOCALIZATION REQUIREMENT:
+- Target country/region: ${region.toUpperCase()}.
+- Currency: ${storeContext?.storeCurrency || 'USD'}.
+- Language: ${storeContext?.storeLanguage || 'en'}.
+- Always optimize all sales copy, landing pages, and suggestions specifically for this local region, its language, dialect, and cultural preferences.
+`;
+    }
+
     const fullPrompt = `You are a highly skilled AI Agent acting as a ${agentType} for an e-commerce COD store.
+    
+    ${localizationInstructions}
+    
     Here is the current store context (data you might need):
     ${JSON.stringify(storeContext)}
     

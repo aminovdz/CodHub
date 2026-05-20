@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Settings, LogOut, Store as StoreIcon,
   FileText, MonitorPlay, ShoppingCart, Home, CreditCard, ShieldAlert,
-  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe, Calculator
+  Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe, Calculator, HelpCircle, Megaphone
 } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { ToastContainer } from '@/components/admin/ToastContainer';
@@ -166,8 +166,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `${basePath}/legal`,     label: 'Legal Pages',     icon: <FileText size={18} />,        roles: ['admin'] },
     { href: `${basePath}/promo`,     label: 'Landing Pages',   icon: <MonitorPlay size={18} />,     roles: ['admin'] },
     { href: `${basePath}/agents`,    label: 'AI Agents Hub',   icon: <Bot size={18} />,             roles: ['admin'] },
+    { href: `${basePath}/ads-mcp`,   label: 'Ads MCP Hub',     icon: <Megaphone size={18} />,       roles: ['admin'] },
     { href: `${basePath}/staff`,     label: 'Staff Perf.',     icon: <Users size={18} />,           roles: ['admin'] },
     { href: `${basePath}/activity`,  label: 'Activity Log',    icon: <Activity size={18} />,        roles: ['admin'] },
+    { href: `${basePath}/help`,      label: 'Help & Docs',     icon: <HelpCircle size={18} />,      roles: ['admin', 'fulfillment', 'confirmation'] },
     { href: `${basePath}/settings`,  label: 'Settings',        icon: <Settings size={18} />,        roles: ['admin'] },
   ].filter(link => link.roles.includes(activeRole || 'admin'));
 

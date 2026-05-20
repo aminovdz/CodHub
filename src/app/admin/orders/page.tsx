@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Edit2, X, Plus, RefreshCw, Trash2, Send, Download, Phone, CheckCircle, XCircle, Clock, PhoneCall, PhoneMissed, MessageSquare, UserCheck, Calendar, ShieldCheck, MapPin } from 'lucide-react';
 import { useAdminStore, Order, CallLog, OrderNote } from '@/lib/store/useAdminStore';
 import { supabase } from '@/lib/supabase';
+import { sendAiSensyConfirmation } from '@/lib/actions/funnelActions';
 
 const CALL_RESULTS = [
   { value: 'answered',    label: 'Answered',    icon: '📞', color: 'bg-blue-100 text-blue-700' },
@@ -26,9 +27,12 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [whatsappModal, setWhatsappModal] = useState<{
+    orderId: string;
     phone: string;
     message: string;
   } | null>(null);
+
+  const [isSendingAiSensy, setIsSendingAiSensy] = useState(false);
 
   const handleTriggerConfirmWhatsApp = (order: Order) => {
     let message = activeStore.whatsappConfig?.thankYouMessage || "Hello *[NAME]*, this is *[STORE_NAME]*. We are pleased to confirm your Cash on Delivery order for *[PRODUCT]*! We are preparing it for shipment. Order: #[ORDER_ID]";
@@ -37,11 +41,11 @@ export default function AdminOrdersPage() {
                      .replace(/\[PRODUCT\]/g, order.product || '')
                      .replace(/\[STORE_NAME\]/g, activeStore.name || '');
     setWhatsappModal({
+      orderId: order.id,
       phone: order.phone,
       message: message
     });
   };
-  
   // Bulk Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusMenu, setBulkStatusMenu] = useState(false);
@@ -679,6 +683,33 @@ export default function AdminOrdersPage() {
             </div>
             <div className="p-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
               <button type="button" onClick={() => setWhatsappModal(null)} className="px-5 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button>
+
+              {activeStore.whatsappConfig?.aisensyEnabled && (
+                <button 
+                  type="button" 
+                  disabled={isSendingAiSensy}
+                  onClick={async () => {
+                    setIsSendingAiSensy(true);
+                    try {
+                      const res = await sendAiSensyConfirmation(whatsappModal.orderId);
+                      if (res.success) {
+                        alert('AiSensy confirmation campaign triggered successfully!');
+                      } else {
+                        alert('Failed to trigger AiSensy confirmation: ' + res.error);
+                      }
+                    } catch (e: any) {
+                      alert('Error: ' + e.message);
+                    } finally {
+                      setIsSendingAiSensy(false);
+                      setWhatsappModal(null);
+                    }
+                  }} 
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isSendingAiSensy ? 'Sending...' : 'Send via AiSensy'}
+                </button>
+              )}
+
               <button type="button" onClick={() => {
                 window.open(`https://wa.me/${whatsappModal.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(whatsappModal.message)}`, '_blank');
                 setWhatsappModal(null);

@@ -93,6 +93,16 @@ export default function AdminSettingsPage() {
     thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
     thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
     thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
+    aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
+    aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
+    aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
+    aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+    aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
+    chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
+    chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
+    chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
+    chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
+    chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
   });
 
   // Fraud Rules State
@@ -162,6 +172,16 @@ export default function AdminSettingsPage() {
       thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
       thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
       thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
+      aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
+      aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
+      aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
+      aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+      aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
+      chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
+      chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
+      chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
+      chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
+      chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
     });
 
     setFraudConfig(activeStore.fraudConfig || {
@@ -927,9 +947,89 @@ export default function AdminSettingsPage() {
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">WhatsApp Business Number</label>
                     <input type="text" value={whatsappConfig.thankYouNumber} onChange={(e) => setWhatsappConfig({...whatsappConfig, thankYouNumber: e.target.value})} placeholder="+213555..." className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* AiSensy Settings */}
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 mb-4">
+                <div>
+                  <div className="font-bold text-slate-900 dark:text-white">AiSensy Automated WhatsApp Campaigns</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Automatically send template confirmation messages via AiSensy.</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={whatsappConfig.aisensyEnabled} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyEnabled: e.target.checked})} className="sr-only peer" />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+              {whatsappConfig.aisensyEnabled && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy API Key</label>
+                      <input type="password" value={whatsappConfig.aisensyApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyApiKey: e.target.value})} placeholder="Enter AiSensy campaign API Key" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy Campaign Name</label>
+                      <input type="text" value={whatsappConfig.aisensyCampaignName} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyCampaignName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Pre-filled Message (use [ORDER_ID])</label>
-                    <input type="text" value={whatsappConfig.thankYouMessage} onChange={(e) => setWhatsappConfig({...whatsappConfig, thankYouMessage: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Shortcodes / Params (comma-separated, in order)</label>
+                    <input type="text" value={whatsappConfig.aisensyTemplateParams} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: [NAME], [PRODUCT], [ADDRESS], [ORDER_ID]</p>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+                    <div>
+                      <label className="font-bold text-xs text-indigo-950 dark:text-indigo-200">Skip automation for self-confirmed orders</label>
+                      <p className="text-[10px] text-indigo-700 dark:text-indigo-400">Ignore orders where clients click WhatsApp thank-you link manually.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" checked={whatsappConfig.aisensyIgnoreSelfConfirmed} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* AI Storefront Chatbot Settings */}
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 mb-4">
+                <div>
+                  <div className="font-bold text-slate-900 dark:text-white">AI Storefront Chatbot Assistant</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Enable a floating AI chatbot on the storefront for products and delivery queries.</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={whatsappConfig.chatbotEnabled} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotEnabled: e.target.checked})} className="sr-only peer" />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+              {whatsappConfig.chatbotEnabled && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Chatbot Name</label>
+                      <input type="text" value={whatsappConfig.chatbotName} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotName: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AI Provider</label>
+                      <select value={whatsappConfig.chatbotProvider} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotProvider: e.target.value as any})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white">
+                        <option value="gemini">Gemini</option>
+                        <option value="claude">Claude</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="openrouter">OpenRouter</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Provider API Key</label>
+                      <input type="password" value={whatsappConfig.chatbotApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotApiKey: e.target.value})} placeholder="Key (falls back to global key if empty)" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Store Policies & Additional Chatbot Instructions (Dynamic Knowledge)</label>
+                    <textarea value={whatsappConfig.chatbotInstructions} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotInstructions: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none animate-in fade-in" placeholder="Provide extra store information like shipping details, rules, or faq answers to guide the chatbot." />
                   </div>
                 </div>
               )}

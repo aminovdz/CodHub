@@ -7,6 +7,8 @@ import { useTranslation } from '@/lib/hooks/useTranslation';
 import { CheckCircle2, Mail, ExternalLink, MessageCircle, ShoppingBag, ShieldCheck, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getShortOrderId } from '@/lib/idHelper';
+import { markOrderSelfConfirmed } from '@/lib/actions/funnelActions';
 
 export default function ThankYouPage({ params }: { params: Promise<{ region: string }> }) {
   const resolvedParams = use(params);
@@ -14,7 +16,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   const { t } = useTranslation(region);
   const router = useRouter();
 
-  const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addCartItem, buyNow } = useFunnelStore();
+  const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addressData, addCartItem, buyNow } = useFunnelStore();
   const { availableStores, checkoutConfigs, products } = useAdminStore();
   const store = resolveStore(availableStores, region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
@@ -24,6 +26,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
 
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [otoClaimed, setOtoClaimed] = useState(false);
+  const [selfConfirmed, setSelfConfirmed] = useState(false);
 
   // Find the primary purchased product
   const primaryCartItem = cart[0];
@@ -35,13 +38,31 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   const otoProductId = primaryProduct?.otoProductId;
   const otoProduct = otoProductId ? products.find(p => p.id === otoProductId) : null;
 
+  const getFormattedAddress = () => {
+    if (!addressData) return '';
+    if (typeof addressData === 'string') return addressData;
+    const parts = [];
+    if (addressData.full_address) parts.push(addressData.full_address);
+    if (addressData.commune) parts.push(addressData.commune);
+    if (addressData.wilaya) parts.push(addressData.wilaya);
+    return parts.join(', ') || 'N/A';
+  };
+
   // Build pre-filled WhatsApp message
   const buildWhatsAppMessage = () => {
     let msg = whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]';
-    msg = msg.replace('[ORDER_ID]', draftOrderId || 'N/A');
-    msg = msg.replace('[NAME]', customerName || 'Customer');
-    msg = msg.replace('[PRODUCT]', primaryCartItem?.name || cart.map(i => i.name).join(', ') || 'Order');
+    msg = msg.replace(/\[ORDER_ID\]/g, getShortOrderId(draftOrderId));
+    msg = msg.replace(/\[NAME\]/g, customerName || 'Customer');
+    msg = msg.replace(/\[PRODUCT\]/g, primaryCartItem?.name || cart.map(i => i.name).join(', ') || 'Order');
+    msg = msg.replace(/\[ADDRESS\]/g, getFormattedAddress());
     return encodeURIComponent(msg);
+  };
+
+  const handleConfirmClick = async () => {
+    if (draftOrderId) {
+      setSelfConfirmed(true);
+      await markOrderSelfConfirmed(draftOrderId);
+    }
   };
 
   const handleEmailSubmit = (e: React.FormEvent) => {
@@ -78,9 +99,13 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
           <div className="mx-auto w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6">
             <CheckCircle2 size={56} className="text-emerald-500" />
           </div>
-          <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">{t('thankyou.orderConfirmed', 'Order Confirmed!')}</h1>
-          <p className="text-slate-500 text-xl max-w-lg mx-auto leading-relaxed">
-            {t('thankyou.thankYou', 'Thank you')}, <span className="font-bold text-slate-800">{customerName || 'customer'}</span>.{' '}
+          <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">
+            {t('thankyou.thankYou', 'Thank you')}, {customerName || 'Customer'}!
+          </h1>
+          <h2 className="text-lg font-bold text-slate-500 mb-6 flex items-center justify-center gap-1.5">
+            {t('thankyou.orderConfirmed', 'Your order has been received!')}
+          </h2>
+          <p className="text-slate-500 text-base max-w-lg mx-auto leading-relaxed">
             {checkoutConfig?.thankYouMessage || `${t('thankyou.orderProcessed', 'Your order is now being processed.')} ${t('thankyou.agentCall', 'An agent will call you shortly.')}`}
           </p>
 
@@ -90,7 +115,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
               <div className="text-3xl font-black text-slate-900">{totalPrice} <span className="text-xl text-slate-500">{currency}</span></div>
             </div>
             <div className="text-xs font-bold text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200">
-              {cart.length} {t('checkout.items', 'Item(s)')} • Order #{draftOrderId || 'N/A'}
+              {cart.length} {t('checkout.items', 'Item(s)')} • Order #{getShortOrderId(draftOrderId)}
             </div>
           </div>
         </div>
@@ -103,16 +128,23 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 <MessageCircle size={32} className="text-white" />
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h3 className="text-2xl font-black mb-1">{t('thankyou.priorityShipping', 'Get Priority Shipping! 🚀')}</h3>
-                <p className="text-green-100 text-lg">{t('thankyou.priorityDesc', 'Click to confirm your order on WhatsApp and jump the queue for fast delivery.')}</p>
+                <h3 className="text-2xl font-black mb-1">
+                  {selfConfirmed ? 'Order Confirmed!' : t('thankyou.priorityShipping', 'Get Priority Shipping! 🚀')}
+                </h3>
+                <p className="text-green-100 text-lg">
+                  {selfConfirmed 
+                    ? 'Thank you for confirming your order via WhatsApp. We will process it immediately!'
+                    : t('thankyou.priorityDesc', 'Click to confirm your order on WhatsApp and jump the queue for fast delivery.')}
+                </p>
               </div>
               <a
                 href={`https://wa.me/${whatsappConfig.thankYouNumber.replace(/\D/g, '')}?text=${buildWhatsAppMessage()}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={handleConfirmClick}
                 className="flex-shrink-0 bg-white text-green-700 font-black px-8 py-4 rounded-2xl hover:bg-green-50 transition-all flex items-center gap-2 shadow-lg text-lg active:scale-95"
               >
-                <MessageCircle size={20} /> {t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
+                <MessageCircle size={20} /> {selfConfirmed ? 'Message Sent' : t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
               </a>
             </div>
           </div>

@@ -2,6 +2,12 @@ import { ReactNode } from 'react';
 import TrackingPixels from '@/components/TrackingPixels';
 import RegionCookieSetter from '@/components/RegionCookieSetter';
 import { Metadata } from 'next';
+import { createClient } from '@supabase/supabase-js';
+import ChatbotWidget from '@/components/ChatbotWidget';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabase = createClient(supabaseUrl, supabaseServiceRole);
 
 export async function generateMetadata({ params }: { params: Promise<{ region: string }> }): Promise<Metadata> {
   const resolvedParams = await params;
@@ -37,11 +43,29 @@ export default async function RegionLayout({
   const resolvedParams = await params;
   const region = resolvedParams.region;
 
+  // Query store configurations from Supabase to check chatbot toggle
+  const { data: store } = await supabase
+    .from('stores')
+    .select('id, region, whatsapp_config')
+    .ilike('region', region)
+    .maybeSingle();
+
+  const isChatbotEnabled = store?.whatsapp_config?.chatbotEnabled;
+  const chatbotName = store?.whatsapp_config?.chatbotName;
+
   return (
     <>
       <RegionCookieSetter region={region} />
       <TrackingPixels region={region} />
       {children}
+      {isChatbotEnabled && (
+        <ChatbotWidget 
+          storeId={store.id} 
+          region={region} 
+          botName={chatbotName} 
+        />
+      )}
     </>
   );
 }
+

@@ -326,6 +326,16 @@ export interface Store {
     thankYouEnabled: boolean;
     thankYouNumber: string;
     thankYouMessage: string;
+    aisensyEnabled?: boolean;
+    aisensyApiKey?: string;
+    aisensyCampaignName?: string;
+    aisensyTemplateParams?: string;
+    aisensyIgnoreSelfConfirmed?: boolean;
+    chatbotEnabled?: boolean;
+    chatbotName?: string;
+    chatbotInstructions?: string;
+    chatbotProvider?: 'gemini' | 'claude' | 'openai' | 'openrouter';
+    chatbotApiKey?: string;
   };
   dzFulfillment?: {
     defaultProvider: 'yalidine' | 'zrexpress' | 'mayestro' | 'dhd';
@@ -730,7 +740,7 @@ const MOCK_ORDERS: Order[] = [];
 
 const DEFAULT_STATUSES = [
   'DRAFT', 'PENDING_AGENT_CONFIRMATION', 'HIGH_RISK_ADMIN_APPROVAL',
-  'CONFIRMED', 'DELIVERED', 'CONTINUITY_SUBSCRIBED', 'CANCELED', 'RTO'
+  'SELF_CONFIRMED', 'CONFIRMED', 'DELIVERED', 'CONTINUITY_SUBSCRIBED', 'CANCELED', 'RTO'
 ];
 
 
