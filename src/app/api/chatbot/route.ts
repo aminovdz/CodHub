@@ -123,8 +123,11 @@ ${customInstructions}
       });
 
       if (!response.ok) {
-        console.error("Gemini Chatbot API Error:", await response.text());
-        return NextResponse.json({ error: 'Gemini generation failed' }, { status: response.status });
+        const errText = await response.text();
+        console.error("Gemini Chatbot API Error:", errText);
+        let errMsg = 'Gemini generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `Gemini API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
       botResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -182,8 +185,11 @@ ${customInstructions}
       });
 
       if (!response.ok) {
-        console.error(`${provider} Chatbot API Error:`, await response.text());
-        return NextResponse.json({ error: `${provider} generation failed` }, { status: response.status });
+        const errText = await response.text();
+        console.error(`${provider} Chatbot API Error:`, errText);
+        let errMsg = `${provider} generation failed`;
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `${provider} API Error: ${errMsg}` }, { status: response.status });
       }
 
       const data = await response.json();

@@ -39,8 +39,11 @@ export async function POST(req: Request) {
       });
 
       if (!response.ok) {
-        console.error("Gemini API Error:", await response.text());
-        return NextResponse.json({ error: 'Gemini generation failed' }, { status: response.status });
+        const errText = await response.text();
+        console.error("Gemini API Error:", errText);
+        let errMsg = 'Gemini generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `Gemini API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
       textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -79,8 +82,11 @@ export async function POST(req: Request) {
       });
 
       if (!response.ok) {
-        console.error("Claude API Error:", await response.text());
-        return NextResponse.json({ error: 'Claude generation failed' }, { status: response.status });
+        const errText = await response.text();
+        console.error("Claude API Error:", errText);
+        let errMsg = 'Claude generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `Claude API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
       textOutput = data.content?.[0]?.text || '';
@@ -111,8 +117,11 @@ export async function POST(req: Request) {
       });
 
       if (!response.ok) {
-        console.error("OpenAI API Error:", await response.text());
-        return NextResponse.json({ error: 'OpenAI generation failed' }, { status: response.status });
+        const errText = await response.text();
+        console.error("OpenAI API Error:", errText);
+        let errMsg = 'OpenAI generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `OpenAI API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
       textOutput = data.choices?.[0]?.message?.content || '';
@@ -145,8 +154,11 @@ export async function POST(req: Request) {
       });
 
       if (!response.ok) {
-        console.error("OpenRouter API Error:", await response.text());
-        return NextResponse.json({ error: 'OpenRouter generation failed' }, { status: response.status });
+        const errText = await response.text();
+        console.error("OpenRouter API Error:", errText);
+        let errMsg = 'OpenRouter generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `OpenRouter API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
       textOutput = data.choices?.[0]?.message?.content || '';
