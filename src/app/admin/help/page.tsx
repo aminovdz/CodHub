@@ -107,7 +107,7 @@ function doPost(e) {
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <Server size={14} /> Google Sheets / Webhook
+          <Server size={14} /> Webhooks & Low-Code
         </button>
       </div>
 
@@ -335,6 +335,24 @@ function doPost(e) {
               <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl text-[10px] font-mono overflow-x-auto max-h-48 border border-slate-800">
                 {scriptCode}
               </pre>
+            </div>
+
+            {/* Make.com / n8n Guide */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm md:col-span-2 space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> Make.com / n8n Low-Code Integration
+              </h3>
+              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                To integrate with any global delivery company without full-stack development, use Make.com or n8n as middleware.
+              </p>
+              <ol className="list-decimal pl-5 space-y-2 text-xs font-semibold leading-relaxed text-slate-500 dark:text-slate-400">
+                <li>Create a new scenario/workflow in <strong>Make.com</strong> or <strong>n8n</strong>.</li>
+                <li>Add a <strong>Custom Webhook</strong> trigger node. This generates a unique webhook URL.</li>
+                <li>Copy the webhook URL and paste it into the COD-Hub <strong>Settings &rarr; Fulfillment Hub</strong> (Generic Webhook).</li>
+                <li>In COD-Hub, push a test order to the webhook (via Orders tab).</li>
+                <li>In Make/n8n, inspect the received JSON payload (see schema below) to map fields (e.g. <code>order.customer</code>, <code>order.address</code>).</li>
+                <li>Add the API node for your chosen delivery company (e.g., HTTP Request module) and map the required parameters using the incoming webhook data.</li>
+              </ol>
             </div>
           </div>
 

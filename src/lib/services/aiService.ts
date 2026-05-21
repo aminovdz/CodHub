@@ -205,7 +205,10 @@ CRITICAL LOCALIZATION REQUIREMENT:
         body: JSON.stringify({ prompt: fullPrompt, images, type: 'json', provider, apiKey, model })
       });
       
-      if (!response.ok) throw new Error('AI API Error');
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'AI API Error');
+      }
       
       const data = await response.json();
       return data.result;
