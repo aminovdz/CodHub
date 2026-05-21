@@ -198,10 +198,10 @@ export default function AgentsHubPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-2 rounded-xl text-emerald-700 dark:text-emerald-400 font-bold text-sm border border-emerald-100 dark:border-emerald-900/30">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Optimized for {activeStore.region.toUpperCase()} ({activeStore.currency})
+            Optimized for {(activeStore?.region || 'dz').toUpperCase()} ({activeStore?.currency || 'DZD'})
           </div>
           <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 px-4 py-2 rounded-xl text-indigo-700 dark:text-indigo-400 font-bold text-sm">
-            <Sparkles size={16} /> Using {aiProvider.toUpperCase()} Model
+            <Sparkles size={16} /> Using {(aiProvider || 'gemini').toUpperCase()} Model
           </div>
         </div>
       </div>
@@ -300,7 +300,7 @@ export default function AgentsHubPage() {
                         {msg.action.type === 'CREATE_LANDING_PAGE' ? (
                           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4 border border-slate-100 dark:border-slate-700">
                             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1">{msg.action.previewData.title || 'AI Generated Page'}</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">Contains custom HTML with high-converting headings optimized for {activeStore.region.toUpperCase()} market.</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">Contains custom HTML with high-converting headings optimized for {(activeStore?.region || 'dz').toUpperCase()} market.</p>
                           </div>
                         ) : (
                           <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-400 mb-4 max-h-40 overflow-y-auto">
