@@ -46,12 +46,51 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const superRoute = pathname.startsWith('/superadmin');
     setIsSuperAdminRoute(superRoute);
 
-    // Restore session — run only once on mount / pathname change
+    // Restore dark mode
     const saved = localStorage.getItem('codadmin-dark');
     if (saved === 'true') setIsDark(true);
 
     const sessionAuth = sessionStorage.getItem('codadmin-auth');
     const isLogin = pathname === '/admin/login' || pathname === '/superadmin/login';
+
+    const verifyServerSession = async (fallbackToRedirect: boolean = true) => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated && data.user) {
+            const isSuper = !!data.user.isSuperAdmin;
+            if (isSuper === superRoute) {
+              const newAuth = {
+                auth: true,
+                role: data.user.role,
+                user: data.user.username,
+                username: data.user.username,
+                isSuperAdmin: isSuper
+              };
+              sessionStorage.setItem('codadmin-auth', JSON.stringify(newAuth));
+              setIsAuthenticated(true);
+              setActiveRole(data.user.role);
+              setUsername(data.user.username);
+              if (isLogin) {
+                window.location.href = superRoute ? '/superadmin' : '/admin';
+              }
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error verifying session:', err);
+      }
+
+      if (fallbackToRedirect) {
+        sessionStorage.removeItem('codadmin-auth');
+        const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
+        if (pathname !== targetLogin) {
+          window.location.href = targetLogin;
+        }
+      }
+    };
 
     if (sessionAuth) {
       try {
@@ -64,6 +103,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           if (isLogin) {
             window.location.href = superRoute ? '/superadmin' : '/admin';
           }
+          // Validate with server in the background
+          verifyServerSession(true);
         } else {
           const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
           if (pathname !== targetLogin) {
@@ -78,10 +119,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       }
     } else {
-      const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
-      if (pathname !== targetLogin) {
-        window.location.href = targetLogin;
-      }
+      // No session storage. Verify if we have a valid cookie session.
+      verifyServerSession(!isLogin);
     }
   }, [pathname]);
 
