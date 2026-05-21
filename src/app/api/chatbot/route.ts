@@ -94,7 +94,7 @@ ${customInstructions}
     let botResponse = '';
 
     if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
       
       // Structure messages for Gemini API
       // Format history properly: { role: 'user' | 'model', parts: [{ text: string }] }
