@@ -5,7 +5,7 @@ import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, Plus
 import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { uploadImageToSupabase } from '@/lib/storage';
+import { uploadImageToSupabase, uploadMultipleImages } from '@/lib/storage';
 
 export default function AdminProductsPage() {
   const { activeStore, products, addProduct, updateProduct, deleteProduct, categories, setCategories, addActivityLog } = useAdminStore();
@@ -18,7 +18,9 @@ export default function AdminProductsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [descMode, setDescMode] = useState<'text' | 'html'>('text');
+  const [shortDescMode, setShortDescMode] = useState<'text' | 'html'>('text');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string; title: string }>({ isOpen: false, productId: '', title: '' });
 
@@ -61,6 +63,7 @@ export default function AdminProductsPage() {
       price: 0,
       active: true,
       image: '',
+      images: [],
       shortDesc: '',
       mainDesc: '',
       blocks: [],
@@ -92,28 +95,57 @@ export default function AdminProductsPage() {
     setDeleteModal({ isOpen: true, productId: id, title });
   };
 
-  const handleImageEnterUrl = () => {
-    const url = prompt('Enter Image URL:');
-    if (url) {
-      setEditingProduct(prev => prev ? {...prev, image: url} : null);
-    }
+  const handleImageUrlAdd = () => {
+    if (!imageUrlInput.trim()) return;
+    const urls = imageUrlInput.split(/[,\n]+/).map(u => u.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+    setEditingProduct(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      if (!updated.image) updated.image = urls[0];
+      updated.images = [...(updated.images || []), ...urls];
+      return updated;
+    });
+    setImageUrlInput('');
+    notify(`${urls.length} URL(s) added!`, 'success');
   };
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     try {
-      const url = await uploadImageToSupabase(file, 'images');
-      setEditingProduct(prev => prev ? { ...prev, image: url } : null);
-      notify('Image uploaded successfully!', 'success');
+      const urls = await uploadMultipleImages(Array.from(files), 'images');
+      setEditingProduct(prev => {
+        if (!prev) return prev;
+        const updated = { ...prev };
+        if (!updated.image && urls.length > 0) updated.image = urls[0];
+        updated.images = [...(updated.images || []), ...urls];
+        return updated;
+      });
+      notify(`${urls.length} image(s) uploaded successfully!`, 'success');
     } catch (error: any) {
       console.error(error);
       notify(error.message || 'Failed to upload image', 'error');
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleRemoveGalleryImage = (index: number) => {
+    setEditingProduct(prev => {
+      if (!prev) return prev;
+      const images = [...(prev.images || [])];
+      const removed = images.splice(index, 1)[0];
+      const updated = { ...prev, images };
+      if (prev.image === removed) updated.image = images[0] || '';
+      return updated;
+    });
+  };
+
+  const handleSetMainImage = (url: string) => {
+    setEditingProduct(prev => prev ? { ...prev, image: url } : null);
   };
 
   const addUpsell = () => {
@@ -311,52 +343,89 @@ export default function AdminProductsPage() {
               {/* Basic Info */}
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Product Image</label>
-                  <div className="flex items-center gap-6 mb-2">
-                    <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
-                      {editingProduct.image ? (
-                        <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <ImageIcon size={32} className="text-slate-400" />
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm">
-                          {isUploading ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" />
-                              Uploading...
-                            </>
-                          ) : (
-                            <>
-                              <UploadCloud size={16} />
-                              Upload Image
-                            </>
-                          )}
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            onChange={handleImageFileChange} 
-                            disabled={isUploading}
-                            className="hidden" 
-                          />
-                        </label>
-                        <button 
-                          type="button" 
-                          onClick={handleImageEnterUrl} 
-                          className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors text-sm border border-slate-200"
-                        >
-                          <LinkIcon size={16} />
-                          Enter URL
-                        </button>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Product Image</label>
+                    <div className="flex items-center gap-6 mb-2">
+                      <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
+                        {editingProduct.image ? (
+                          <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon size={32} className="text-slate-400" />
+                        )}
                       </div>
-                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                        💡 Recommended: Upload a clean JPG/PNG image under 5MB for the best display on the checkout page.
-                      </p>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-sm text-sm">
+                            {isUploading ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <UploadCloud size={16} />
+                                Upload Images
+                              </>
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              multiple
+                              onChange={handleImageFileChange} 
+                              disabled={isUploading}
+                              className="hidden" 
+                            />
+                          </label>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={imageUrlInput}
+                            onChange={e => setImageUrlInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleImageUrlAdd(); } }}
+                            placeholder="Paste image URLs (comma or newline separated)"
+                            className="flex-1 px-3 py-2 rounded-xl border border-slate-300 text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleImageUrlAdd}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 border border-slate-200 text-sm whitespace-nowrap"
+                          >
+                            <LinkIcon size={16} /> Add URL
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                          💡 Upload files or paste image URLs. First image becomes the main thumbnail.
+                        </p>
+                      </div>
                     </div>
+                    {/* Gallery Thumbnails */}
+                    {(editingProduct.images || []).length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-bold text-slate-500 mb-2">Gallery ({editingProduct.images!.length} images)</p>
+                        <div className="flex flex-wrap gap-2">
+                          {editingProduct.images!.map((imgUrl, i) => (
+                            <div key={i} className="relative group w-16 h-16 rounded-xl border-2 overflow-hidden shrink-0 cursor-pointer"
+                              style={{ borderColor: editingProduct.image === imgUrl ? '#4f46e5' : '#e2e8f0' }}
+                              onClick={() => handleSetMainImage(imgUrl)}
+                              title={editingProduct.image === imgUrl ? 'Main image' : 'Click to set as main'}
+                            >
+                              <img src={imgUrl} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
+                              {editingProduct.image === imgUrl && (
+                                <div className="absolute top-0 left-0 bg-indigo-600 text-white text-[7px] font-black px-1 rounded-br">MAIN</div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveGalleryImage(i); }}
+                                className="absolute top-0 right-0 bg-black/50 text-white rounded-bl-lg p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
@@ -501,8 +570,18 @@ export default function AdminProductsPage() {
               {/* Descriptions */}
               <div className="border-t border-slate-100 pt-8">
                 <div className="mb-6">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Short Description (Summary)</label>
-                  <textarea value={editingProduct.shortDesc} onChange={(e) => setEditingProduct({...editingProduct, shortDesc: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium resize-none" />
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-bold text-slate-700">Short Description (Summary)</label>
+                    <div className="flex bg-slate-100 rounded-lg p-1">
+                      <button type="button" onClick={() => setShortDescMode('text')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${shortDescMode === 'text' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>Text</button>
+                      <button type="button" onClick={() => setShortDescMode('html')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${shortDescMode === 'html' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}>HTML</button>
+                    </div>
+                  </div>
+                  {shortDescMode === 'text' ? (
+                    <textarea value={editingProduct.shortDesc.replace(/<[^>]+>/g, '')} onChange={(e) => setEditingProduct({...editingProduct, shortDesc: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium resize-none" />
+                  ) : (
+                    <textarea value={editingProduct.shortDesc} onChange={(e) => setEditingProduct({...editingProduct, shortDesc: e.target.value})} rows={2} className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-900 text-emerald-400 font-mono text-sm focus:ring-2 focus:ring-indigo-600 outline-none resize-none" spellCheck={false} />
+                  )}
                 </div>
 
                 <div>

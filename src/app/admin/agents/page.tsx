@@ -7,7 +7,7 @@ import { aiService } from '@/lib/services/aiService';
 
 const AGENTS = [
   { id: 'cro', name: 'CRO Specialist', icon: <Presentation size={20} />, description: 'Builds high-converting landing pages', promptRole: 'Conversion Rate Optimization (CRO) Expert' },
-  { id: 'copywriter', name: 'Copywriter', icon: <FileText size={20} />, description: 'Writes product descriptions and SEO metadata', promptRole: 'Expert Copywriter and SEO Specialist' },
+  { id: 'copywriter', name: 'Copywriter', icon: <FileText size={20} />, description: 'Product copy, Facebook ad copy & URL product research', promptRole: 'E-commerce Copywriter & Facebook Ads Copy Specialist' },
   { id: 'product', name: 'Product Analyst', icon: <ShoppingBag size={20} />, description: 'Analyzes products and suggests pricing strategies', promptRole: 'E-commerce Product Strategy Analyst' },
   { id: 'market', name: 'Market Researcher', icon: <Search size={20} />, description: 'Finds trending products and market gaps', promptRole: 'E-commerce Market Research Analyst' },
   { id: 'social', name: 'FB/TikTok Analyst', icon: <Megaphone size={20} />, description: 'Writes ad scripts and analyzes campaign angles', promptRole: 'Facebook & TikTok Ads Strategist' }
@@ -25,7 +25,7 @@ type Message = {
 };
 
 export default function AgentsHubPage() {
-  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog } = useAdminStore();
+  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog, addProduct } = useAdminStore();
   const [previewPageData, setPreviewPageData] = useState<{
     msgId: string;
     action: any;
@@ -73,8 +73,8 @@ export default function AgentsHubPage() {
       storeLanguage: activeStore.language
     };
 
-    if (selectedAgentId === 'product' || selectedAgentId === 'cro' || selectedAgentId === 'copywriter') {
-      context.products = state.products.filter(p => p.storeId === activeStore.id).slice(0, 10); // Limit context size
+    if (selectedAgentId === 'product' || selectedAgentId === 'cro' || selectedAgentId === 'copywriter' || selectedAgentId === 'social') {
+      context.products = state.products.filter(p => p.storeId === activeStore.id).slice(0, 20);
     }
     
     return context;
@@ -129,7 +129,31 @@ export default function AgentsHubPage() {
         detail: `Consulted ${selectedAgent.name} with input: "${inputForLog.length > 50 ? inputForLog.substring(0, 47) + '...' : inputForLog}"`
       });
 
-      const response = await aiService.chatWithAgent(selectedAgent.promptRole, userMessage.content, getContextForAgent(), userMessage.attachments);
+      let enrichedContent = userMessage.content;
+      const urlRegex = /https?:\/\/[^\s]+/g;
+      const urls = enrichedContent.match(urlRegex);
+      if (urls && urls.length > 0) {
+        const fetchedTexts: string[] = [];
+        for (const url of urls.slice(0, 3)) {
+          try {
+            const res = await fetch('/api/ai/fetch-url', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const snippet = `[Content from ${url}]\nTitle: ${data.title || 'N/A'}\nDescription: ${data.description || 'N/A'}\nText: ${(data.text || '').slice(0, 3000)}\n[/Content]`;
+              fetchedTexts.push(snippet);
+            }
+          } catch {}
+        }
+        if (fetchedTexts.length > 0) {
+          enrichedContent += '\n\n--- WEB CONTENT FETCHED FROM URLS ---\n' + fetchedTexts.join('\n\n');
+        }
+      }
+
+      const response = await aiService.chatWithAgent(selectedAgent.promptRole, enrichedContent, getContextForAgent(), userMessage.attachments);
       
       if (response) {
         const agentMessage: Message = {
@@ -149,7 +173,7 @@ export default function AgentsHubPage() {
     }
   };
 
-  const handleValidateAction = (action: any, msgId: string) => {
+  const handleValidateAction = async (action: any, msgId: string) => {
     if (action.type === 'CREATE_LANDING_PAGE') {
       const newPage = {
         id: Date.now().toString(),
@@ -169,8 +193,36 @@ export default function AgentsHubPage() {
         detail: `Created AI landing page: ${newPage.title}`
       });
       alert('Landing Page added to your Promo section!');
+    } else if (action.type === 'CREATE_PRODUCT') {
+      const pd = action.previewData || {};
+      const newProduct = {
+        id: '',
+        storeId: activeStore.id,
+        title: pd.title || 'AI Generated Product',
+        price: typeof pd.price === 'number' ? pd.price : 0,
+        compareAtPrice: pd.compareAtPrice,
+        costPrice: pd.costPrice,
+        category: pd.category || 'General',
+        active: true,
+        image: pd.image || '',
+        shortDesc: pd.shortDesc || '',
+        mainDesc: pd.mainDesc || '',
+        stock: typeof pd.stock === 'number' ? pd.stock : 999,
+        seoTitle: pd.seoTitle || '',
+        seoDescription: pd.seoDescription || '',
+        lowStockThreshold: 5,
+        disableOutOfStockPurchases: false,
+        disableCoupons: false,
+      };
+      await addProduct(newProduct as any);
+      addActivityLog({
+        storeId: activeStore.id,
+        user: sessionUser,
+        action: 'Product Created',
+        detail: `Created AI product: ${newProduct.title}`
+      });
+      alert(`Product "${newProduct.title}" added to your store!`);
     } else if (action.type === 'UPDATE_PRODUCT') {
-      // In a real scenario, we'd update specific product fields
       addActivityLog({
         storeId: activeStore.id,
         user: sessionUser,
@@ -180,7 +232,6 @@ export default function AgentsHubPage() {
       alert('Product updated (simulation)!');
     }
 
-    // Mark as applied in UI
     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, action: { ...m.action!, applied: true } as any } : m));
   };
 
@@ -302,6 +353,54 @@ export default function AgentsHubPage() {
                             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1">{msg.action.previewData.title || 'AI Generated Page'}</h4>
                             <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">Contains custom HTML with high-converting headings optimized for {(activeStore?.region || 'dz').toUpperCase()} market.</p>
                           </div>
+                        ) : msg.action.type === 'CREATE_PRODUCT' ? (
+                          <div className="space-y-3 mb-4">
+                            {(() => {
+                              const pd = msg.action.previewData || {};
+                              const price = pd.price || 0;
+                              const comparePrice = pd.compareAtPrice || null;
+                              const costPrice = pd.costPrice || null;
+                              const currency = activeStore?.currency || 'DZD';
+                              return (
+                                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                                  {pd.image && (
+                                    <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
+                                      <img src={pd.image} alt={pd.title} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                    </div>
+                                  )}
+                                  <div className="p-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">{pd.title || 'Unnamed Product'}</h4>
+                                        {pd.category && <span className="inline-block mt-1 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-md text-[9px] font-black uppercase tracking-wider">{pd.category}</span>}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-baseline gap-2">
+                                      <span className="text-xl font-black text-slate-900 dark:text-white">{currency} {price.toFixed(2).toLocaleString()}</span>
+                                      {comparePrice && <span className="text-sm font-semibold text-slate-400 line-through">{currency} {comparePrice.toFixed(2).toLocaleString()}</span>}
+                                    </div>
+                                    {costPrice && <p className="text-[10px] text-slate-400">Cost: {currency} {costPrice.toFixed(2)} (Margin: {((price - costPrice) / price * 100).toFixed(0)}%)</p>}
+                                    {pd.shortDesc && <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pd.shortDesc}</p>}
+                                    {pd.mainDesc && (
+                                      <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 max-h-32 overflow-y-auto">
+                                        <div className="text-xs text-slate-700 dark:text-slate-300 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: pd.mainDesc }} />
+                                      </div>
+                                    )}
+                                    {pd.stock !== undefined && <p className="text-[10px] font-bold text-slate-400">Stock: {pd.stock}</p>}
+                                    {(pd.seoTitle || pd.seoDescription) && (
+                                      <details className="text-xs">
+                                        <summary className="cursor-pointer font-bold text-slate-500 hover:text-slate-700">SEO Details</summary>
+                                        <div className="mt-2 space-y-1 text-slate-500">
+                                          {pd.seoTitle && <p><span className="font-semibold">Title:</span> {pd.seoTitle}</p>}
+                                          {pd.seoDescription && <p><span className="font-semibold">Meta Desc:</span> {pd.seoDescription}</p>}
+                                        </div>
+                                      </details>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         ) : (
                           <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-400 mb-4 max-h-40 overflow-y-auto">
                             {JSON.stringify(msg.action.previewData, null, 2)}
@@ -330,7 +429,7 @@ export default function AgentsHubPage() {
                             }}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
                           >
-                            <CheckCircle size={16} /> {msg.action.type === 'CREATE_LANDING_PAGE' ? 'Preview & Confirm' : 'Validate & Apply'}
+                            <CheckCircle size={16} /> {msg.action.type === 'CREATE_LANDING_PAGE' ? 'Preview & Confirm' : msg.action.type === 'CREATE_PRODUCT' ? 'Add to Store' : 'Validate & Apply'}
                           </button>
                         )}
                       </div>
@@ -393,14 +492,19 @@ export default function AgentsHubPage() {
               >
                 <Paperclip size={20} />
               </button>
-              <input 
-                type="text" 
+              <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleSend()}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
                 placeholder={`Ask the ${selectedAgent.name} to do something...`}
-                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-600 dark:text-white"
+                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-600 dark:text-white resize-none min-h-[44px] max-h-[120px]"
                 disabled={isLoading}
+                rows={1}
               />
               <button 
                 onClick={handleSend}

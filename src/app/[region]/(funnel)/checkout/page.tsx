@@ -20,9 +20,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [addingNote, setAddingNote] = useState(false);
   const [countdownSecs, setCountdownSecs] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [utmSource, setUtmSource] = useState<string>('');  
+  const [utmCampaign, setUtmCampaign] = useState<string>('');
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   // Always mark as mounted on client — do NOT rely on external script onLoad for this
-  useEffect(() => { setIsMounted(true); }, []);
+  useEffect(() => {
+    setIsMounted(true);
+    // Read UTM data from sessionStorage (captured by UTMTracker on landing)
+    setUtmSource(sessionStorage.getItem('utm_source') || '');
+    setUtmCampaign(sessionStorage.getItem('utm_campaign') || '');
+  }, []);
   
   // Local Address State
   const [wilaya, setWilaya] = useState('');
@@ -77,11 +85,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
             if (types.includes('postal_code')) postalVal = comp.long_name;
           });
 
-          setDetailedAddress(`${streetNumber} ${route}`.trim());
+          setDetailedAddress(`${streetNumber} ${route}`.trim() || place.name || '');
           setCity(cityVal);
           setProvince(stateVal);
           setCountry(countryVal);
           setPostalCode(postalVal);
+
+          if (region === 'dz' || region === 'ro' || region === 'co') {
+            if (stateVal) setWilaya(stateVal);
+            if (cityVal) setCommune(cityVal);
+          }
         }
       });
     }
@@ -107,9 +120,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   }, [store?.region, region]);
 
   // Derive unique Wilayas and their Communes from admin config
-  const uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya).filter(w => w && w.trim() !== '')));
+  let uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya).filter(w => w && w.trim() !== '')));
   const communesByWilaya = (w: string) => zones.filter(z => z.wilaya === w).map(z => z.commune);
-  
+
+  // If no shipping zones are configured, auto-generate states based on the country
+  if (uniqueWilayas.length === 0) {
+    if (region === 'dz') {
+      uniqueWilayas = ["Adrar","Chlef","Laghouat","Oum El Bouaghi","Batna","Béjaïa","Biskra","Béchar","Blida","Bouira","Tamanrasset","Tébessa","Tlemcen","Tiaret","Tizi Ouzou","Alger","Djelfa","Jijel","Sétif","Saïda","Skikda","Sidi Bel Abbès","Annaba","Guelma","Constantine","Médéa","Mostaganem","M'Sila","Mascara","Ouargla","Oran","El Bayadh","Illizi","Bordj Bou Arreridj","Boumerdès","El Tarf","Tindouf","Tissemsilt","El Oued","Khenchela","Souk Ahras","Tipaza","Mila","Aïn Defla","Naâma","Aïn Témouchent","Ghardaïa","Relizane","Timimoun","Bordj Badji Mokhtar","Ouled Djellal","Béni Abbès","In Salah","In Guezzam","Touggourt","Djanet","El M'Ghair","El Meniaa"];
+    } else if (region === 'ro') {
+      uniqueWilayas = ["Alba","Arad","Argeș","Bacău","Bihor","Bistrița-Năsăud","Botoșani","Brașov","Brăila","Buzău","Caraș-Severin","Călărași","Cluj","Constanța","Covasna","Dâmbovița","Dolj","Galați","Giurgiu","Gorj","Harghita","Hunedoara","Ialomița","Iași","Ilfov","Maramureș","Mehedinți","Mureș","Neamț","Olt","Prahova","Satu Mare","Sălaj","Sibiu","Suceava","Teleorman","Timiș","Tulcea","Vaslui","Vâlcea","Vrancea","București"];
+    } else if (region === 'co') {
+      uniqueWilayas = ["Amazonas","Antioquia","Arauca","Atlántico","Bolívar","Boyacá","Caldas","Caquetá","Casanare","Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena","Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia","Santander","Sucre","Tolima","Valle del Cauca","Vaupés","Vichada","Bogotá"];
+    } else if (region === 'sa') {
+      uniqueWilayas = ["Riyadh","Makkah","Madinah","Eastern Province","Asir","Tabuk","Hail","Northern Borders","Jizan","Najran","Al Baha","Al Jouf","Qassim"];
+    } else if (region === 'ae') {
+      uniqueWilayas = ["Abu Dhabi","Dubai","Sharjah","Ajman","Umm Al Quwain","Ras Al Khaimah","Fujairah"];
+    }
+  }  
   const { 
     customerName, phone, draftOrderId, cart, getTotalPrice,
     setLead, setDraftOrderId, addCartItem, removeCartItem, 
@@ -209,6 +236,42 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     }
   }, [totalPrice]);
 
+  // Abandoned cart timer ref
+  const abandonedCartTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startAbandonedCartTimer = (orderId: string) => {
+    if (!store?.whatsappConfig?.abandonedCartEnabled || !store?.whatsappConfig?.aisensyEnabled || !store?.whatsappConfig?.abandonedCartCampaignName) return;
+    
+    const delay = (store.whatsappConfig.abandonedCartDelayMinutes || 15) * 60 * 1000;
+    abandonedCartTimerRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/aisensy/abandoned-cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId: store.id, orderId })
+        });
+      } catch (e) {
+        console.warn('[Abandoned Cart Timer] Failed to send notification:', e);
+      }
+    }, delay);
+  };
+
+  // Check for existing expired draft on mount
+  useEffect(() => {
+    if (draftOrderId && store?.whatsappConfig?.abandonedCartEnabled && store?.whatsappConfig?.aisensyEnabled && store?.whatsappConfig?.abandonedCartCampaignName) {
+      const delay = (store.whatsappConfig.abandonedCartDelayMinutes || 15) * 60 * 1000;
+      const draftCreatedKey = `abandoned_ts_${draftOrderId}`;
+      const created = parseInt(sessionStorage.getItem(draftCreatedKey) || '0', 10);
+      if (created && Date.now() - created >= delay) {
+        fetch('/api/aisensy/abandoned-cart', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId: store.id, orderId: draftOrderId })
+        }).catch(() => {});
+      }
+    }
+  }, [draftOrderId, store?.id]);
+
   // Lead Capture -> Draft Order (Debounced / On Step 1 Complete)
   const handleProceedToStep2 = async () => {
     // If no upsells configured or disabled, skip to step 3
@@ -241,15 +304,21 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           date: new Date().toISOString()
         }, ...filtered];
       });
+
+      // Start abandoned cart timer + save timestamp for page-reload recovery
+      sessionStorage.setItem(`abandoned_ts_${localOrderId}`, Date.now().toString());
+      startAbandonedCartTimer(localOrderId);
     }
 
     // Fire & Forget background save to backend
     try {
       const res = await saveDraftOrder({
-        id: localOrderId, // use the local order ID we just generated
+        id: localOrderId,
         name: customerName,
         phone: `${prefix}${phone.replace(/^0+/, '')}`,
-        region: region
+        region: region,
+        source: utmSource || undefined,
+        utmCampaign: utmCampaign || undefined,
       });
       if (res?.error) {
         console.error("saveDraftOrder returned error:", res.error);
@@ -282,7 +351,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
   const handleComplete = async () => {
     setStatus('CONFIRMING');
-    
+
+    // Clear abandoned cart timer
+    if (abandonedCartTimerRef.current) {
+      clearTimeout(abandonedCartTimerRef.current);
+      abandonedCartTimerRef.current = null;
+    }
+
     // Build address object
     const finalAddress = region === 'dz' 
       ? { wilaya, commune, landmark: detailedAddress }
@@ -320,7 +395,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           product: cart.map(c => c.name).join(', '),
           total: finalTotal,
           status: 'PENDING_AGENT_CONFIRMATION',
-          date: new Date().toISOString()
+          date: new Date().toISOString(),
+          source: (utmSource as any) || undefined,
         },
         ...prev
       ]);
@@ -420,7 +496,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           discountAmount: discountAmount,
           deliveryRate: deliveryRate,
           couponCode: appliedCoupon ? appliedCoupon.code : '',
-          customFields: customFieldsData
+          customFields: customFieldsData,
+          source: utmSource || undefined,
+          utmCampaign: utmCampaign || undefined,
         });
       } catch (err) {
         console.warn("Server submitOrder failed or is not configured, using local fallback", err);
@@ -466,360 +544,394 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
   const isCustomFieldsValid = checkoutConfig?.customFields?.every(f => !f.required || !!customFieldsData[f.id]) ?? true;
 
-  return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 font-sans pb-32">
+  // NEW: Proceed directly from step 1 to step 2 (address) — upsells are now inline in step 1
+  const handleProceedToAddress = async () => {
+    setStep(2);
 
-      <div className="max-w-2xl mx-auto">
-        
-        {/* Progress Tracker */}
-        <div className="flex items-center justify-between mb-8 px-4 relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-10"></div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-indigo-600 -z-10 transition-all duration-500" style={{ width: step === 1 ? '0%' : step === 2 ? '50%' : '100%' }}></div>
-          
+    let localOrderId = draftOrderId || `ABN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    if (!draftOrderId) setDraftOrderId(localOrderId);
+
+    if (store) {
+      setAbandonedCarts(prev => {
+        const filtered = prev.filter(c => c.id !== localOrderId);
+        return [{
+          id: localOrderId, storeId: store.id,
+          customer: `${customerName} ${lastName}`.trim(),
+          phone: `${prefix}${phone.replace(/^0+/, '')}`,
+          product: cart.map(c => c.name).join(', '), total: finalTotal,
+          step: 'Address', date: new Date().toISOString()
+        }, ...filtered];
+      });
+      sessionStorage.setItem(`abandoned_ts_${localOrderId}`, Date.now().toString());
+      startAbandonedCartTimer(localOrderId);
+    }
+
+    try {
+      const res = await saveDraftOrder({
+        id: localOrderId, name: customerName,
+        phone: `${prefix}${phone.replace(/^0+/, '')}`,
+        region, source: utmSource || undefined, utmCampaign: utmCampaign || undefined,
+      });
+      if (res?.success && res.orderId && res.orderId !== localOrderId) setDraftOrderId(res.orderId);
+    } catch (err) {
+      console.warn('saveDraftOrder failed, using local fallback', err);
+    }
+  };
+
+  const mainCartItem = cart.find(i => !i.isUpsell);
+  const mainProduct = mainCartItem ? products.find(p => p.id === mainCartItem.id) : null;
+
+  const handleQuantitySelect = (qty: number, offerPrice: number) => {
+    setSelectedQuantity(qty);
+    if (mainCartItem) {
+      addCartItem({
+        ...mainCartItem,
+        price: offerPrice,
+        name: `${qty}x ${mainProduct?.title || mainCartItem.name.replace(/^\dx\s/, '')}`
+      });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-8 px-4 font-sans pb-28">
+      <div className="max-w-lg mx-auto">
+
+        {/* Progress Tracker — 2 steps */}
+        <div className="flex items-center justify-between mb-6 px-2 relative">
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-10 transition-all duration-500" style={{ width: step === 1 ? '0%' : '100%' }} />
           {[
-            { num: 1, label: t('checkout.step1', 'Details') },
-            { num: 2, label: t('checkout.step2', 'Add-ons') },
-            { num: 3, label: t('checkout.step3', 'Shipping') }
+            { num: 1, label: t('checkout.step1', 'Your Info') },
+            { num: 2, label: t('checkout.step3', 'Delivery') },
           ].map(s => (
             <div key={s.num} className={`flex flex-col items-center ${step >= s.num ? 'text-indigo-600' : 'text-slate-400'}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mb-2 transition-colors ${step >= s.num ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-200 text-slate-500'}`}>
-                {s.num}
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm mb-1.5 transition-all ${step >= s.num ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-200 text-slate-500'}`}>
+                {step > s.num ? '✓' : s.num}
               </div>
-              <span className="text-sm font-bold">{s.label}</span>
+              <span className="text-xs font-bold">{s.label}</span>
             </div>
           ))}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
           {/* Header */}
-          <div className="bg-indigo-600 p-6 text-white text-center">
-            <h2 className="text-2xl font-black uppercase tracking-wide">
-              {t('checkout.secureCheckout', 'SECURE CHECKOUT')}
+          <div className="p-5 text-center border-b border-slate-100">
+            <h2 className="text-lg font-black text-slate-900 uppercase tracking-wide">
+              {t('checkout.secureCheckout', '🔒 Secure Checkout — Pay on Delivery')}
             </h2>
           </div>
 
-          <div className="p-6 md:p-8">
-            {/* STEP 1: LEAD CAPTURE */}
+          <div className="p-5 md:p-7">
+
+            {/* ═══════════════════════════════════════════ */}
+            {/* STEP 1: PRODUCT + UPSELLS + CONTACT INFO   */}
+            {/* ═══════════════════════════════════════════ */}
             {step === 1 && (
-              <div className="animate-in slide-in-from-right-4 fade-in duration-500">
-                <h3 className="text-xl font-bold text-slate-800 mb-6">{t('checkout.subtitle', 'Who is receiving this order?')}</h3>
-                
-                <div className="space-y-5">
+              <div className="animate-in slide-in-from-right-4 fade-in duration-400">
+
+                {/* ── Quantity Offers (Bundle Selector) ── */}
+                <div className="mb-6">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
+                    {t('checkout.selectOffer', 'Select Your Offer')}
+                  </p>
+                  <div className="space-y-3">
+                    {[
+                      { qty: 1, label: '1 Item', discount: 0, popular: false },
+                      { qty: 2, label: '2 Items (Save 15%)', discount: 0.15, popular: true },
+                      { qty: 3, label: '3 Items (Save 25%)', discount: 0.25, popular: false }
+                    ].map(offer => {
+                      // Retrieve base unit price by dividing current cart item price by its current quantity if it was already updated
+                      // Or just use the original main product price.
+                      const basePrice = mainProduct?.price || (mainCartItem?.price ? Math.round(mainCartItem.price / selectedQuantity) : 0);
+                      const offerPrice = Math.round((basePrice * offer.qty) * (1 - offer.discount));
+                      const isSelected = selectedQuantity === offer.qty;
+                      
+                      return (
+                        <label key={offer.qty} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>
+                          {offer.popular && <span className="absolute -top-2.5 right-4 bg-rose-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">Most Popular</span>}
+                          <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer.qty, offerPrice)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
+                          <div className="flex-1">
+                            <p className={`font-black text-sm ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{offer.label}</p>
+                            {offer.qty > 1 && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{(offerPrice / offer.qty).toFixed(0)} {currency} / item</p>}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-black text-lg text-indigo-600">{offerPrice} <span className="text-xs">{currency}</span></p>
+                            {offer.discount > 0 && <p className="text-[10px] text-slate-400 line-through">{basePrice * offer.qty} {currency}</p>}
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Inline Upsells (if configured) ── */}
+                {dynamicUpsells.length > 0 && checkoutConfig?.enableStep2Upsell !== false && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <PackagePlus size={15} className="text-amber-500" />
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-widest">
+                        ⚡ {t('checkout.upsellTitle', 'Exclusive Add-ons — Limited Offer')}
+                      </span>
+                      {countdownSecs !== null && countdownSecs > 0 && (
+                        <span className={`ml-auto text-xs font-black px-2 py-0.5 rounded-full ${countdownSecs <= 60 ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-amber-100 text-amber-700'}`}>
+                          ⏱ {String(Math.floor(countdownSecs / 60)).padStart(2,'0')}:{String(countdownSecs % 60).padStart(2,'0')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      {dynamicUpsells.map((upsell) => {
+                        const isSelected = cart.some(i => i.id === upsell.id);
+                        return (
+                          <label
+                            key={upsell.id}
+                            className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleUpsellToggle(upsell, e.target.checked)}
+                              className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0"
+                            />
+                            {upsell.image && (
+                              <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={upsell.image} alt={upsell.name} className="w-full h-full object-cover" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-bold text-slate-900 text-sm leading-tight truncate">{upsell.name}</p>
+                              <p className="text-xs text-slate-500 font-medium mt-0.5">{t('checkout.upsellItemDesc', 'Highly recommended for best results')}</p>
+                            </div>
+                            <span className="font-black text-indigo-600 text-sm shrink-0">+{upsell.price} {currency}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Contact Info Form ── */}
+                <div className="space-y-4">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest border-t border-slate-100 pt-4">
+                    {t('checkout.subtitle', '📋 Contact Information')}
+                  </p>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">
                       {checkoutConfig?.fields?.showLastName ? t('form.firstName', 'First Name') + ' *' : t('form.fullName', 'Full Name') + ' *'}
                     </label>
-                    <input 
-                      type="text" 
-                      value={customerName}
+                    <input
+                      type="text" value={customerName}
                       onChange={(e) => setLead(e.target.value, phone)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-900"
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
                       placeholder={checkoutConfig?.fields?.showLastName ? 'e.g. John' : 'e.g. John Doe'}
                     />
                   </div>
                   {checkoutConfig?.fields?.showLastName && (
-                    <div className="animate-in fade-in slide-in-from-top-2">
-                      <label className="block text-sm font-bold text-slate-700 mb-2">{t('form.lastName', 'Last Name')} *</label>
-                      <input 
-                        type="text" 
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-900"
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.lastName', 'Last Name')} *</label>
+                      <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
                         placeholder="e.g. Doe"
                       />
                     </div>
                   )}
                   {checkoutConfig?.fields?.showEmail && (
-                    <div className="animate-in fade-in slide-in-from-top-2">
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
-                        {t('form.email', 'Email Address')} {checkoutConfig?.fields?.requireEmail ? '*' : '(Optional)'}
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">
+                        {t('form.email', 'Email')} {checkoutConfig?.fields?.requireEmail ? '*' : '(Optional)'}
                       </label>
-                      <input 
-                        type="email" 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-900"
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
                         placeholder="e.g. john@example.com"
                       />
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">{t('form.phone', 'WhatsApp Number')} *</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'WhatsApp Number')} *</label>
                     <div className="flex gap-2">
-                      <div className="px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl font-bold text-slate-600 flex items-center">
-                        {prefix}
-                      </div>
-                      <input 
-                        type="tel" 
-                        value={phone}
-                        onChange={(e) => setLead(customerName, e.target.value.replace(/\\D/g, ''))}
-                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-900 tracking-wide"
+                      <div className="px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl font-bold text-slate-600 flex items-center shrink-0">{prefix}</div>
+                      <input type="tel" value={phone}
+                        onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide"
                         placeholder="55 55 55 55 55"
                       />
                     </div>
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
-                    <div key={field.id} className="animate-in fade-in slide-in-from-top-2">
-                      <label className="block text-sm font-bold text-slate-700 mb-2">
-                        {field.label} {field.required ? '*' : '(Optional)'}
-                      </label>
-                      <input 
-                        type="text" 
-                        value={customFieldsData[field.id] || ''}
+                    <div key={field.id}>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{field.label} {field.required ? '*' : '(Optional)'}</label>
+                      <input type="text" value={customFieldsData[field.id] || ''}
                         onChange={(e) => setCustomFieldsData({ ...customFieldsData, [field.id]: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400 font-bold text-slate-900"
+                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
                       />
                     </div>
                   ))}
                 </div>
 
-                <button 
-                  onClick={handleProceedToStep2}
+                <button
+                  onClick={handleProceedToAddress}
                   disabled={!customerName || phone.length < 8 || !isCustomFieldsValid}
                   style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                  className={`w-full mt-8 py-4 px-6 text-white ${!store?.primaryColor && 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800'} disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 group`}
+                  className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
                 >
-                  {t('checkout.next', 'Continue')}
+                  {t('checkout.next', 'Continue to Delivery')}
                   <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
             )}
 
-            {/* STEP 2: THE MAXIMIZER */}
+            {/* ═══════════════════════════════════════════════ */}
+            {/* STEP 2: ORDER SUMMARY + ADDRESS FORM            */}
+            {/* ═══════════════════════════════════════════════ */}
             {step === 2 && (
-              <div className="animate-in slide-in-from-right-4 fade-in duration-500">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                    <PackagePlus className="text-indigo-600" /> {t('checkout.upsellTitle', 'Wait! Add another to your order')}
-                  </h3>
-                  {countdownSecs !== null && countdownSecs > 0 && (
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-black ${
-                      countdownSecs <= 60 
-                        ? 'bg-rose-100 text-rose-600 animate-pulse' 
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      <span>⏱</span>
-                      <span>{String(Math.floor(countdownSecs / 60)).padStart(2,'0')}:{String(countdownSecs % 60).padStart(2,'0')}</span>
-                    </div>
-                  )}
-                  {countdownSecs === 0 && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-black bg-slate-100 text-slate-500">
-                      ⏱ Expired
-                    </div>
-                  )}
-                </div>
-                <p className="text-slate-500 text-sm mb-6">{t('checkout.upsellDesc', 'Exclusive one-time offers for our new customers.')}</p>
+              <div className="animate-in slide-in-from-right-4 fade-in duration-400">
 
+                {/* ── Order Summary Card ── */}
+                <div className="bg-slate-900 rounded-2xl p-4 mb-6 text-white">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">📦 {t('checkout.orderSummary', 'Order Summary')}</p>
+                  <div className="space-y-2">
+                    {cart.map(item => (
+                      <div key={item.id} className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-slate-200 truncate mr-4">{item.name}</span>
+                        <span className="font-black text-white shrink-0">{item.price} {currency}</span>
+                      </div>
+                    ))}
+                    {deliveryRate > 0 && (
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-700">
+                        <span className="text-sm font-bold text-slate-400">{t('checkout.delivery', 'Delivery')}</span>
+                        <span className="font-black text-slate-300">{deliveryRate} {currency}</span>
+                      </div>
+                    )}
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-emerald-400">{t('checkout.discount', 'Discount')}</span>
+                        <span className="font-black text-emerald-400">-{discountAmount} {currency}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-600">
+                    <span className="font-black text-slate-300 text-sm uppercase tracking-wider">{t('checkout.totalDue', 'Total on Delivery')}</span>
+                    <span className={`font-black text-2xl transition-transform ${isAnimatingPrice ? 'scale-110 text-rose-400' : 'text-indigo-400'}`}>{isMounted ? finalTotal : '...'} <span className="text-base">{currency}</span></span>
+                  </div>
+                </div>
+
+                {/* ── Address Form ── */}
                 <div className="space-y-4">
-                  {dynamicUpsells.map((upsell) => {
-                    const isSelected = cart.some(i => i.id === upsell.id);
-                    return (
-                      <label 
-                        key={upsell.id} 
-                        className={`flex items-start gap-4 p-5 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 bg-white hover:border-indigo-300'}`}
-                      >
-                        <div className="mt-0.5">
-                          <input 
-                            type="checkbox" 
-                            checked={isSelected}
-                            onChange={(e) => handleUpsellToggle(upsell, e.target.checked)}
-                            className="w-6 h-6 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                          />
-                        </div>
-                        {upsell.image && (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200">
-                             <img src={upsell.image} alt={upsell.name} className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="font-bold text-slate-900">{upsell.name}</span>
-                            <span className="font-black text-indigo-600">+{upsell.price} {currency}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 font-medium">{t('checkout.upsellItemDesc', 'Highly recommended addition to complete your setup.')}</p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                    <MapPin size={12} className="inline mr-1" />{t('checkout.deliveryInfo', 'Delivery Address')}
+                  </p>
 
-                <div className="flex gap-4 mt-8">
-                  <button onClick={() => setStep(1)} className="px-6 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200">{t('checkout.back', 'Back')}</button>
-                  <button 
-                    onClick={handleProceedToStep3}
-                    style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                    className={`flex-1 py-4 px-6 text-white ${!store?.primaryColor && 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800'} rounded-xl font-bold text-lg transition-all flex justify-center items-center gap-2 group`}
-                  >
-                    {t('checkout.next', 'Continue')}
-                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3: FINAL DETAILS */}
-            {step === 3 && (
-              <div className="animate-in slide-in-from-right-4 fade-in duration-500">
-                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                  <MapPin className="text-indigo-600" /> {t('checkout.deliveryInfo', 'Delivery Information')}
-                </h3>
-
-                <div className="space-y-5">
-                  {/* ADDRESS RENDERER */}
                   {checkoutConfig?.showAddressFields !== false && (
                     <>
                       {checkoutConfig?.addressAutocomplete ? (
                         <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.preciseAddress', 'Start typing your precise address')} *</label>
-                          <input 
-                            ref={addressInputRef}
-                            type="text"
-                            value={detailedAddress}
-                            onChange={(e) => setDetailedAddress(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
+                          <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Precise Address')} *</label>
+                          <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
                             placeholder="Search street, flat number..."
                           />
                         </div>
                       ) : region === 'dz' ? (
                         <>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.wilaya', 'Region / State')} *</label>
-                              <select 
-                                value={wilaya}
-                                onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900 bg-white"
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.wilaya', 'Wilaya')} *</label>
+                              <select value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white"
                               >
-                                <option value="" disabled>Select Wilaya</option>
+                                <option value="" disabled>Select</option>
                                 {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
                               </select>
                             </div>
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.commune', 'City / Commune')} *</label>
-                              <input 
-                                type="text"
-                                value={commune}
-                                onChange={(e) => setCommune(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900 bg-white"
-                                placeholder="e.g. Oran Center"
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'Commune')} *</label>
+                              <input type="text" value={commune} onChange={(e) => setCommune(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                placeholder="e.g. Bab El Oued"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.address', 'Detailed Address')} *</label>
-                            <input 
-                              type="text"
-                              value={detailedAddress}
-                              onChange={(e) => setDetailedAddress(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                              placeholder={t('checkout.addressPlaceholder', 'e.g. Next to the main post office')}
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'Detailed Address')} *</label>
+                            <input type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                              placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
                             />
                           </div>
                         </>
                       ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                           <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.preciseAddress', 'Address *')}</label>
-                            <input 
-                              ref={addressInputRef}
-                              type="text"
-                              value={detailedAddress}
-                              onChange={(e) => setDetailedAddress(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                              placeholder={t('checkout.searchStreet', 'Search street, flat number...')}
+                            <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Address')} *</label>
+                            <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
+                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                              placeholder={t('checkout.searchStreet', 'Street, building number...')}
                             />
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
+                          <div className="grid grid-cols-2 gap-3">
                             {checkoutConfig?.fields?.showCity !== false && (
                               <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.city', 'City')} *</label>
-                                <input 
-                                  type="text"
-                                  value={city}
-                                  onChange={(e) => setCity(e.target.value)}
-                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
+                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.city', 'City')} *</label>
+                                <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
                                   placeholder={t('checkout.city', 'City')}
                                 />
                               </div>
                             )}
                             {checkoutConfig?.fields?.showPostalCode !== false && (
                               <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">{t('checkout.postalCode', 'Postal Code')}</label>
-                                <input 
-                                  type="text"
-                                  value={postalCode}
-                                  onChange={(e) => setPostalCode(e.target.value)}
-                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.postalCode', 'Postal Code')}
+                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.postalCode', 'Postal Code')}</label>
+                                <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                  placeholder="Code"
                                 />
                               </div>
                             )}
                           </div>
-                          <div className="space-y-4">
-                            {checkoutConfig?.fields?.showProvince !== false && (
-                              <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">
-                                  {t('checkout.province', 'Province / State')} *
-                                </label>
-                                {uniqueWilayas.length > 0 ? (
-                                  <select 
-                                    value={province}
-                                    onChange={(e) => setProvince(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900 bg-white cursor-pointer"
-                                  >
-                                    <option value="">{t('checkout.selectProvince', 'Select Province / State')}</option>
-                                    {uniqueWilayas.map(w => (
-                                      <option key={w} value={w}>{w}</option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <input 
-                                    type="text"
-                                    value={province}
-                                    onChange={(e) => setProvince(e.target.value)}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 outline-none font-bold text-slate-900"
-                                    placeholder={t('checkout.province', 'Province')}
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          {checkoutConfig?.fields?.showProvince !== false && (
+                            <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.province', 'Province / State')} *</label>
+                              {uniqueWilayas.length > 0 ? (
+                                <select value={province} onChange={(e) => setProvince(e.target.value)}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white"
+                                >
+                                  <option value="">{t('checkout.selectProvince', 'Select Province')}</option>
+                                  {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
+                                </select>
+                              ) : (
+                                <input type="text" value={province} onChange={(e) => setProvince(e.target.value)}
+                                  className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                  placeholder={t('checkout.province', 'Province')}
+                                />
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
                   )}
 
                   {checkoutConfig?.addressAutocomplete && checkoutConfig?.autocompleteApiKey && (
-                    <Script 
-                      src={`https://maps.googleapis.com/maps/api/js?key=${checkoutConfig.autocompleteApiKey}&libraries=places`}
-                    />
+                    <Script src={`https://maps.googleapis.com/maps/api/js?key=${checkoutConfig.autocompleteApiKey}&libraries=places`} />
                   )}
 
-                  {/* Coupon Area */}
+                  {/* Coupon */}
                   {!couponsDisabled && (
-                    <div className="pt-4 border-t border-slate-100">
+                    <div className="pt-3 border-t border-slate-100">
                       {!appliedCoupon ? (
                         <div>
-                          <button 
-                            onClick={() => setShowCouponInput(!showCouponInput)}
-                            className="text-indigo-600 font-bold text-sm mb-2 hover:underline text-left w-full"
+                          <button onClick={() => setShowCouponInput(!showCouponInput)}
+                            className="text-indigo-600 font-bold text-sm hover:underline"
                           >
-                            {t('checkout.haveCoupon', 'Have a coupon code?')}
+                            {t('checkout.haveCoupon', '🏷️ Have a coupon?')}
                           </button>
                           {showCouponInput && (
-                            <div className="flex gap-2 mt-2 animate-in fade-in slide-in-from-top-2">
-                              <input 
-                                type="text"
-                                value={couponCode}
-                                onChange={(e) => setCouponCode(e.target.value)}
-                                className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 uppercase"
-                                placeholder="e.g. DISCOUNT20"
+                            <div className="flex gap-2 mt-2">
+                              <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
+                                className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 uppercase"
+                                placeholder="DISCOUNT20"
                               />
-                              <button 
-                                onClick={handleApplyCoupon}
-                                style={{ backgroundColor: store?.primaryColor }}
-                                className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors"
-                              >
+                              <button onClick={handleApplyCoupon} className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">
                                 {t('checkout.apply', 'Apply')}
                               </button>
                             </div>
@@ -827,113 +939,78 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                           {couponError && <p className="text-rose-500 text-xs font-bold mt-2">{couponError}</p>}
                         </div>
                       ) : (
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
                           <div>
-                            <div className="text-emerald-700 font-bold text-sm">{t('checkout.couponApplied', 'Coupon Applied!')}</div>
-                            <div className="text-emerald-600 font-black text-lg">-{appliedCoupon.type === 'fixed' ? appliedCoupon.value + ' ' + currency : `${appliedCoupon.value}%`}</div>
+                            <div className="text-emerald-700 font-bold text-xs">{t('checkout.couponApplied', '✓ Coupon Applied!')}</div>
+                            <div className="text-emerald-600 font-black">{appliedCoupon.type === 'fixed' ? `-${appliedCoupon.value} ${currency}` : `-${appliedCoupon.value}%`}</div>
                           </div>
-                          <button 
-                            onClick={handleRemoveCoupon}
-                            className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline"
-                          >
-                            Remove
-                          </button>
+                          <button onClick={handleRemoveCoupon} className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline">Remove</button>
                         </div>
                       )}
                     </div>
                   )}
 
-                  {/* Delivery Comment Area */}
-                  <div className="pt-4 border-t border-slate-100">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input 
-                        type="checkbox"
-                        checked={addingNote}
-                        onChange={(e) => setAddingNote(e.target.checked)}
-                        className="w-5 h-5 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                  {/* Delivery Note */}
+                  <div className="pt-3 border-t border-slate-100">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={addingNote} onChange={(e) => setAddingNote(e.target.checked)}
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-300"
                       />
-                      <span className="font-bold text-slate-700 flex items-center gap-2"><Edit3 size={16}/> {t('checkout.notes', 'Add delivery instructions/comment')}</span>
+                      <span className="text-sm font-bold text-slate-600">{t('checkout.notes', '📝 Add delivery note')}</span>
                     </label>
-
                     {addingNote && (
-                      <div className="mt-3 animate-in fade-in slide-in-from-top-2">
-                        <textarea
-                          value={deliveryInstructions}
-                          onChange={(e) => setDeliveryInstructions(e.target.value)}
-                          rows={2}
-                          className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 resize-none text-sm"
-                          placeholder={t('checkout.notesPlaceholder', 'Any specific delivery instructions for the driver?')}
-                        />
-                      </div>
+                      <textarea value={deliveryInstructions} onChange={(e) => setDeliveryInstructions(e.target.value)}
+                        rows={2} className="w-full mt-2 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 resize-none text-sm"
+                        placeholder={t('checkout.notesPlaceholder', 'Any special instructions for the delivery driver?')}
+                      />
                     )}
                   </div>
                 </div>
 
-                <div className="flex gap-4 mt-8">
-                  <button 
-                    onClick={() => {
-                      if (dynamicUpsells.length === 0 || checkoutConfig?.enableStep2Upsell === false) {
-                        setStep(1);
-                      } else {
-                        setStep(2);
-                      }
-                    }} 
-                    className="px-6 py-5 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200"
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setStep(1)}
+                    className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
                   >
-                    {t('checkout.back', 'Back')}
+                    ← {t('checkout.back', 'Back')}
                   </button>
-                  <button 
+                  <button
                     onClick={handleComplete}
                     disabled={
-                      checkoutConfig?.showAddressFields !== false 
-                        ? (
-                            region === 'dz' && !checkoutConfig?.addressAutocomplete
-                              ? (!wilaya || !commune || !detailedAddress)
-                              : (
-                                  !detailedAddress ||
-                                  (checkoutConfig?.fields?.showCity !== false && !city) ||
-                                  (checkoutConfig?.fields?.showProvince !== false && !province)
-                                )
-                          )
+                      checkoutConfig?.showAddressFields !== false
+                        ? (region === 'dz' && !checkoutConfig?.addressAutocomplete
+                          ? (!wilaya || !commune || !detailedAddress)
+                          : (!detailedAddress || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
                         : false
                     }
                     style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                    className={`flex-1 py-5 px-6 text-white ${!store?.primaryColor && 'bg-green-600 hover:bg-green-700 active:bg-green-800'} disabled:bg-slate-300 disabled:cursor-not-allowed rounded-xl font-black text-xl transition-all shadow-[0_8px_30px_rgb(22,163,74,0.3)] hover:shadow-[0_8px_30px_rgb(22,163,74,0.5)] flex justify-center items-center gap-2`}
+                    className={`flex-1 py-4 px-5 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 ${!store?.primaryColor ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 shadow-[0_8px_30px_rgb(22,163,74,0.3)]' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
                   >
-                    <Truck size={24} />
-                    {t('checkout.orderNow', 'CONFIRM COD ORDER')}
+                    <Truck size={20} />
+                    {t('checkout.orderNow', 'CONFIRM ORDER')}
                   </button>
                 </div>
               </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* FIXED BOTTOM ACTION BAR - TOTAL PRICE (ANIMATED) */}
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] py-4 px-6 z-50">
-        <div className="max-w-2xl mx-auto flex justify-between items-center">
-          <div>
-            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('checkout.totalDue', 'Total Due on Delivery')}</div>
-            <div className={`text-3xl font-black text-indigo-600 transition-transform ${isAnimatingPrice ? 'scale-110 text-rose-500' : 'scale-100'}`}>
-              {isMounted ? finalTotal : '0'} <span className="text-xl">{currency}</span>
-            </div>
-            {isMounted && deliveryRate > 0 && (
-              <div className="text-xs font-bold text-slate-500 mt-0.5">
-                {t('checkout.subtotal', 'Subtotal')}: {totalPrice} {discountAmount > 0 && `(-${discountAmount})`} • {t('checkout.delivery', 'Delivery')}: {deliveryRate}
-              </div>
-            )}
-            {isMounted && deliveryRate === 0 && discountAmount > 0 && (
-              <div className="text-xs font-bold text-slate-500 mt-0.5">
-                {t('checkout.subtotal', 'Subtotal')}: {totalPrice} • {t('checkout.discount', 'Discount')}: -{discountAmount}
-              </div>
-            )}
-          </div>
-          <div className="text-right text-xs font-medium text-slate-500">
-            <div>{t('checkout.includes', 'Includes')} {isMounted ? cart.length : '0'} {t('checkout.items', 'item(s)')}</div>
-            {step === 2 && <div className="text-indigo-600 font-bold mt-1">{t('checkout.selectAddons', 'Select add-ons above!')}</div>}
           </div>
         </div>
+
+        {/* Floating Total Bar — only on Step 1 */}
+        {step === 1 && (
+          <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] py-3 px-5 z-50">
+            <div className="max-w-lg mx-auto flex justify-between items-center">
+              <div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('checkout.totalDue', 'Total')}</div>
+                <div className={`text-2xl font-black text-indigo-600 transition-transform ${isAnimatingPrice ? 'scale-110 text-rose-500' : ''}`}>
+                  {isMounted ? finalTotal : '0'} <span className="text-base">{currency}</span>
+                </div>
+              </div>
+              <div className="text-right text-xs text-slate-400 font-medium">
+                {isMounted ? cart.length : 0} {t('checkout.items', 'item(s)')}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

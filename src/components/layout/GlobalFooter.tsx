@@ -1,11 +1,12 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Truck } from 'lucide-react';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
-export default function GlobalFooter({ region }: { region: string }) {
+const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) {
   const currentYear = new Date().getFullYear();
   const { homepages, availableStores } = useAdminStore();
   const store = resolveStore(availableStores, region);
@@ -86,4 +87,6 @@ export default function GlobalFooter({ region }: { region: string }) {
       </div>
     </footer>
   );
-}
+});
+
+export default GlobalFooter;

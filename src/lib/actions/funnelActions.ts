@@ -14,7 +14,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 /**
  * Saves or updates a DRAFT order with Name and Phone from Step 1.
  */
-export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, step?: string }) {
+export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, step?: string, source?: string, utmCampaign?: string }) {
   try {
     // Find the store for this region
     const { data: store, error: storeError } = await supabase
@@ -28,13 +28,14 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
       return { error: `Store not found for region: ${data.region}` };
     }
 
-    const payload = {
+    const payload: any = {
       customer: data.name,
       phone: data.phone,
       store_id: store.id,
       status: 'DRAFT',
-      custom_fields: { step: data.step || 'Checkout' }
+      custom_fields: { step: data.step || 'Checkout', utm_campaign: data.utmCampaign || '' }
     };
+    if (data.source) payload.source = data.source;
 
     console.log(`[saveDraftOrder] Payload:`, payload);
 
@@ -84,7 +85,9 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
   discountAmount?: number,
   deliveryRate?: number,
   couponCode?: string,
-  customFields?: any
+  customFields?: any,
+  source?: string,
+  utmCampaign?: string
 }) {
   try {
     const totalPrice = payload.cart.reduce((acc, curr) => acc + curr.price, 0);
@@ -111,7 +114,8 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
         delivery_rate: payload.deliveryRate || 0,
         status: 'PENDING_AGENT_CONFIRMATION',
         notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
-        custom_fields: { step: 'Completed', coupon: payload.couponCode || '', ...(payload.customFields || {}) }
+        custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', ...(payload.customFields || {}) },
+        ...(payload.source ? { source: payload.source } : {})
       })
       .eq('id', orderId);
 
@@ -201,18 +205,24 @@ export async function sendAiSensyConfirmation(orderId: string) {
     }
 
     // 4. Resolve template parameters
-    const paramsList = (config.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]').split(',');
+    const paramsList = (config.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]').split(',');
     
     // Helper to get short order id
     const shortId = order.id ? order.id.split('-')[0] : '';
     const fullAddress = [order.address, order.commune, order.wilaya].filter(Boolean).join(', ') || 'No address';
 
+    // Resolve product URL
+    const productUrl = await resolveProductUrl(store, order.product || '');
+
     const mappedParams = paramsList.map((param: string) => {
       const p = param.trim().toUpperCase();
       if (p === '[NAME]') return order.name || '';
       if (p === '[PRODUCT]') return order.product || '';
+      if (p === '[PRODUCT_URL]') return productUrl;
       if (p === '[ADDRESS]') return fullAddress;
       if (p === '[ORDER_ID]') return shortId;
+      if (p === '[STORE_NAME]') return store.name || '';
+      if (p === '[ORDER_TOTAL]') return order.total?.toString() || '';
       return '';
     });
 
@@ -232,7 +242,7 @@ export async function sendAiSensyConfirmation(orderId: string) {
       templateParams: mappedParams
     };
 
-    console.log(`[AiSensy] Dispatching Campaign to destination ${order.phone} with params:`, mappedParams);
+    console.log(`[AiSensy] Dispatching confirmation Campaign to destination ${order.phone} with params:`, mappedParams);
 
     const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
       method: 'POST',
@@ -243,14 +253,14 @@ export async function sendAiSensyConfirmation(orderId: string) {
     });
 
     const data = await response.json();
-    console.log(`[AiSensy] Response:`, data);
+    console.log(`[AiSensy] Confirmation response:`, data);
 
     // Save notes log to order
     const author = 'System (AiSensy)';
     const createdAt = new Date().toISOString();
     const newNote = response.ok && data.success
-      ? { author, text: `WhatsApp automated message triggered successfully via campaign: "${campaignName}"`, createdAt }
-      : { author, text: `AiSensy campaign trigger failed: ${data.message || 'Unknown error'}`, createdAt };
+      ? { author, text: `WhatsApp confirmation sent via campaign: "${campaignName}"`, createdAt }
+      : { author, text: `AiSensy confirmation failed: ${data.message || 'Unknown error'}`, createdAt };
 
     const updatedNotes = order.notes ? [...order.notes, newNote] : [newNote];
 
@@ -266,8 +276,132 @@ export async function sendAiSensyConfirmation(orderId: string) {
     }
 
   } catch (err: any) {
-    console.error('AiSensy Server Action Error:', err);
+    console.error('AiSensy Confirmation Error:', err);
     return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Sends an abandoned cart recovery message via AiSensy campaign API
+ */
+export async function sendAiSensyAbandonedCart(orderId: string) {
+  try {
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single();
+
+    if (orderError || !order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    if (order.status === 'ABANDONED_NOTIFIED') {
+      return { success: false, error: 'Already notified for this cart' };
+    }
+
+    const { data: store, error: storeError } = await supabase
+      .from('stores')
+      .select('*')
+      .eq('id', order.store_id)
+      .single();
+
+    if (storeError || !store) {
+      return { success: false, error: 'Store not found' };
+    }
+
+    const config = store.whatsapp_config || {};
+    if (!config.aisensyEnabled || !config.abandonedCartCampaignName) {
+      return { success: false, error: 'AiSensy or abandoned cart campaign not configured' };
+    }
+
+    const apiKey = config.aisensyApiKey;
+    const campaignName = config.abandonedCartCampaignName;
+
+    if (!apiKey || !campaignName) {
+      return { success: false, error: 'AiSensy API Key or Abandoned Cart Campaign Name not configured.' };
+    }
+
+    const shortId = order.id ? order.id.split('-')[0] : '';
+    const productUrl = await resolveProductUrl(store, order.product || '');
+
+    const mappedParams = [
+      order.name || 'Customer',
+      order.product || '',
+      productUrl,
+      order.total?.toString() || '',
+    ];
+
+    const payload = {
+      apiKey,
+      campaignName,
+      destination: order.phone,
+      userName: order.name || 'Customer',
+      templateParams: mappedParams,
+    };
+
+    console.log(`[AiSensy] Dispatching abandoned cart Campaign to ${order.phone} with params:`, mappedParams);
+
+    const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+    console.log(`[AiSensy] Abandoned cart response:`, data);
+
+    const author = 'System (AiSensy)';
+    const createdAt = new Date().toISOString();
+    const newNote = response.ok && data.success
+      ? { author, text: `Abandoned cart WhatsApp sent via campaign: "${campaignName}"`, createdAt }
+      : { author, text: `Abandoned cart AiSensy failed: ${data.message || 'Unknown error'}`, createdAt };
+
+    const updatedNotes = order.notes ? [...order.notes, newNote] : [newNote];
+
+    await supabase
+      .from('orders')
+      .update({ notes: updatedNotes, status: 'ABANDONED_NOTIFIED' })
+      .eq('id', orderId);
+
+    if (response.ok && data.success) {
+      return { success: true, response: data };
+    } else {
+      return { success: false, error: data.message || 'Campaign API call failed' };
+    }
+
+  } catch (err: any) {
+    console.error('AiSensy Abandoned Cart Error:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Resolves the first product URL from an order's product string
+ */
+async function resolveProductUrl(store: any, productName: string): Promise<string> {
+  try {
+    const { data: products } = await supabase
+      .from('products')
+      .select('seo_slug, title')
+      .eq('store_id', store.id);
+
+    if (!products || products.length === 0) return '';
+
+    const firstProductName = productName.split(',')[0].trim();
+    const match = products.find((p: any) =>
+      p.title.toLowerCase().includes(firstProductName.toLowerCase()) ||
+      firstProductName.toLowerCase().includes(p.title.toLowerCase())
+    );
+    if (match) {
+      const slug = match.seo_slug || match.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const region = (store.region || 'dz').toLowerCase();
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${region}.codhub.com`;
+      return `${baseUrl}/${region}/products/${slug}`;
+    }
+    return '';
+  } catch {
+    return '';
   }
 }
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getShortOrderId } from '@/lib/idHelper';
 
 export async function POST(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
         <table style="width: 100%; border-collapse: collapse; margin-top: 24px; background: #f8fafc; border-radius: 8px;">
           <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #64748b;"><strong>Order ID</strong></td>
-            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a;">${orderId}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a;">${getShortOrderId(orderId)}</td>
           </tr>
           <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #64748b;"><strong>Customer</strong></td>

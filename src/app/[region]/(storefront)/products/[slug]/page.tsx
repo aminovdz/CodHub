@@ -1,9 +1,10 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2, PackagePlus } from 'lucide-react';
+import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
@@ -74,8 +75,22 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
 
-  const { buyNow } = useFunnelStore();
+  const { buyNow, addCartItem } = useFunnelStore();
+
+  // Resolve cross-sell products from the relatedProducts field
+  const crossSellProducts = useMemo(() => {
+    const relatedRaw = (product as any)?.relatedProducts;
+    if (!relatedRaw || !products.length) return [];
+    // relatedProducts is a comma-separated string of product IDs or titles
+    const relatedIds = relatedRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
+    return relatedIds
+      .map((idOrTitle: string) => products.find(p => p.id === idOrTitle || p.title.toLowerCase().includes(idOrTitle.toLowerCase())))
+      .filter((p: any): p is NonNullable<typeof p> => !!p && p.id !== product?.id && p.active !== false)
+      .slice(0, 2); // Show max 2 cross-sells
+  }, [(product as any)?.relatedProducts, products, product?.id]);
 
   useEffect(() => {
     if (product && (product as any).variants && (product as any).variants.length > 0) {
@@ -116,6 +131,9 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
     return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-slate-400">Product not found</div>;
   }
 
+  const productImages = (product as any).images?.length ? (product as any).images : [product.image];
+  const currentImage = productImages[selectedImageIndex] || product.image;
+
   const handleBuyNow = () => {
     if ((product as any).variants && (product as any).variants.length > 0 && !selectedVariant) {
       alert('Please select a variant first.');
@@ -135,8 +153,17 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
       variantId: selectedVariant?.id,
       variantName: selectedVariant?.name
     });
+
+    // 2. Add any selected cross-sell items
+    selectedCrossSells.forEach(csId => {
+      const csProduct = products.find(p => p.id === csId);
+      if (csProduct) {
+        const csPrice = typeof csProduct.price === 'number' ? csProduct.price : (csProduct.price as any)[region];
+        addCartItem({ id: csProduct.id, name: csProduct.title, price: csPrice, isUpsell: true, imageUrl: csProduct.image });
+      }
+    });
     
-    // 2. Push to checkout
+    // 3. Push to checkout
     router.push(`/${region}/checkout`);
   };
 
@@ -154,14 +181,32 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
           
           {/* IMAGE GALLERY */}
           <div className="w-full md:w-1/2">
-            <div className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative">
+            <div className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'} 
-                alt={product.title} 
-                className="w-full h-full object-cover object-center"
+              <img
+                src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
+                alt={product.title}
+                className="w-full h-full object-cover object-center transition-opacity duration-300"
               />
             </div>
+            {productImages.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {productImages.map((img: string, i: number) => (
+                  <button
+                    key={i}
+                    onClick={() => setSelectedImageIndex(i)}
+                    className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                      selectedImageIndex === i
+                        ? 'border-indigo-600 ring-1 ring-indigo-600'
+                        : 'border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* PRODUCT INFO */}
@@ -276,7 +321,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
             </div>
 
             {/* Call to Action */}
-            <div className="mt-auto">
+            <div id="buy-button-section" className="mt-auto">
               <button 
                 onClick={handleBuyNow}
                 disabled={isSoldOut || (selectedVariant && selectedVariant.stock <= 0)}
@@ -295,6 +340,63 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
               </p>
             </div>
 
+            {/* Frequently Bought Together */}
+            {crossSellProducts.length > 0 && (
+              <div className="mt-8 border-t border-slate-100 pt-8">
+                <h3 className="flex items-center gap-2 text-sm font-black text-slate-900 uppercase tracking-wider mb-4">
+                  <PackagePlus size={16} className="text-indigo-600" />
+                  Frequently Bought Together
+                </h3>
+                <div className="space-y-3">
+                  {crossSellProducts.map((cs: any) => {
+                    const csPrice = typeof cs.price === 'number' ? cs.price : cs.price[region];
+                    const isSelected = selectedCrossSells.includes(cs.id);
+                    return (
+                      <label
+                        key={cs.id}
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                          isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => {
+                            setSelectedCrossSells(prev =>
+                              e.target.checked ? [...prev, cs.id] : prev.filter(id => id !== cs.id)
+                            );
+                          }}
+                          className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                        />
+                        {cs.image && (
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={cs.image} alt={cs.title} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-slate-800 text-sm truncate">{cs.title}</p>
+                          <p className="text-xs text-slate-500">Add for <span className="font-black text-indigo-600">{csPrice} {currency}</span></p>
+                        </div>
+                        {isSelected && <CheckCircle2 size={18} className="text-indigo-600 shrink-0" />}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Sticky Buy Button */}
+            <StickyBuyButton
+              enabled={store?.stickyBuyButton?.enabled ?? false}
+              onBuy={handleBuyNow}
+              price={basePrice}
+              comparePrice={compareAt}
+              currency={store?.currency || 'DZD'}
+              buttonText={store?.stickyBuyButton?.text || 'Order Now'}
+              disabled={isSoldOut}
+              customCss={store?.stickyBuyButton?.customCss}
+            />
           </div>
         </div>
       </div>

@@ -1,10 +1,88 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Knowledge cache per store ID — avoids DB round trips on every message
+const knowledgeCache = new Map<string, { systemPrompt: string; storeName: string; currency: string; botName: string; timestamp: number }>();
+const KNOWLEDGE_CACHE_TTL = 120_000; // 2 minutes
 
-const supabase = createClient(supabaseUrl, supabaseServiceRole);
+function getCacheKey(storeId: string, region: string | undefined) {
+  return storeId || `region:${region}`;
+}
+
+async function getStoreKnowledge(storeId: string, region: string | undefined) {
+  const cacheKey = getCacheKey(storeId, region);
+  const cached = knowledgeCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < KNOWLEDGE_CACHE_TTL) {
+    return cached;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseServiceRole);
+
+  // 1. Fetch store config (only needed fields)
+  let query = supabase.from('stores').select('id, name, currency, language, whatsapp_config');
+  if (storeId) {
+    query = query.eq('id', storeId);
+  } else if (region) {
+    query = query.ilike('region', region);
+  }
+
+  const { data: store, error: storeError } = await query.single();
+  if (storeError || !store) {
+    return null;
+  }
+
+  const config = store.whatsapp_config || {};
+  if (!config.chatbotEnabled) {
+    return { disabled: true } as any;
+  }
+
+  // 2. Fetch products + zones in parallel
+  const [productsRes, zonesRes] = await Promise.all([
+    supabase.from('products').select('title, price, short_desc, description').eq('store_id', store.id).eq('active', true),
+    supabase.from('shipping_zones').select('wilaya, commune, home_delivery_rate, desk_delivery_rate, estimated_days').eq('store_id', store.id).eq('active', true),
+  ]);
+
+  // 3. Compile knowledge into a compact system prompt
+  const botName = config.chatbotName || 'Assistant';
+  const currency = store.currency || 'DZD';
+  const customInstructions = config.chatbotInstructions || '';
+
+  const productsList = (productsRes.data || [])
+    .map((p: any) => `- ${p.title}: ${p.price} ${currency}. ${(p.short_desc || p.description || '').slice(0, 80)}`)
+    .join('\n');
+
+  const shippingList = (zonesRes.data || [])
+    .map((sz: any) => `- ${sz.wilaya}${sz.commune ? ` (${sz.commune})` : ''}: ${sz.home_delivery_rate} ${currency}`)
+    .join('\n');
+
+  const storeLanguage = store.language || 'en';
+  const lang = `Default language: ${storeLanguage.toUpperCase()}. Match customer's language if different.`;
+
+  const systemPrompt = `You are "${botName}" for ${store.name}. Answer ONLY about products & delivery.
+
+${lang}
+
+Products:
+${productsList || 'None available.'}
+
+Shipping:
+${shippingList || 'Nationwide — contact support for rates.'}
+
+${customInstructions}`;
+
+  const knowledge = {
+    systemPrompt,
+    storeName: store.name,
+    currency,
+    botName,
+    config,
+    timestamp: Date.now(),
+  };
+  knowledgeCache.set(cacheKey, knowledge);
+  return knowledge;
+}
 
 export async function POST(req: Request) {
   try {
@@ -14,98 +92,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing storeId or region' }, { status: 400 });
     }
 
-    // 1. Fetch store configuration
-    let query = supabase.from('stores').select('*');
-    if (storeId) {
-      query = query.eq('id', storeId);
-    } else if (region) {
-      query = query.ilike('region', region);
-    }
-    
-    const { data: store, error: storeError } = await query.single();
-    if (storeError || !store) {
-      console.error('Chatbot API - Store query error:', storeError);
+    const knowledge = await getStoreKnowledge(storeId, region);
+    if (!knowledge) {
       return NextResponse.json({ error: 'Store not found' }, { status: 404 });
     }
-
-    const config = store.whatsapp_config || {};
-    // Check if chatbot is enabled
-    if (!config.chatbotEnabled) {
+    if ((knowledge as any).disabled) {
       return NextResponse.json({ error: 'Chatbot is disabled for this store' }, { status: 403 });
     }
 
-    // 2. Fetch products
-    const { data: products } = await supabase
-      .from('products')
-      .select('*')
-      .eq('store_id', store.id)
-      .eq('active', true);
-
-    // 3. Fetch shipping zones
-    const { data: shippingZones } = await supabase
-      .from('shipping_zones')
-      .select('*')
-      .eq('store_id', store.id)
-      .eq('active', true);
-
-    // 4. Compile dynamic store knowledge
-    const botName = config.chatbotName || 'Assistant';
-    const currency = store.currency || 'DZD';
-    const customInstructions = config.chatbotInstructions || '';
-
-    const productsList = (products || [])
-      .map(p => `- ${p.title}: Price: ${p.price} ${currency}. Description: ${p.short_description || p.description || 'No description available.'}`)
-      .join('\n');
-
-    const shippingList = (shippingZones || [])
-      .map(sz => `- ${sz.wilaya}${sz.commune ? ` (${sz.commune})` : ''}: Home Delivery: ${sz.home_delivery_rate} ${currency}, Desk Delivery: ${sz.desk_delivery_rate || 'N/A'} ${currency} (Est: ${sz.estimated_days || '2-5'} days)`)
-      .join('\n');
-
-    const systemPrompt = `You are a helpful, friendly customer support assistant named "${botName}" for the e-commerce store "${store.name}".
-Your absolute priority is to answer customer questions about our PRODUCTS and DELIVERY/SHIPPING ONLY.
-
-CRITICAL INSTRUCTIONS:
-1. ONLY answer questions directly related to our products, pricing, shipping times, delivery rates, or return policies.
-2. If a customer asks about anything else (e.g. general knowledge, coding, math, personal questions, history, etc.), politely decline and state that you can only help with product inquiries and shipping info.
-3. Be polite, concise, and helpful. 
-4. Reply in the exact same language/dialect the customer is using (Arabic, Algerian Derja, French, English, Romanian, Spanish, etc.).
-5. Do not invent details. If you do not know the answer, politely ask the customer to contact support.
-
-Here is the live store information to base your answers on (Auto-learned knowledge):
-
-=== ACTIVE PRODUCTS ===
-${productsList || 'No products are currently available in the catalog.'}
-
-=== SHIPPING & DELIVERY RATES ===
-${shippingList || 'Delivery is available nationwide. Contact support for exact rates.'}
-
-=== ADDITIONAL STORE POLICIES / CUSTOM INSTRUCTIONS ===
-${customInstructions}
-`;
+    const { systemPrompt, storeName, currency, botName } = knowledge as NonNullable<typeof knowledge>;
 
     // Send to LLM
-    const provider = config.chatbotProvider || 'gemini';
-    const apiKey = config.chatbotApiKey || (provider === 'gemini' ? process.env.GEMINI_API_KEY : '');
+    const provider_ = knowledge.config.chatbotProvider || 'gemini';
+    const keyMap: Record<string, string | undefined> = {
+      gemini: process.env.GEMINI_API_KEY,
+      openai: process.env.OPENAI_API_KEY,
+      claude: process.env.CLAUDE_API_KEY,
+      openrouter: process.env.OPENROUTER_API_KEY,
+    };
+    const apiKey = (knowledge.config.chatbotApiKey || keyMap[provider_] || '').trim();
 
     if (!apiKey) {
-      return NextResponse.json({ error: `API Key for provider ${provider} not configured in chatbot settings.` }, { status: 500 });
+      return NextResponse.json({ error: `API Key for provider ${provider_} not configured in chatbot settings or environment variables.` }, { status: 500 });
     }
 
-    let botResponse = '';
+    // Build a streaming response
+    const encoder = new TextEncoder();
 
-    if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
-      
-      // Structure messages for Gemini API
-      // Format history properly: { role: 'user' | 'model', parts: [{ text: string }] }
+    if (provider_ === 'gemini') {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+
       const contents = [
         {
           role: 'user',
-          parts: [{ text: `SYSTEM INSTRUCTIONS:\n${systemPrompt}` }]
+          parts: [{ text: `System: ${systemPrompt}` }]
         },
         {
           role: 'model',
-          parts: [{ text: `Understood. I will act as "${botName}", answer only product and delivery questions, and follow all instructions.` }]
+          parts: [{ text: `Understood.` }]
         }
       ];
 
@@ -129,52 +153,89 @@ ${customInstructions}
         try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
         return NextResponse.json({ error: `Gemini API Error: ${errMsg}` }, { status: response.status });
       }
-      const data = await response.json();
-      botResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      // Stream the SSE response from Gemini
+      const reader = response.body?.getReader();
+      if (!reader) {
+        return NextResponse.json({ error: 'Failed to read response stream' }, { status: 500 });
+      }
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.slice(6).trim();
+                  if (!jsonStr || jsonStr === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    if (text) {
+                      controller.enqueue(encoder.encode(JSON.stringify({ text }) + '\n'));
+                    }
+                  } catch { /* skip malformed chunks */ }
+                }
+              }
+            }
+          } finally {
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'application/x-ndjson',
+          'x-chatbot-name': botName,
+        },
+      });
     } 
     else {
-      // Fallback/Mock or OpenAI/Claude/OpenRouter implementation
+      // Non-Gemini providers — wrap in a simple stream
       const formattedMessages = [
         { role: 'system', content: systemPrompt },
         ...(messages || []).map((m: any) => ({ role: m.role, content: m.content }))
       ];
 
       let endpoint = '';
-      if (provider === 'openai') {
-        endpoint = 'https://api.openai.com/v1/chat/completions';
-      } else if (provider === 'claude') {
-        endpoint = 'https://api.anthropic.com/v1/messages';
-      } else {
-        endpoint = 'https://openrouter.ai/api/v1/chat/completions';
-      }
-
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      let body = {};
+      let body: any = {};
 
-      if (provider === 'openai') {
+      if (provider_ === 'openai') {
+        endpoint = 'https://api.openai.com/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;
-        body = {
-          model: 'gpt-4o-mini',
-          messages: formattedMessages,
-          temperature: 0.4
-        };
-      } else if (provider === 'claude') {
+        body = { model: 'gpt-4o-mini', messages: formattedMessages, temperature: 0.4, stream: true };
+      } else if (provider_ === 'claude') {
+        endpoint = 'https://api.anthropic.com/v1/messages';
         headers['x-api-key'] = apiKey;
         headers['anthropic-version'] = '2023-06-01';
-        headers['anthropic-dangerous-direct-browser-access'] = 'true';
         body = {
           model: 'claude-3-5-sonnet-20241022',
           max_tokens: 1000,
           system: systemPrompt,
           messages: (messages || []).map((m: any) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-          temperature: 0.4
+          temperature: 0.4,
+          stream: true,
         };
       } else {
+        endpoint = 'https://openrouter.ai/api/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;
         body = {
-          model: 'meta-llama/llama-3.3-70b-instruct:free',
+          model: knowledge.config.chatbotModel || 'google/gemini-2.0-flash-exp:free',
           messages: formattedMessages,
-          temperature: 0.4
+          temperature: 0.4,
+          stream: true,
         };
       }
 
@@ -186,21 +247,62 @@ ${customInstructions}
 
       if (!response.ok) {
         const errText = await response.text();
-        console.error(`${provider} Chatbot API Error:`, errText);
-        let errMsg = `${provider} generation failed`;
+        let errMsg = `${provider_} generation failed`;
         try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
-        return NextResponse.json({ error: `${provider} API Error: ${errMsg}` }, { status: response.status });
+        return NextResponse.json({ error: `${provider_} API Error: ${errMsg}` }, { status: response.status });
       }
 
-      const data = await response.json();
-      if (provider === 'claude') {
-        botResponse = data.content?.[0]?.text || '';
-      } else {
-        botResponse = data.choices?.[0]?.message?.content || '';
+      const reader = response.body?.getReader();
+      if (!reader) {
+        return NextResponse.json({ error: 'Failed to read response stream' }, { status: 500 });
       }
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const jsonStr = line.slice(6).trim();
+                  if (!jsonStr || jsonStr === '[DONE]') continue;
+                  try {
+                    const parsed = JSON.parse(jsonStr);
+                    let text = '';
+                    if (provider_ === 'claude') {
+                      if (parsed.type === 'content_block_delta') text = parsed.delta?.text || '';
+                    } else {
+                      text = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.message?.content || '';
+                    }
+                    if (text) {
+                      controller.enqueue(encoder.encode(JSON.stringify({ text }) + '\n'));
+                    }
+                  } catch { /* skip */ }
+                }
+              }
+            }
+          } finally {
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'application/x-ndjson',
+          'x-chatbot-name': botName,
+        },
+      });
     }
-
-    return NextResponse.json({ response: botResponse });
   } catch (error: any) {
     console.error('Chatbot API Error:', error);
     return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });

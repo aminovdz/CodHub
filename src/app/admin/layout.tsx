@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -8,6 +8,7 @@ import {
   FileText, MonitorPlay, ShoppingCart, Home, CreditCard, ShieldAlert,
   Ghost, Menu, X, Sun, Moon, BarChart2, Boxes, Tag, Activity, Bot, Users, Globe, Calculator, HelpCircle, Megaphone
 } from 'lucide-react';
+import { useShallow } from 'zustand/shallow';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { ToastContainer } from '@/components/admin/ToastContainer';
 
@@ -25,13 +26,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin/login' || pathname === '/superadmin/login';
-  const { activeStore, availableStores, setActiveStore, staffAccounts, _hasHydrated } = useAdminStore();
+  const { activeStore, availableStores, setActiveStore, staffAccounts, _hasHydrated } = useAdminStore(
+    useShallow((s: any) => ({
+      activeStore: s.activeStore,
+      availableStores: s.availableStores,
+      setActiveStore: s.setActiveStore,
+      staffAccounts: s.staffAccounts,
+      _hasHydrated: s._hasHydrated,
+    }))
+  );
 
   // storeReady: true once Zustand has loaded data from localStorage
   const storeReady = _hasHydrated;
 
   const currentStaffAccount = !isSuperAdminRoute && isAuthenticated && username
-    ? staffAccounts.find(a => a.name.trim().toLowerCase() === username.trim().toLowerCase())
+    ? staffAccounts.find((a: any) => a.name.trim().toLowerCase() === username.trim().toLowerCase())
     : null;
   const allowedStoreIds = currentStaffAccount 
     ? (currentStaffAccount.storeIds && currentStaffAccount.storeIds.length > 0 
@@ -42,91 +51,69 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isSingleStoreStaff = currentStaffAccount && allowedStoreIds.length === 1;
 
   // Detect route type and manage session redirect / restoration
+  const lastVerifyRef = useRef(0);
+
   useEffect(() => {
     const superRoute = pathname.startsWith('/superadmin');
     setIsSuperAdminRoute(superRoute);
 
-    // Restore dark mode
     const saved = localStorage.getItem('codadmin-dark');
     if (saved === 'true') setIsDark(true);
 
-    const sessionAuth = sessionStorage.getItem('codadmin-auth');
     const isLogin = pathname === '/admin/login' || pathname === '/superadmin/login';
+    const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
 
-    const verifyServerSession = async (fallbackToRedirect: boolean = true) => {
-      try {
-        const res = await fetch('/api/auth/me');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.authenticated && data.user) {
-            const isSuper = !!data.user.isSuperAdmin;
-            if (isSuper === superRoute) {
-              const newAuth = {
-                auth: true,
-                role: data.user.role,
-                user: data.user.username,
-                username: data.user.username,
-                isSuperAdmin: isSuper
-              };
-              sessionStorage.setItem('codadmin-auth', JSON.stringify(newAuth));
-              setIsAuthenticated(true);
-              setActiveRole(data.user.role);
-              setUsername(data.user.username);
-              if (isLogin) {
-                window.location.href = superRoute ? '/superadmin' : '/admin';
-              }
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error verifying session:', err);
-      }
+    if (isLogin) return;
 
-      if (fallbackToRedirect) {
-        sessionStorage.removeItem('codadmin-auth');
-        const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
-        if (pathname !== targetLogin) {
-          window.location.href = targetLogin;
-        }
-      }
-    };
+    let sessionAuth = sessionStorage.getItem('codadmin-auth');
 
     if (sessionAuth) {
       try {
         const { auth, role, user, isSuperAdmin } = JSON.parse(sessionAuth);
-        // Only restore if the session type matches the current panel
         if (!!isSuperAdmin === superRoute) {
           setIsAuthenticated(auth);
           setActiveRole(role);
           setUsername(user);
-          if (isLogin) {
-            window.location.href = superRoute ? '/superadmin' : '/admin';
-          }
-          // Validate with server in the background
-          verifyServerSession(true);
+          return;
         } else {
-          const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
-          if (pathname !== targetLogin) {
-            window.location.href = targetLogin;
-          }
+          window.location.href = targetLogin;
+          return;
         }
       } catch {
         sessionStorage.removeItem('codadmin-auth');
-        const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
-        if (pathname !== targetLogin) {
-          window.location.href = targetLogin;
-        }
+        sessionAuth = null;
       }
-    } else {
-      // No session storage. Verify if we have a valid cookie session.
-      verifyServerSession(!isLogin);
     }
-  }, [pathname]);
 
-  // Update route type whenever URL changes (for navigation within the layout)
-  useEffect(() => {
-    setIsSuperAdminRoute(pathname.startsWith('/superadmin'));
+    // Debounce server verification: skip if verified in the last 30s
+    const now = Date.now();
+    if (now - lastVerifyRef.current < 30000) return;
+    lastVerifyRef.current = now;
+
+    const serverVerify = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.authenticated) {
+            const userData = data.user;
+            setIsAuthenticated(true);
+            setActiveRole(userData.role);
+            setUsername(userData.username);
+            sessionStorage.setItem('codadmin-auth', JSON.stringify({
+              auth: true, role: userData.role, user: userData.username,
+              username: userData.username, isSuperAdmin: !!userData.isSuperAdmin
+            }));
+            return;
+          }
+        }
+      } catch {
+        // Network error — fall through to redirect
+      }
+      window.location.href = targetLogin;
+    };
+
+    serverVerify();
   }, [pathname]);
 
   // Enforce store-specific staff restriction
@@ -134,7 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (storeReady && isAuthenticated && username && !isSuperAdminRoute) {
       const usernameClean = username.trim().toLowerCase();
       const account = staffAccounts.find(
-        a => a.name.trim().toLowerCase() === usernameClean
+        (a: any) => a.name.trim().toLowerCase() === usernameClean
       );
       if (account) {
         const accountStoreIds = account.storeIds && account.storeIds.length > 0 
@@ -144,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (accountStoreIds.length > 0) {
           const isCurrentlyAllowed = activeStore && accountStoreIds.includes(activeStore.id);
           if (!isCurrentlyAllowed) {
-            const firstValidStore = availableStores.find(s => accountStoreIds.includes(s.id));
+            const firstValidStore = availableStores.find((s: any) => accountStoreIds.includes(s.id));
             if (firstValidStore) {
               setActiveStore(firstValidStore.id);
             }
@@ -189,28 +176,58 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navLinks = [
-    { href: basePath,                label: 'Dashboard',       icon: <LayoutDashboard size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
-    { href: `${basePath}/orders`,    label: 'Orders',          icon: <ShoppingCart size={18} />,    roles: ['admin', 'fulfillment', 'confirmation'] },
-    { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />,           roles: ['admin', 'confirmation'] },
-    { href: `${basePath}/analytics`, label: 'Analytics',       icon: <BarChart2 size={18} />,       roles: ['admin'] },
-    { href: `${basePath}/calculator`,label: 'Profit Calculator',icon: <Calculator size={18} />,     roles: ['admin'] },
-    { href: `${basePath}/customers`, label: 'Customers',       icon: <Users size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/stock`,     label: 'Stock',           icon: <Boxes size={18} />,           roles: ['admin', 'fulfillment'] },
-    { href: `${basePath}/products`,  label: 'Products',        icon: <Package size={18} />,         roles: ['admin'] },
-    { href: `${basePath}/coupons`,   label: 'Coupons',         icon: <Tag size={18} />,             roles: ['admin'] },
-    { href: `${basePath}/homepage`,  label: 'Homepage',        icon: <Home size={18} />,            roles: ['admin'] },
-    { href: `${basePath}/checkout`,  label: 'Checkout',        icon: <CreditCard size={18} />,      roles: ['admin'] },
-    { href: `${basePath}/translations`,label: 'Translations',    icon: <Globe size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/legal`,     label: 'Legal Pages',     icon: <FileText size={18} />,        roles: ['admin'] },
-    { href: `${basePath}/promo`,     label: 'Landing Pages',   icon: <MonitorPlay size={18} />,     roles: ['admin'] },
-    { href: `${basePath}/agents`,    label: 'AI Agents Hub',   icon: <Bot size={18} />,             roles: ['admin'] },
-    { href: `${basePath}/ads-mcp`,   label: 'Ads MCP Hub',     icon: <Megaphone size={18} />,       roles: ['admin'] },
-    { href: `${basePath}/staff`,     label: 'Staff Perf.',     icon: <Users size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/activity`,  label: 'Activity Log',    icon: <Activity size={18} />,        roles: ['admin'] },
-    { href: `${basePath}/help`,      label: 'Help & Docs',     icon: <HelpCircle size={18} />,      roles: ['admin'] },
-    { href: `${basePath}/settings`,  label: 'Settings',        icon: <Settings size={18} />,        roles: ['admin'] },
-  ].filter(link => link.roles.includes(activeRole || 'admin'));
+  const navSections = [
+    {
+      title: 'Overview',
+      links: [
+        { href: basePath, label: 'Dashboard', icon: <LayoutDashboard size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
+      ],
+    },
+    {
+      title: 'Orders & Customers',
+      links: [
+        { href: `${basePath}/orders`, label: 'Orders', icon: <ShoppingCart size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
+        { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />, roles: ['admin', 'confirmation'] },
+        { href: `${basePath}/customers`, label: 'Customers', icon: <Users size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Products & Inventory',
+      links: [
+        { href: `${basePath}/products`, label: 'Products', icon: <Package size={18} />, roles: ['admin'] },
+        { href: `${basePath}/stock`, label: 'Stock', icon: <Boxes size={18} />, roles: ['admin', 'fulfillment'] },
+        { href: `${basePath}/coupons`, label: 'Coupons', icon: <Tag size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Storefront',
+      links: [
+        { href: `${basePath}/homepage`, label: 'Homepage', icon: <Home size={18} />, roles: ['admin'] },
+        { href: `${basePath}/checkout`, label: 'Checkout', icon: <CreditCard size={18} />, roles: ['admin'] },
+        { href: `${basePath}/promo`, label: 'Landing Pages', icon: <MonitorPlay size={18} />, roles: ['admin'] },
+        { href: `${basePath}/legal`, label: 'Legal Pages', icon: <FileText size={18} />, roles: ['admin'] },
+        { href: `${basePath}/translations`, label: 'Translations', icon: <Globe size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Growth & Analytics',
+      links: [
+        { href: `${basePath}/analytics`, label: 'Analytics', icon: <BarChart2 size={18} />, roles: ['admin'] },
+        { href: `${basePath}/calculator`, label: 'Profit Calculator', icon: <Calculator size={18} />, roles: ['admin'] },
+        { href: `${basePath}/agents`, label: 'AI Agents Hub', icon: <Bot size={18} />, roles: ['admin'] },
+        { href: `${basePath}/ads-mcp`, label: 'Ads MCP Hub', icon: <Megaphone size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Administration',
+      links: [
+        { href: `${basePath}/staff`, label: 'Staff Performance', icon: <Users size={18} />, roles: ['admin'] },
+        { href: `${basePath}/activity`, label: 'Activity Log', icon: <Activity size={18} />, roles: ['admin'] },
+        { href: `${basePath}/help`, label: 'Help & Docs', icon: <HelpCircle size={18} />, roles: ['admin'] },
+        { href: `${basePath}/settings`, label: 'Settings', icon: <Settings size={18} />, roles: ['admin'] },
+      ],
+    },
+  ];
 
   return (
     <div className={`min-h-screen flex font-sans relative transition-colors duration-300 ${isDark ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
@@ -247,24 +264,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navLinks.map(link => {
-            const isActive = pathname === link.href;
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {navSections.map(section => {
+            const visibleLinks = section.links.filter(l => l.roles.includes(activeRole || 'admin'));
+            if (visibleLinks.length === 0) return null;
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <span className={isActive ? 'text-white' : 'text-slate-500'}>{link.icon}</span>
-                {link.label}
-                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300" />}
-              </Link>
+              <div key={section.title}>
+                <p className="px-3 pb-1 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">{section.title}</p>
+                <div className="space-y-0.5">
+                  {visibleLinks.map(link => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl font-semibold text-sm transition-all ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <span className={isActive ? 'text-white' : 'text-slate-500'}>{link.icon}</span>
+                        {link.label}
+                        {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
@@ -284,8 +312,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {availableStores.length > 0 ? (
                 availableStores
-                  .filter(s => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
-                  .map(s => (
+                  .filter((s: any) => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
+                  .map((s: any) => (
                     <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
                   ))
               ) : (

@@ -1,68 +1,27 @@
-import { supabase } from './supabase';
+export async function uploadImageToSupabase(file: File, bucketName: string = 'images'): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('bucket', bucketName);
 
-/**
- * Ensures the specified bucket exists and is public.
- * If not, attempts to create it.
- */
-async function ensureBucketExists(bucketName: string) {
-  try {
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    if (listError) {
-      console.warn('Could not list buckets:', listError);
-      return;
-    }
-    
-    const exists = buckets?.some(b => b.name === bucketName);
-    if (!exists) {
-      console.log(`Bucket "${bucketName}" not found. Attempting to create it...`);
-      const { error: createError } = await supabase.storage.createBucket(bucketName, {
-        public: true,
-        fileSizeLimit: 10485760, // 10MB
-      });
-      if (createError) {
-        console.error(`Failed to create bucket "${bucketName}":`, createError);
-      } else {
-        console.log(`Successfully created public bucket "${bucketName}"`);
-      }
-    }
-  } catch (err) {
-    console.error('Error ensuring bucket exists:', err);
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(err.error || 'Upload failed');
   }
+
+  const data = await res.json();
+  return data.url;
 }
 
-/**
- * Uploads a file to Supabase Storage and returns the public URL.
- * Falls back to throwing a descriptive error if the upload fails.
- */
-export async function uploadImageToSupabase(file: File, bucketName: string = 'images'): Promise<string> {
-  // Ensure the bucket exists first
-  await ensureBucketExists(bucketName);
-
-  const fileExt = file.name.split('.').pop();
-  const cleanFileName = file.name
-    .replace(/\.[^/.]+$/, "") // remove extension
-    .replace(/[^a-zA-Z0-9]/g, "_") // sanitize special chars
-    .toLowerCase();
-  
-  const fileName = `${cleanFileName}_${Date.now()}.${fileExt}`;
-  const filePath = `uploads/${fileName}`;
-
-  const { data, error } = await supabase.storage
-    .from(bucketName)
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-
-  if (error) {
-    console.error('Supabase Storage upload error details:', error);
-    throw new Error(`Upload failed: ${error.message}`);
+export async function uploadMultipleImages(files: File[], bucketName: string = 'images'): Promise<string[]> {
+  const urls: string[] = [];
+  for (const file of files) {
+    const url = await uploadImageToSupabase(file, bucketName);
+    urls.push(url);
   }
-
-  // Get the public URL of the uploaded image
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucketName)
-    .getPublicUrl(filePath);
-
-  return publicUrl;
+  return urls;
 }

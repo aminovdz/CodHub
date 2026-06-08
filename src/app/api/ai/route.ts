@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     let textOutput = '';
 
     if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
       
       const parts: any[] = [{ text: prompt }];
       if (images && images.length > 0) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { temperature: 0.7 }
+          generationConfig: { temperature: 0.3 }
         })
       });
 
@@ -127,18 +127,7 @@ export async function POST(req: Request) {
       textOutput = data.choices?.[0]?.message?.content || '';
     }
     else if (provider === 'openrouter') {
-      const contentBlocks: any[] = [{ type: "text", text: prompt }];
-
-      if (images && images.length > 0) {
-        images.forEach((imgObj: { data: string, mimeType: string }) => {
-          const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
-          contentBlocks.push({
-            type: "image_url",
-            image_url: { url: base64Data }
-          });
-        });
-      }
-
+      // OpenRouter free models don't support image input — send text only
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -149,7 +138,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'meta-llama/llama-3.3-70b-instruct:free',
-          messages: [{ role: 'user', content: contentBlocks }]
+          messages: [{ role: 'user', content: prompt }]
         })
       });
 
@@ -167,14 +156,26 @@ export async function POST(req: Request) {
     // If the expected output is JSON, try to parse it
     if (type === 'json') {
       try {
-        // Find json block if wrapped in markdown
-        const jsonMatch = textOutput.match(/```json\n([\s\S]*?)\n```/);
-        const jsonString = jsonMatch ? jsonMatch[1] : textOutput;
+        let jsonString = textOutput;
+
+        // Strip any markdown code block fences
+        jsonString = jsonString.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+
+        // Find the first '{' and last '}' to extract just the JSON object
+        const firstBrace = jsonString.indexOf('{');
+        const lastBrace = jsonString.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          jsonString = jsonString.slice(firstBrace, lastBrace + 1);
+        }
+
+        // Try to fix common JSON issues: trailing commas before closing brace
+        jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
         const parsed = JSON.parse(jsonString);
         return NextResponse.json({ result: parsed });
       } catch (e) {
-        console.error("Failed to parse AI JSON output:", textOutput);
-        return NextResponse.json({ error: 'AI returned invalid JSON format' }, { status: 500 });
+        console.error("Failed to parse AI JSON output. Raw text:", textOutput);
+        return NextResponse.json({ error: 'AI returned invalid JSON format. Try a more specific prompt.' }, { status: 500 });
       }
     }
 

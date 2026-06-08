@@ -1,7 +1,7 @@
 'use client';
 
 import { X, AlertTriangle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 
 interface ConfirmModalProps {
   isOpen: boolean;

@@ -2,14 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
-import { TrendingUp, Package, MapPin, Users, BarChart2, DollarSign, Filter, Download } from 'lucide-react';
+import { TrendingUp, Package, MapPin, Users, BarChart2, DollarSign, Filter, Download, Megaphone } from 'lucide-react';
 
-type Tab = 'revenue' | 'products' | 'wilaya' | 'staff' | 'financial' | 'funnel';
+type Tab = 'revenue' | 'products' | 'wilaya' | 'staff' | 'financial' | 'funnel' | 'marketing';
 
 export default function AdminAnalyticsPage() {
   const { activeStore, orders, callLogs } = useAdminStore();
   const [tab, setTab] = useState<Tab>('revenue');
   const [rangeDays, setRangeDays] = useState(30);
+  const [manualSpend, setManualSpend] = useState<Record<string, number>>({});
 
   const storeOrders = useMemo(() => orders.filter(o => o.storeId === activeStore.id), [orders, activeStore.id]);
 
@@ -136,6 +137,7 @@ export default function AdminAnalyticsPage() {
     { key: 'revenue' as Tab, label: 'Revenue', icon: <TrendingUp size={15} /> },
     { key: 'financial' as Tab, label: 'Financial', icon: <DollarSign size={15} /> },
     { key: 'funnel' as Tab, label: 'Funnel & Source', icon: <Filter size={15} /> },
+    { key: 'marketing' as Tab, label: 'Marketing Attribution', icon: <Megaphone size={15} /> },
     { key: 'products' as Tab, label: 'Products', icon: <Package size={15} /> },
     { key: 'wilaya' as Tab, label: 'Wilaya Heatmap', icon: <MapPin size={15} /> },
     { key: 'staff' as Tab, label: 'Staff', icon: <Users size={15} /> },
@@ -354,6 +356,77 @@ export default function AdminAnalyticsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* MARKETING */}
+      {tab === 'marketing' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="font-black text-lg text-slate-900 flex items-center gap-2"><Megaphone size={20} className="text-indigo-500" /> Marketing Performance</h3>
+                <p className="text-sm text-slate-500">Enter your ad spend for the period to calculate CPA and ROAS.</p>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[800px]">
+                <thead>
+                  <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                    <th className="p-4 font-bold">Source</th>
+                    <th className="p-4 font-bold text-right">Orders</th>
+                    <th className="p-4 font-bold text-right">Revenue</th>
+                    <th className="p-4 font-bold text-right w-48">Ad Spend ({activeStore.currency})</th>
+                    <th className="p-4 font-bold text-right">CPA</th>
+                    <th className="p-4 font-bold text-right">ROAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sourceData.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-slate-400">No source data available.</td></tr>}
+                  {sourceData.map(s => {
+                    const spend = manualSpend[s.source] || 0;
+                    const cpa = s.orders > 0 && spend > 0 ? (spend / s.orders).toFixed(2) : '0.00';
+                    const roas = spend > 0 ? (s.revenue / spend).toFixed(2) : '0.00';
+                    const isGoodRoas = parseFloat(roas) >= 2.0;
+
+                    return (
+                      <tr key={s.source} className="border-b border-slate-100 hover:bg-slate-50">
+                        <td className="p-4">
+                          <span className="inline-block px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wide bg-indigo-50 text-indigo-700">
+                            {s.source}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right font-bold text-slate-900">{s.orders}</td>
+                        <td className="p-4 text-right font-black text-slate-700">{s.revenue.toLocaleString()}</td>
+                        <td className="p-4 text-right">
+                          <input 
+                            type="number"
+                            min="0"
+                            placeholder="e.g. 500"
+                            className="w-full text-right px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                            value={manualSpend[s.source] || ''}
+                            onChange={(e) => setManualSpend(prev => ({ ...prev, [s.source]: parseFloat(e.target.value) || 0 }))}
+                          />
+                        </td>
+                        <td className="p-4 text-right font-bold text-slate-900">
+                          {cpa}
+                        </td>
+                        <td className="p-4 text-right">
+                          {spend > 0 ? (
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-xs font-black ${isGoodRoas ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {roas}x
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-sm font-bold">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

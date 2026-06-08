@@ -37,6 +37,9 @@ export default function AdminSettingsPage() {
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
+  const [stickyBuyEnabled, setStickyBuyEnabled] = useState(activeStore.stickyBuyButton?.enabled ?? false);
+  const [stickyBuyText, setStickyBuyText] = useState(activeStore.stickyBuyButton?.text || 'Order Now');
+  const [stickyBuyCss, setStickyBuyCss] = useState(activeStore.stickyBuyButton?.customCss || '');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
@@ -103,12 +106,14 @@ export default function AdminSettingsPage() {
     aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
     aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
     aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
-    aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+    aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
     aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
+    abandonedCartCampaignName: activeStore.whatsappConfig?.abandonedCartCampaignName || '',
     chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
     chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
     chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
     chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
+    chatbotModel: activeStore.whatsappConfig?.chatbotModel || '',
     chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
   });
 
@@ -138,6 +143,7 @@ export default function AdminSettingsPage() {
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; storeId: string; name: string }>({ isOpen: false, storeId: '', name: '' });
   const [newCategory, setNewCategory] = useState('');
+  const [categoryError, setCategoryError] = useState('');
 
   useEffect(() => {
     setTranslations(activeStore.translations || {});
@@ -182,12 +188,14 @@ export default function AdminSettingsPage() {
       aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
       aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
       aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
-      aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+      aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
       aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
+      abandonedCartCampaignName: activeStore.whatsappConfig?.abandonedCartCampaignName || '',
       chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
       chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
       chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
       chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
+      chatbotModel: activeStore.whatsappConfig?.chatbotModel || '',
       chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
     });
 
@@ -207,7 +215,8 @@ export default function AdminSettingsPage() {
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
-      customDomain: customDomain.trim() || undefined
+      customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
+      stickyBuyButton: { enabled: stickyBuyEnabled, text: stickyBuyText, customCss: stickyBuyCss }
     });
 
     setGlobalApiKey(localApiKey);
@@ -233,7 +242,7 @@ export default function AdminSettingsPage() {
       phonePrefix: newStorePrefix,
       currency: newStoreCurrency.toUpperCase(),
       language: newStoreLanguage.toLowerCase(),
-      customDomain: newStoreCustomDomain.trim() || undefined,
+      customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
       translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
     });
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
@@ -517,20 +526,26 @@ export default function AdminSettingsPage() {
         </div>
         <form onSubmit={(e) => {
           e.preventDefault();
+          setCategoryError('');
           if (newCategory) {
-            setCategories(prev => [...prev, newCategory]);
+            if (categories.some(c => c.toLowerCase().trim() === newCategory.toLowerCase().trim())) {
+              setCategoryError(`Category "${newCategory}" already exists`);
+              return;
+            }
+            setCategories(prev => [...prev, newCategory.trim()]);
             addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Category Added', detail: `Added category ${newCategory}` });
             setNewCategory('');
           }
         }} className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-xs font-bold text-slate-500 mb-1">New Category Name</label>
-            <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. Beauty & Care" />
+            <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} onFocus={() => setCategoryError('')} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. Beauty & Care" />
           </div>
           <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px]">
             <Plus size={16} /> Add
           </button>
         </form>
+        {categoryError && <p className="text-rose-600 text-xs font-bold mt-2">{categoryError}</p>}
       </div>
 
       {/* STAFF ACCOUNTS */}
@@ -894,8 +909,11 @@ export default function AdminSettingsPage() {
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Google Sheets / Generic Webhook URL</label>
-                  <input type="text" value={genericWebhookUrl} onChange={e => setGenericWebhookUrl(e.target.value)} placeholder="https://script.google.com/macros/s/..." className="w-full p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 bg-white text-slate-900 font-bold" />
+                  <div className="pt-6 border-t border-slate-100">
+                    <h4 className="text-sm font-bold text-slate-900 mb-1">n8n / 3PL Webhook URL</h4>
+                    <p className="text-xs text-slate-500 mb-3">Send new confirmed orders automatically to n8n, Make, or any 3PL service.</p>
+                    <input type="text" value={genericWebhookUrl} onChange={e => setGenericWebhookUrl(e.target.value)} placeholder="https://hook.n8n.cloud/webhook/..." className="w-full p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 bg-white text-slate-900 font-bold" />
+                  </div>
                   <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <p className="text-xs text-slate-500">When you click "Send to Webhook" on an order, we will POST the order data to this URL.</p>
                     <button
@@ -963,7 +981,7 @@ export default function AdminSettingsPage() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Abandoned Cart Message Script</label>
                   <textarea value={whatsappConfig.abandonedCartScript} onChange={(e) => setWhatsappConfig({...whatsappConfig, abandonedCartScript: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none" />
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Available variables: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[CART_TOTAL]</strong>.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Available variables: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[PRODUCT_URL]</strong>, <strong>[CART_TOTAL]</strong>, <strong>[ORDER_ID]</strong>.</p>
                 </div>
               </div>
             )}
@@ -1021,14 +1039,20 @@ export default function AdminSettingsPage() {
                       <input type="password" value={whatsappConfig.aisensyApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyApiKey: e.target.value})} placeholder="Enter AiSensy campaign API Key" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy Campaign Name</label>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Order Confirmation Campaign Name</label>
                       <input type="text" value={whatsappConfig.aisensyCampaignName} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyCampaignName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Shortcodes / Params (comma-separated, in order)</label>
-                    <input type="text" value={whatsappConfig.aisensyTemplateParams} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: [NAME], [PRODUCT], [ADDRESS], [ORDER_ID]</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Abandoned Cart Campaign Name</label>
+                      <input type="text" value={whatsappConfig.abandonedCartCampaignName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, abandonedCartCampaignName: e.target.value})} placeholder="e.g. abandoned_cart_recovery" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Shortcodes / Params (comma-separated, in order)</label>
+                      <input type="text" value={whatsappConfig.aisensyTemplateParams} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <p className="text-[11px] text-slate-400 mt-1">Available for confirmation: [NAME], [PRODUCT], [PRODUCT_URL], [ADDRESS], [ORDER_ID], [STORE_NAME], [ORDER_TOTAL]</p>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
                     <div>
@@ -1039,6 +1063,17 @@ export default function AdminSettingsPage() {
                       <input type="checkbox" checked={whatsappConfig.aisensyIgnoreSelfConfirmed} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
                       <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mb-2">External Cron Setup (for automated abandoned cart recovery)</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Set up a cron job at <strong>cron-job.org</strong> (or similar) to hit this URL every 5 minutes:<br />
+                      <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs text-slate-800 dark:text-slate-200 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/abandoned-carts</code>
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                      Add HTTP header: <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">Authorization: Bearer YOUR_CRON_SECRET</code><br />
+                      Then add <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">CRON_SECRET=YOUR_CRON_SECRET</code> to your <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">.env</code> file.
+                    </p>
                   </div>
                 </div>
               )}
@@ -1077,6 +1112,12 @@ export default function AdminSettingsPage() {
                       <input type="password" value={whatsappConfig.chatbotApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotApiKey: e.target.value})} placeholder="Key (falls back to global key if empty)" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                   </div>
+                  {whatsappConfig.chatbotProvider === 'openrouter' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">OpenRouter Model</label>
+                      <input type="text" value={whatsappConfig.chatbotModel ?? ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotModel: e.target.value})} placeholder="e.g. google/gemini-2.0-flash-exp:free" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Store Policies & Additional Chatbot Instructions (Dynamic Knowledge)</label>
                     <textarea value={whatsappConfig.chatbotInstructions} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotInstructions: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none animate-in fade-in" placeholder="Provide extra store information like shipping details, rules, or faq answers to guide the chatbot." />
@@ -1111,6 +1152,60 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-500 mt-2">This color will be used for main call-to-action buttons.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Sticky Buy Button Panel */}
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+            <ShoppingCart className="w-6 h-6 text-indigo-600" /> Sticky Buy Button
+          </h2>
+          
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <div>
+                <label className="font-bold text-sm text-slate-700 dark:text-slate-300">Enable Sticky Buy Button</label>
+                <p className="text-xs text-slate-500 mt-1">Shows a fixed bottom bar with buy button when users scroll past the main CTA.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStickyBuyEnabled(!stickyBuyEnabled)}
+                className={`relative w-12 h-7 rounded-full transition-colors ${stickyBuyEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+              >
+                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${stickyBuyEnabled ? 'translate-x-5' : ''}`} />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Button Text</label>
+              <input
+                type="text"
+                value={stickyBuyText}
+                onChange={e => setStickyBuyText(e.target.value)}
+                placeholder="Order Now"
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+              />
+              <p className="text-xs text-slate-500 mt-2">Text displayed on the sticky buy button.</p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Custom CSS</label>
+              <textarea
+                value={stickyBuyCss}
+                onChange={e => setStickyBuyCss(e.target.value)}
+                placeholder=".sh-sticky-bar { background: #000; }&#10;.sh-sticky-bar-price { color: #fff; }&#10;.sh-sticky-bar-button { background: #ff6600; }"
+                rows={6}
+                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-900 text-emerald-400 font-mono text-sm focus:ring-2 focus:ring-indigo-600 outline-none resize-none"
+                spellCheck={false}
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                Available classes: <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar</code> (outer bar), 
+                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-inner</code> (inner row),
+                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-price</code> (price text),
+                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-compare</code> (compare price),
+                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-button</code> (buy button).
+              </p>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin } from 'lucide-react';
@@ -24,7 +24,7 @@ interface Props {
   region: string;
 }
 
-export default function InlineOrderForm({ productId, region }: Props) {
+export default memo(function InlineOrderForm({ productId, region }: Props) {
   const router = useRouter();
   const { t } = useTranslation(region);
   const { products, shippingZones, availableStores, setOrders } = useAdminStore();
@@ -246,4 +246,4 @@ export default function InlineOrderForm({ productId, region }: Props) {
       </div>
     </div>
   );
-}
+});

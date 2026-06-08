@@ -2,7 +2,7 @@
 
 import { useNotificationStore, NotificationType } from '@/lib/store/useNotificationStore';
 import { CheckCircle2, AlertCircle, Info, AlertTriangle, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 
 const iconMap: Record<NotificationType, React.ReactNode> = {
   success: <CheckCircle2 className="text-emerald-500" size={20} />,
@@ -18,7 +18,7 @@ const bgMap: Record<NotificationType, string> = {
   warning: 'bg-amber-50 border-amber-100 dark:bg-amber-950/20 dark:border-amber-900/50',
 };
 
-export function ToastContainer() {
+export const ToastContainer = memo(function ToastContainer() {
   const { notifications, removeNotification } = useNotificationStore();
   const [mounted, setMounted] = useState(false);
 
@@ -53,4 +53,4 @@ export function ToastContainer() {
       ))}
     </div>
   );
-}
+});

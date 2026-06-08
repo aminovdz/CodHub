@@ -1,9 +1,10 @@
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 import TrackingPixels from '@/components/TrackingPixels';
 import RegionCookieSetter from '@/components/RegionCookieSetter';
 import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import ChatbotWidget from '@/components/ChatbotWidget';
+import { UTMTracker } from '@/components/funnel/UTMTracker';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -57,6 +58,9 @@ export default async function RegionLayout({
     <>
       <RegionCookieSetter region={region} />
       <TrackingPixels region={region} />
+      <Suspense fallback={null}>
+        <UTMTracker />
+      </Suspense>
       {children}
       {isChatbotEnabled && (
         <ChatbotWidget 

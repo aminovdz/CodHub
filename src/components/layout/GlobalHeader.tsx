@@ -1,10 +1,11 @@
 'use client';
 
+import { memo } from 'react';
 import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
-export default function GlobalHeader({ region }: { region: string }) {
+const GlobalHeader = memo(function GlobalHeader({ region }: { region: string }) {
   const { availableStores } = useAdminStore();
   const store = resolveStore(availableStores, region);
   const language = store?.language || 'en';
@@ -26,4 +27,6 @@ export default function GlobalHeader({ region }: { region: string }) {
       </div>
     </header>
   );
-}
+});
+
+export default GlobalHeader;

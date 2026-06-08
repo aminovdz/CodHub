@@ -51,6 +51,7 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
     whatsapp_config: store.whatsappConfig,
     dz_fulfillment: store.dzFulfillment,
     fraud_config: store.fraudConfig,
+    sticky_buy_button: store.stickyBuyButton,
     custom_domain: store.customDomain,
   };
 }
@@ -74,6 +75,7 @@ function rowToStore(row: any): Store {
     whatsappConfig: row.whatsapp_config,
     dzFulfillment: row.dz_fulfillment,
     fraudConfig: row.fraud_config,
+    stickyBuyButton: row.sticky_buy_button || { enabled: false, text: 'Order Now', customCss: '' },
     customDomain: row.custom_domain,
   };
 }
@@ -88,6 +90,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     compare_at_price: p.compareAtPrice,
     active: p.active,
     image: p.image,
+    images: p.images,
     short_desc: p.shortDesc,
     main_desc: p.mainDesc,
     stock: p.stock,
@@ -124,6 +127,7 @@ function rowToProduct(row: any): Product {
     compareAtPrice: row.compare_at_price,
     active: row.active,
     image: row.image || '',
+    images: row.images || undefined,
     shortDesc: row.short_desc || '',
     mainDesc: row.main_desc || '',
     stock: row.stock,
@@ -331,10 +335,12 @@ export interface Store {
     aisensyCampaignName?: string;
     aisensyTemplateParams?: string;
     aisensyIgnoreSelfConfirmed?: boolean;
+    abandonedCartCampaignName?: string;
     chatbotEnabled?: boolean;
     chatbotName?: string;
     chatbotInstructions?: string;
     chatbotProvider?: 'gemini' | 'claude' | 'openai' | 'openrouter';
+    chatbotModel?: string;
     chatbotApiKey?: string;
   };
   dzFulfillment?: {
@@ -349,6 +355,11 @@ export interface Store {
     duplicateIpTimeframeHours: number;
     requireApprovalForHighValue: boolean;
     highValueThreshold: number;
+  };
+  stickyBuyButton?: {
+    enabled: boolean;
+    text: string;
+    customCss?: string;
   };
 }
 
@@ -391,6 +402,7 @@ export interface Product {
   compareAtPrice?: number;
   active: boolean;
   image: string;
+  images?: string[];
   shortDesc: string;
   mainDesc: string;
   stock?: number;                  // total stock (used when no variants)

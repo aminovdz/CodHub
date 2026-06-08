@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
 
 interface ChatMessage {
@@ -14,7 +14,7 @@ interface ChatbotWidgetProps {
   botName?: string;
 }
 
-export default function ChatbotWidget({ storeId, region, botName = 'Assistant' }: ChatbotWidgetProps) {
+const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = 'Assistant' }: ChatbotWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -48,6 +48,10 @@ export default function ChatbotWidget({ storeId, region, botName = 'Assistant' }
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Insert a placeholder assistant message that will be updated with streamed tokens
+    const assistantIndex = newMessages.length;
+    setMessages([...newMessages, { role: 'assistant', content: '' }]);
+
     try {
       const response = await fetch('/api/chatbot', {
         method: 'POST',
@@ -59,27 +63,62 @@ export default function ChatbotWidget({ storeId, region, botName = 'Assistant' }
         })
       });
 
-      const data = await response.json();
-      if (response.ok && data.response) {
-        setMessages([...newMessages, { role: 'assistant', content: data.response }]);
-      } else {
-        setMessages([
-          ...newMessages,
-          {
-            role: 'assistant',
-            content: `I'm sorry, I encountered a temporary connection issue. Please try again or reach out to our team directly.`
-          }
-        ]);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: 'assistant', content: data.error || 'Sorry, an error occurred.' };
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Stream the NDJSON response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: 'assistant', content: 'Failed to read response stream.' };
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const { text } = JSON.parse(line);
+            if (text) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const existing = updated[assistantIndex]?.content || '';
+                updated[assistantIndex] = { role: 'assistant', content: existing + text };
+                return updated;
+              });
+            }
+          } catch { /* skip malformed lines */ }
+        }
       }
     } catch (error) {
       console.error('Chatbot request failed:', error);
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: `I'm sorry, I'm having trouble connecting right now. Please check your internet connection.`
-        }
-      ]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[assistantIndex] = { role: 'assistant', content: "I'm sorry, I'm having trouble connecting right now." };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }
@@ -166,9 +205,11 @@ export default function ChatbotWidget({ storeId, region, botName = 'Assistant' }
                 <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center border border-slate-100 shadow-sm flex-shrink-0">
                   <Bot size={14} className="text-slate-600" />
                 </div>
-                <div className="bg-white dark:bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-800/50 flex items-center gap-1.5 shadow-sm">
-                  <Loader2 size={14} className="animate-spin text-indigo-500" />
-                  <span className="text-xs font-bold tracking-tight">Thinking...</span>
+                <div className="bg-white dark:bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-800/50 flex items-center gap-1.5 shadow-sm">                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </span>
                 </div>
               </div>
             )}
@@ -199,4 +240,6 @@ export default function ChatbotWidget({ storeId, region, botName = 'Assistant' }
       )}
     </div>
   );
-}
+});
+
+export default ChatbotWidget;
