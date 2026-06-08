@@ -119,6 +119,23 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     }
   }, [store?.region, region]);
 
+  // Auto-select and apply the default quantity offer when the cart product changes
+  useEffect(() => {
+    const state = useFunnelStore.getState();
+    const mainItem = state.cart.find(i => !i.isUpsell);
+    if (!mainItem) return;
+    const product = products.find(p => p.id === mainItem.id);
+    if (!product?.quantityOffers || product.quantityOffers.length === 0) return;
+    const defaultOffer = product.quantityOffers.find(o => o.isDefault) ?? product.quantityOffers[0];
+    setSelectedQuantity(defaultOffer.qty);
+    state.addCartItem({
+      ...mainItem,
+      price: defaultOffer.price,
+      name: `${defaultOffer.qty}x ${product.title || mainItem.name}`
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products.length]);
+
   // Derive unique Wilayas and their Communes from admin config
   let uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya).filter(w => w && w.trim() !== '')));
   const communesByWilaya = (w: string) => zones.filter(z => z.wilaya === w).map(z => z.commune);
@@ -581,13 +598,18 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const mainCartItem = cart.find(i => !i.isUpsell);
   const mainProduct = mainCartItem ? products.find(p => p.id === mainCartItem.id) : null;
 
-  const handleQuantitySelect = (qty: number, offerPrice: number) => {
-    setSelectedQuantity(qty);
+  // Use product-defined quantity offers (set in admin), or empty array
+  const quantityOffers = (mainProduct?.quantityOffers && mainProduct.quantityOffers.length > 0)
+    ? mainProduct.quantityOffers
+    : [];
+
+  const handleQuantitySelect = (offerQty: number, offerPrice: number) => {
+    setSelectedQuantity(offerQty);
     if (mainCartItem) {
       addCartItem({
         ...mainCartItem,
         price: offerPrice,
-        name: `${qty}x ${mainProduct?.title || mainCartItem.name.replace(/^\dx\s/, '')}`
+        name: `${offerQty}x ${mainProduct?.title || mainCartItem.name.replace(/^\dx\s/, '')}`
       });
     }
   };
@@ -630,39 +652,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
               <div className="animate-in slide-in-from-right-4 fade-in duration-400">
 
                 {/* ── Quantity Offers (Bundle Selector) ── */}
+                {quantityOffers.length > 0 && (
                 <div className="mb-6">
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
                     {t('checkout.selectOffer', 'Select Your Offer')}
                   </p>
                   <div className="space-y-3">
-                    {[
-                      { qty: 1, label: '1 Item', discount: 0, popular: false },
-                      { qty: 2, label: '2 Items (Save 15%)', discount: 0.15, popular: true },
-                      { qty: 3, label: '3 Items (Save 25%)', discount: 0.25, popular: false }
-                    ].map(offer => {
-                      // Retrieve base unit price by dividing current cart item price by its current quantity if it was already updated
-                      // Or just use the original main product price.
-                      const basePrice = mainProduct?.price || (mainCartItem?.price ? Math.round(mainCartItem.price / selectedQuantity) : 0);
-                      const offerPrice = Math.round((basePrice * offer.qty) * (1 - offer.discount));
+                    {quantityOffers.map(offer => {
                       const isSelected = selectedQuantity === offer.qty;
-                      
+                      const perItem = offer.qty > 1 ? Math.round(offer.price / offer.qty) : null;
                       return (
-                        <label key={offer.qty} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>
-                          {offer.popular && <span className="absolute -top-2.5 right-4 bg-rose-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">Most Popular</span>}
-                          <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer.qty, offerPrice)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
+                        <label key={offer.id} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>
+                          {offer.badge && <span className="absolute -top-2.5 right-4 bg-rose-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">{offer.badge}</span>}
+                          <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer.qty, offer.price)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
                           <div className="flex-1">
                             <p className={`font-black text-sm ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{offer.label}</p>
-                            {offer.qty > 1 && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{(offerPrice / offer.qty).toFixed(0)} {currency} / item</p>}
+                            {perItem && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{perItem} {currency} / item</p>}
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="font-black text-lg text-indigo-600">{offerPrice} <span className="text-xs">{currency}</span></p>
-                            {offer.discount > 0 && <p className="text-[10px] text-slate-400 line-through">{basePrice * offer.qty} {currency}</p>}
+                            <p className="font-black text-lg text-indigo-600">{offer.price} <span className="text-xs">{currency}</span></p>
                           </div>
                         </label>
                       );
                     })}
                   </div>
                 </div>
+                )}
 
                 {/* ── Inline Upsells (if configured) ── */}
                 {dynamicUpsells.length > 0 && checkoutConfig?.enableStep2Upsell !== false && (

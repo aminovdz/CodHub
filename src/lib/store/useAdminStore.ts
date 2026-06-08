@@ -393,6 +393,16 @@ export interface BundleItem {
   qty: number;
 }
 
+// Quantity-break offer shown on checkout (e.g. "Buy 2 get 15% off")
+export interface QuantityOffer {
+  id: string;
+  qty: number;          // e.g. 1, 2, 3
+  label: string;        // e.g. "2 Items — Best Value"
+  price: number;        // total price for this bundle
+  badge?: string;       // optional ribbon text e.g. "Most Popular"
+  isDefault?: boolean;  // pre-selected when page loads
+}
+
 export interface Product {
   id: string;
   storeId: string;
@@ -427,6 +437,7 @@ export interface Product {
   shippingCost?: number;           // product-specific delivery fee override
   isBundle?: boolean;              // is this a bundle/combo product?
   bundleItems?: BundleItem[];      // products included in bundle
+  quantityOffers?: QuantityOffer[];// optional checkout quantity-break offers
 }
 
 export interface LandingPage {

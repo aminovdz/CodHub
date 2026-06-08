@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical, Loader2 } from 'lucide-react';
-import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant } from '@/lib/store/useAdminStore';
+import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant, QuantityOffer } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { uploadImageToSupabase, uploadMultipleImages } from '@/lib/storage';
@@ -161,6 +161,40 @@ export default function AdminProductsPage() {
       maximizerUpsells: [...(editingProduct.maximizerUpsells || []), newUpsell]
     });
   };
+
+  // ── Quantity Offers (bundle pricing) ──
+  const addQuantityOffer = () => {
+    if (!editingProduct) return;
+    const newOffer: QuantityOffer = {
+      id: 'offer_' + Date.now(),
+      qty: 1,
+      label: '1 Item',
+      price: editingProduct.price,
+      badge: '',
+      isDefault: false
+    };
+    setEditingProduct({
+      ...editingProduct,
+      quantityOffers: [...(editingProduct.quantityOffers || []), newOffer]
+    });
+  };
+
+  const updateQuantityOffer = (id: string, updates: Partial<QuantityOffer>) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      quantityOffers: editingProduct.quantityOffers?.map(o => o.id === id ? { ...o, ...updates } : o)
+    });
+  };
+
+  const removeQuantityOffer = (id: string) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      quantityOffers: editingProduct.quantityOffers?.filter(o => o.id !== id)
+    });
+  };
+  // ─────────────────────────────────────
 
   const updateUpsell = (id: string, updates: Partial<MaximizerUpsell>) => {
     if (!editingProduct) return;
@@ -673,6 +707,61 @@ export default function AdminProductsPage() {
                     <label className="block text-sm font-bold text-slate-700 mb-1">SEO URL Slug</label>
                     <input type="text" value={editingProduct.seoSlug || ''} onChange={(e) => setEditingProduct({...editingProduct, seoSlug: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white" placeholder="e.g. premium-product-name" />
                   </div>
+                </div>
+              </div>
+
+              {/* ── Quantity Offers (Checkout Bundle Pricing) ── */}
+              <div className="border-t border-slate-100 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Checkout Quantity Offers</h3>
+                    <p className="text-sm text-slate-500">Define bundle/quantity-break offers shown to customers on Step 1 of checkout. If none are set, offers will be hidden.</p>
+                  </div>
+                  <button type="button" onClick={addQuantityOffer} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg font-bold text-sm hover:bg-emerald-100 transition-colors">
+                    <PlusSquare size={16} /> Add Offer
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {editingProduct.quantityOffers?.map((offer, index) => (
+                    <div key={offer.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4 items-start">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 font-black flex items-center justify-center shrink-0 text-sm">{index + 1}</div>
+                      <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Qty</label>
+                          <input type="number" min={1} value={offer.qty} onChange={(e) => updateQuantityOffer(offer.id, { qty: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Total Price ({activeStore.currency})</label>
+                          <input type="number" min={0} value={offer.price} onChange={(e) => updateQuantityOffer(offer.id, { price: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-indigo-600 text-sm" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Label (shown to customer)</label>
+                          <input type="text" value={offer.label} onChange={(e) => updateQuantityOffer(offer.id, { label: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. 2 Items — Best Value" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Badge (optional)</label>
+                          <input type="text" value={offer.badge || ''} onChange={(e) => updateQuantityOffer(offer.id, { badge: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. Most Popular" />
+                        </div>
+                        <div className="flex items-center gap-2 mt-4">
+                          <input type="checkbox" id={`default_${offer.id}`} checked={!!offer.isDefault} onChange={(e) => {
+                            // Ensure only one default at a time
+                            setEditingProduct(prev => prev ? {
+                              ...prev,
+                              quantityOffers: prev.quantityOffers?.map(o => ({ ...o, isDefault: o.id === offer.id ? e.target.checked : false }))
+                            } : prev);
+                          }} className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500" />
+                          <label htmlFor={`default_${offer.id}`} className="text-xs font-bold text-slate-600">Pre-selected</label>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => removeQuantityOffer(offer.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                  {(!editingProduct.quantityOffers || editingProduct.quantityOffers.length === 0) && (
+                    <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 text-sm font-medium">
+                      No quantity offers configured. Customers will see the standard single-item price on checkout.
+                    </div>
+                  )}
                 </div>
               </div>
 
