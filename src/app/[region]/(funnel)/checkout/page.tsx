@@ -69,6 +69,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('');
   const [customFieldsData, setCustomFieldsData] = useState<Record<string, string>>({});
+  const [deliveryType, setDeliveryType] = useState<'home' | 'desk'>('home');
 
   // Coupon State
   const [couponCode, setCouponCode] = useState('');
@@ -387,9 +388,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
     // Build address object
     const finalAddress = region === 'dz' 
-      ? { wilaya, commune, landmark: detailedAddress }
+      ? { wilaya, commune, landmark: `[${deliveryType === 'desk' ? 'Stop Desk' : 'Home Delivery'}] ${detailedAddress}` }
       : { 
-          address: detailedAddress, 
+          address: `[${deliveryType === 'desk' ? 'Stop Desk' : 'Home Delivery'}] ${detailedAddress}`, 
           city, 
           postalCode, 
           province, 
@@ -411,8 +412,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           customer: `${customerName} ${lastName}`.trim(),
           phone: `${prefix}${phone.replace(/^0+/, '')}`,
           address: region === 'dz' 
-            ? detailedAddress + (Object.entries(customFieldsData).map(([k,v]) => ` | ${checkoutConfig?.customFields?.find(f=>f.id===k)?.label}: ${v}`).join(''))
-            : `${detailedAddress}` + (Object.entries(customFieldsData).map(([k,v]) => ` | ${checkoutConfig?.customFields?.find(f=>f.id===k)?.label}: ${v}`).join('')),
+            ? `[${deliveryType === 'desk' ? 'Stop Desk' : 'Home Delivery'}] ` + detailedAddress + (Object.entries(customFieldsData).map(([k,v]) => ` | ${checkoutConfig?.customFields?.find(f=>f.id===k)?.label}: ${v}`).join(''))
+            : `[${deliveryType === 'desk' ? 'Stop Desk' : 'Home Delivery'}] ` + `${detailedAddress}` + (Object.entries(customFieldsData).map(([k,v]) => ` | ${checkoutConfig?.customFields?.find(f=>f.id===k)?.label}: ${v}`).join('')),
           city: region !== 'dz' ? city : undefined,
           postalCode: region !== 'dz' ? postalCode : undefined,
           province: region !== 'dz' ? province : undefined,
@@ -880,6 +881,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest">
                     <MapPin size={12} className="inline mr-1" />{t('checkout.deliveryInfo', 'Delivery Address')}
                   </p>
+
+                  <div className="flex gap-3 mb-4">
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'home' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
+                      <input type="radio" checked={deliveryType === 'home'} onChange={() => setDeliveryType('home')} className="hidden" />
+                      <span className="font-bold text-sm">🏠 {t('checkout.homeDelivery', 'Home Delivery')}</span>
+                    </label>
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'desk' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
+                      <input type="radio" checked={deliveryType === 'desk'} onChange={() => setDeliveryType('desk')} className="hidden" />
+                      <span className="font-bold text-sm">🏢 {t('checkout.stopDesk', 'Desk of Delivery')}</span>
+                    </label>
+                  </div>
 
                   {checkoutConfig?.showAddressFields !== false && (
                     <>
