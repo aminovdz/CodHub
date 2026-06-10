@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getShortOrderId } from '@/lib/idHelper';
 import { markOrderSelfConfirmed } from '@/lib/actions/funnelActions';
+import { usePixelEvent } from '@/hooks/usePixelEvent';
 
 export default function ThankYouPage({ params }: { params: Promise<{ region: string }> }) {
   const resolvedParams = use(params);
@@ -23,6 +24,15 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   const whatsappConfig = store?.whatsappConfig;
   const checkoutConfig = checkoutConfigs.find(c => c.storeId === store?.id);
   const totalPrice = getTotalPrice();
+
+  // Track Purchase event
+  const cartIds = cart.map(i => i.id);
+  usePixelEvent('Purchase', {
+    value: totalPrice,
+    currency,
+    content_ids: cartIds,
+    content_type: 'product'
+  });
 
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [otoClaimed, setOtoClaimed] = useState(false);

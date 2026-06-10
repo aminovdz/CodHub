@@ -6,6 +6,7 @@ export interface CartItem {
   name: string;
   price: number;
   isUpsell: boolean;
+  isBump?: boolean;
   imageUrl?: string;
   variantId?: string;
   variantName?: string;

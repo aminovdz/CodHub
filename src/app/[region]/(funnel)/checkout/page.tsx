@@ -8,12 +8,12 @@ import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3 } from 'luci
 import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
 import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
+import { usePixelEvent } from '@/hooks/usePixelEvent';
 
 export default function CheckoutPage({ params }: { params: Promise<{ region: string }> }) {
   const resolvedParams = use(params);
   const region = resolvedParams.region;
   const { t } = useTranslation(region);
-  // Prefix and Currency will be initialized after store is fetched
   
   const [step, setStep] = useState(1);
   const [isAnimatingPrice, setIsAnimatingPrice] = useState(false);
@@ -23,6 +23,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [utmSource, setUtmSource] = useState<string>('');  
   const [utmCampaign, setUtmCampaign] = useState<string>('');
   const [selectedQuantity, setSelectedQuantity] = useState(1);
+
+  const { 
+    customerName, phone, draftOrderId, cart, getTotalPrice,
+    setLead, setDraftOrderId, addCartItem, removeCartItem, 
+    setAddressData, setDeliveryInstructions, deliveryInstructions, setStatus
+  } = useFunnelStore();
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const totalPrice = getTotalPrice();
+
+  const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog } = useAdminStore();
+  const store = resolveStore(availableStores, region);
+  const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
+  const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
+  const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
+  const prefix = store?.phonePrefix || (region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57');
+
+  // Track InitiateCheckout
+  const cartIds = cart.map(i => i.id);
+  usePixelEvent('InitiateCheckout', {
+    value: totalPrice,
+    currency,
+    content_ids: cartIds,
+    content_type: 'product'
+  });
 
   // Always mark as mounted on client — do NOT rely on external script onLoad for this
   useEffect(() => {
@@ -49,13 +75,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState('');
   const [showCouponInput, setShowCouponInput] = useState(false);
-
-  const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog } = useAdminStore();
-  const store = resolveStore(availableStores, region);
-  const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
-  const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
-  const prefix = store?.phonePrefix || (region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57');
-  const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
 
   const addressInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,15 +173,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       uniqueWilayas = ["Abu Dhabi","Dubai","Sharjah","Ajman","Umm Al Quwain","Ras Al Khaimah","Fujairah"];
     }
   }  
-  const { 
-    customerName, phone, draftOrderId, cart, getTotalPrice,
-    setLead, setDraftOrderId, addCartItem, removeCartItem, 
-    setAddressData, setDeliveryInstructions, deliveryInstructions, setStatus
-  } = useFunnelStore();
-  
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const totalPrice = getTotalPrice();
 
   const deliveryRate = useMemo(() => {
     if (region === 'dz' && !checkoutConfig?.addressAutocomplete) {
@@ -782,6 +792,41 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                     </div>
                   ))}
                 </div>
+
+                {/* ── Order Bumps (Cross-Sells) ── */}
+                {mainProduct?.orderBumps && mainProduct.orderBumps.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    {mainProduct.orderBumps.map(bump => {
+                      const isBumpAdded = cart.some(i => i.id === bump.id);
+                      return (
+                        <label key={bump.id} className={`flex items-start gap-3 p-4 rounded-xl border-2 border-dashed cursor-pointer transition-all ${isBumpAdded ? 'border-amber-500 bg-amber-50/50' : 'border-slate-300 hover:border-amber-300 bg-slate-50'}`}>
+                          <input 
+                            type="checkbox" 
+                            checked={isBumpAdded}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                addCartItem({ id: bump.id, name: bump.title, price: bump.price, isUpsell: true, isBump: true, imageUrl: bump.image });
+                              } else {
+                                removeCartItem(bump.id);
+                              }
+                            }}
+                            className="mt-1 w-5 h-5 text-amber-600 rounded border-slate-300 focus:ring-amber-500 shrink-0" 
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-sm text-slate-900">{bump.title}</span>
+                              <span className="text-xs font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">+{bump.price} {currency}</span>
+                            </div>
+                            {bump.description && <p className="text-xs font-bold text-slate-500 mt-1">{bump.description}</p>}
+                          </div>
+                          {bump.image && (
+                            <img src={bump.image} alt="" className="w-12 h-12 rounded-lg object-cover bg-white border border-slate-200 shrink-0" />
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
 
                 <button
                   onClick={handleProceedToAddress}

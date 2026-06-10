@@ -114,6 +114,8 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     shipping_cost: p.shippingCost,
     is_bundle: p.isBundle,
     bundle_items: p.bundleItems,
+    quantity_offers: p.quantityOffers,
+    order_bumps: p.orderBumps,
   };
 }
 
@@ -149,8 +151,10 @@ function rowToProduct(row: any): Product {
     costPrice: row.cost_price || undefined,
     weight: row.weight,
     shippingCost: row.shipping_cost,
-    isBundle: row.is_bundle,
-    bundleItems: row.bundle_items,
+    isBundle: !!row.is_bundle,
+    bundleItems: row.bundle_items || [],
+    quantityOffers: row.quantity_offers || [],
+    orderBumps: row.order_bumps || [],
   };
 }
 
@@ -403,6 +407,16 @@ export interface QuantityOffer {
   isDefault?: boolean;  // pre-selected when page loads
 }
 
+// Order Bump offered as a checkbox on the checkout form
+export interface OrderBump {
+  id: string;
+  title: string;        // e.g. "Yes, add expedited shipping"
+  description?: string; // e.g. "Get it 2 days faster!"
+  price: number;
+  image?: string;
+  targetProductId?: string; // If this bump corresponds to a real product in the catalog
+}
+
 export interface Product {
   id: string;
   storeId: string;
@@ -438,6 +452,7 @@ export interface Product {
   isBundle?: boolean;              // is this a bundle/combo product?
   bundleItems?: BundleItem[];      // products included in bundle
   quantityOffers?: QuantityOffer[];// optional checkout quantity-break offers
+  orderBumps?: OrderBump[];
 }
 
 export interface LandingPage {

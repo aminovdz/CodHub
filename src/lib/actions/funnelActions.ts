@@ -19,7 +19,7 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
     // Find the store for this region
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('id')
+      .select('id, generic_webhook_url')
       .ilike('region', data.region)
       .single();
     
@@ -66,6 +66,26 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
         throw error;
       }
       console.log(`[saveDraftOrder] Success! New ID: ${inserted.id}`);
+      
+      // Fire Webhook for new draft
+      if (store.generic_webhook_url) {
+        try {
+          fetch(store.generic_webhook_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              event: 'order.draft',
+              data: {
+                id: inserted.id,
+                ...payload
+              }
+            })
+          }).catch(err => console.error('[Webhook Error]', err));
+        } catch (e) {
+          console.error('[Webhook Fire Error]', e);
+        }
+      }
+
       return { success: true, orderId: inserted.id };
     }
   } catch (err: any) {
@@ -95,6 +115,14 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
     const productNames = payload.cart.map(i => i.name).join(', ');
 
     const finalTotal = payload.total !== undefined ? payload.total : totalPrice;
+
+    // Fetch the store to get the webhook URL
+    const { data: orderData } = await supabase.from('orders').select('store_id').eq('id', orderId).single();
+    let webhookUrl = null;
+    if (orderData?.store_id) {
+      const { data: storeData } = await supabase.from('stores').select('generic_webhook_url').eq('id', orderData.store_id).single();
+      webhookUrl = storeData?.generic_webhook_url;
+    }
 
     // Update the master order
     const { error: orderError } = await supabase
@@ -132,6 +160,26 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       }, 60000);
     } catch (e) {
       console.error('[submitOrder] Failed to schedule AiSensy confirmation:', e);
+    }
+
+    // Fire Webhook for submitted order
+    if (webhookUrl) {
+      try {
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: 'order.new',
+            data: {
+              id: orderId,
+              region: regionCode,
+              ...payload
+            }
+          })
+        }).catch(err => console.error('[Webhook Error]', err));
+      } catch (e) {
+        console.error('[Webhook Fire Error]', e);
+      }
     }
 
     return { success: true };

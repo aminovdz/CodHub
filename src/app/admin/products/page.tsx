@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical, Loader2 } from 'lucide-react';
-import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant, QuantityOffer } from '@/lib/store/useAdminStore';
+import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant, QuantityOffer, OrderBump } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { uploadImageToSupabase, uploadMultipleImages } from '@/lib/storage';
@@ -192,6 +192,39 @@ export default function AdminProductsPage() {
     setEditingProduct({
       ...editingProduct,
       quantityOffers: editingProduct.quantityOffers?.filter(o => o.id !== id)
+    });
+  };
+  // ─────────────────────────────────────
+
+  // ── Order Bumps (Checkout Order Bumps) ──
+  const addOrderBump = () => {
+    if (!editingProduct) return;
+    const newBump: OrderBump = {
+      id: 'bump_' + Date.now(),
+      title: 'Yes, add this premium item!',
+      description: 'Highly recommended with your purchase.',
+      price: 0,
+      image: ''
+    };
+    setEditingProduct({
+      ...editingProduct,
+      orderBumps: [...(editingProduct.orderBumps || []), newBump]
+    });
+  };
+
+  const updateOrderBump = (id: string, updates: Partial<OrderBump>) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      orderBumps: editingProduct.orderBumps?.map(b => b.id === id ? { ...b, ...updates } : b)
+    });
+  };
+
+  const removeOrderBump = (id: string) => {
+    if (!editingProduct) return;
+    setEditingProduct({
+      ...editingProduct,
+      orderBumps: editingProduct.orderBumps?.filter(b => b.id !== id)
     });
   };
   // ─────────────────────────────────────
@@ -760,6 +793,51 @@ export default function AdminProductsPage() {
                   {(!editingProduct.quantityOffers || editingProduct.quantityOffers.length === 0) && (
                     <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 text-sm font-medium">
                       No quantity offers configured. Customers will see the standard single-item price on checkout.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Order Bumps (One-Click Adds on Checkout) ── */}
+              <div className="border-t border-slate-100 pt-8">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Order Bumps (Checkout Cross-Sells)</h3>
+                    <p className="text-sm text-slate-500">Show a one-click add-on box right before the submit button on checkout.</p>
+                  </div>
+                  <button type="button" onClick={addOrderBump} className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg font-bold text-sm hover:bg-amber-100 transition-colors">
+                    <PlusSquare size={16} /> Add Bump
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {editingProduct.orderBumps?.map((bump, index) => (
+                    <div key={bump.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4 items-start">
+                      <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black flex items-center justify-center shrink-0 text-sm">{index + 1}</div>
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Title</label>
+                          <input type="text" value={bump.title} onChange={(e) => updateOrderBump(bump.id, { title: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm" placeholder="Yes, add premium shipping!" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Description (optional)</label>
+                          <input type="text" value={bump.description || ''} onChange={(e) => updateOrderBump(bump.id, { description: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="Short sentence explaining value..." />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Price ({activeStore.currency})</label>
+                          <input type="number" min={0} value={bump.price} onChange={(e) => updateOrderBump(bump.id, { price: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-indigo-600 text-sm" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Image URL (optional)</label>
+                          <input type="text" value={bump.image || ''} onChange={(e) => updateOrderBump(bump.id, { image: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none text-sm" placeholder="https://..." />
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => removeOrderBump(bump.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                  {(!editingProduct.orderBumps || editingProduct.orderBumps.length === 0) && (
+                    <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 text-sm font-medium">
+                      No order bumps configured.
                     </div>
                   )}
                 </div>
