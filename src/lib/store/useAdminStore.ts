@@ -98,7 +98,11 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     variants: p.variants,
     enable_variants: p.enableVariants,
     related_products: p.relatedProducts,
-    maximizer_upsells: p.maximizerUpsells,
+    maximizer_upsells: [
+      ...(p.maximizerUpsells || []).map(u => ({ ...u, _type: 'maximizer' })),
+      ...(p.orderBumps || []).map(b => ({ ...b, _type: 'bump' })),
+      ...(p.quantityOffers || []).map(q => ({ ...q, _type: 'quantity' }))
+    ],
     blocks: p.blocks,
     seo_title: p.seoTitle,
     seo_description: p.seoDescription,
@@ -114,8 +118,6 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     shipping_cost: p.shippingCost,
     is_bundle: p.isBundle,
     bundle_items: p.bundleItems,
-    quantity_offers: p.quantityOffers,
-    order_bumps: p.orderBumps,
   };
 }
 
@@ -137,7 +139,7 @@ function rowToProduct(row: any): Product {
     variants: row.variants,
     enableVariants: row.enable_variants,
     relatedProducts: row.related_products,
-    maximizerUpsells: row.maximizer_upsells || [],
+    maximizerUpsells: (row.maximizer_upsells || []).filter((u: any) => !u._type || u._type === 'maximizer'),
     blocks: row.blocks,
     seoTitle: row.seo_title,
     seoDescription: row.seo_description,
@@ -153,8 +155,8 @@ function rowToProduct(row: any): Product {
     shippingCost: row.shipping_cost,
     isBundle: !!row.is_bundle,
     bundleItems: row.bundle_items || [],
-    quantityOffers: row.quantity_offers || [],
-    orderBumps: row.order_bumps || [],
+    quantityOffers: (row.maximizer_upsells || []).filter((u: any) => u._type === 'quantity'),
+    orderBumps: (row.maximizer_upsells || []).filter((u: any) => u._type === 'bump'),
   };
 }
 
