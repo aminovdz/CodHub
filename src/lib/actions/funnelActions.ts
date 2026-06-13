@@ -98,6 +98,8 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
  * Submits the final order.
  */
 export async function submitOrder(orderId: string, regionCode: string, payload: {
+  customerName: string,
+  phone: string,
   address: any,
   instructions: string,
   cart: { id: string, name: string, price: number, isUpsell: boolean }[],
@@ -112,54 +114,60 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
   try {
     const totalPrice = payload.cart.reduce((acc, curr) => acc + curr.price, 0);
     const upsellTotal = payload.cart.filter(i => i.isUpsell).reduce((acc, curr) => acc + curr.price, 0);
-    const productNames = payload.cart.map(i => i.name).join(', ');
+    const productNames = payload.cart.map(i => i.isUpsell ? `[Add-on] ${i.name}` : i.name).join(', ');
 
     const finalTotal = payload.total !== undefined ? payload.total : totalPrice;
 
     // Fetch the store to get the webhook URL
-    const { data: orderData } = await supabase.from('orders').select('store_id').eq('id', orderId).single();
-    let webhookUrl = null;
-    if (orderData?.store_id) {
-      const { data: storeData } = await supabase.from('stores').select('generic_webhook_url').eq('id', orderData.store_id).single();
-      webhookUrl = storeData?.generic_webhook_url;
+    const { data: store } = await supabase.from('stores').select('id, generic_webhook_url').ilike('region', regionCode).single();
+    let webhookUrl = store?.generic_webhook_url;
+
+    const payloadObj = {
+      store_id: store?.id,
+      customer: payload.customerName,
+      phone: payload.phone,
+      address: payload.address?.landmark || payload.address?.address || (typeof payload.address === 'string' ? payload.address : ''),
+      wilaya: payload.address?.wilaya,
+      commune: payload.address?.commune,
+      city: payload.address?.city,
+      postal_code: payload.address?.postalCode,
+      province: payload.address?.province,
+      country: payload.address?.country,
+      product: productNames,
+      total: finalTotal,
+      upsell_total: upsellTotal,
+      discount_amount: payload.discountAmount || 0,
+      delivery_rate: payload.deliveryRate || 0,
+      status: 'PENDING_AGENT_CONFIRMATION',
+      notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
+      custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', ...(payload.customFields || {}) },
+      ...(payload.source ? { source: payload.source } : {})
+    };
+
+    let actualOrderId = orderId;
+    
+    // If orderId is a UUID, we can update it directly
+    if (orderId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId)) {
+      const { error: updateError } = await supabase.from('orders').update(payloadObj).eq('id', orderId);
+      if (updateError) throw updateError;
+    } else {
+      // It's a temporary ID like ABN-... or ORD-..., so we must insert it fresh
+      const { data: inserted, error: insertError } = await supabase.from('orders').insert(payloadObj).select('id').single();
+      if (insertError) throw insertError;
+      actualOrderId = inserted.id;
     }
 
-    // Update the master order
-    const { error: orderError } = await supabase
-      .from('orders')
-      .update({
-        address: payload.address?.landmark || payload.address?.address || (typeof payload.address === 'string' ? payload.address : ''),
-        wilaya: payload.address?.wilaya,
-        commune: payload.address?.commune,
-        city: payload.address?.city,
-        postal_code: payload.address?.postalCode,
-        province: payload.address?.province,
-        country: payload.address?.country,
-        product: productNames,
-        total: finalTotal,
-        upsell_total: upsellTotal,
-        discount_amount: payload.discountAmount || 0,
-        delivery_rate: payload.deliveryRate || 0,
-        status: 'PENDING_AGENT_CONFIRMATION',
-        notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
-        custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', ...(payload.customFields || {}) },
-        ...(payload.source ? { source: payload.source } : {})
-      })
-      .eq('id', orderId);
-
-    if (orderError) throw orderError;
-
-    // Trigger AiSensy Automated Campaign confirmation if enabled (delayed by 60s to allow self-confirmation)
+    // Trigger Meta Automated Campaign confirmation if enabled (delayed by 60s to allow self-confirmation)
     try {
       setTimeout(async () => {
         try {
-          await sendAiSensyConfirmation(orderId);
+          await sendMetaConfirmation(actualOrderId);
         } catch (e) {
-          console.error('[submitOrder delayed] Failed to dispatch AiSensy confirmation:', e);
+          console.error('[submitOrder delayed] Failed to dispatch Meta confirmation:', e);
         }
       }, 60000);
     } catch (e) {
-      console.error('[submitOrder] Failed to schedule AiSensy confirmation:', e);
+      console.error('[submitOrder] Failed to schedule Meta confirmation:', e);
     }
 
     // Fire Webhook for submitted order
@@ -171,7 +179,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
           body: JSON.stringify({
             event: 'order.new',
             data: {
-              id: orderId,
+              id: actualOrderId,
               region: regionCode,
               ...payload
             }
@@ -214,12 +222,116 @@ export async function markOrderSelfConfirmed(orderId: string) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────
+// Helper: resolve template parameters from order + store
+// ─────────────────────────────────────────────────────────────────
+async function resolveTemplateParams(
+  paramsList: string[],
+  order: any,
+  store: any
+): Promise<string[]> {
+  const shortId = order.id ? order.id.split('-')[0] : '';
+  const fullAddress = [order.address, order.commune, order.wilaya].filter(Boolean).join(', ') || 'No address';
+  const productUrl = await resolveProductUrl(store, order.product || '');
+
+  return paramsList.map((param: string) => {
+    const p = param.trim().toUpperCase();
+    if (p === '[NAME]') return order.name || '';
+    if (p === '[PRODUCT]') return order.product || '';
+    if (p === '[PRODUCT_URL]') return productUrl;
+    if (p === '[ADDRESS]') return fullAddress;
+    if (p === '[ORDER_ID]') return shortId;
+    if (p === '[STORE_NAME]') return store.name || '';
+    if (p === '[ORDER_TOTAL]') return order.total?.toString() || '';
+    return '';
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Helper: send a WhatsApp template message via Meta Graph API
+// ─────────────────────────────────────────────────────────────────
+async function sendMetaWhatsAppTemplate({
+  phoneNumberId,
+  accessToken,
+  to,
+  templateName,
+  languageCode,
+  bodyParams,
+}: {
+  phoneNumberId: string;
+  accessToken: string;
+  to: string;
+  templateName: string;
+  languageCode: string;
+  bodyParams: string[];
+}) {
+  // Normalise phone: strip leading zeros, keep country code
+  const normalised = to.replace(/\D/g, '');
+
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: normalised,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: languageCode },
+      components: bodyParams.length > 0
+        ? [{
+            type: 'body',
+            parameters: bodyParams.map(v => ({ type: 'text', text: v })),
+          }]
+        : [],
+    },
+  };
+
+  const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Helper: log a message event to the message_logs table
+// ─────────────────────────────────────────────────────────────────
+async function logMetaMessage({
+  storeId,
+  orderId,
+  phone,
+  messageType,
+  status,
+  metaMessageId,
+}: {
+  storeId: string;
+  orderId: string;
+  phone: string;
+  messageType: string;
+  status: string;
+  metaMessageId?: string;
+}) {
+  await supabase.from('message_logs').insert({
+    store_id: storeId,
+    order_id: orderId,
+    phone_number: phone,
+    message_type: messageType,
+    status,
+    meta_message_id: metaMessageId || null,
+  });
+}
+
 /**
- * Sends an automated confirmation message via AiSensy campaign API
+ * Sends an automated order confirmation message via Meta Graph API
  */
-export async function sendAiSensyConfirmation(orderId: string) {
+export async function sendMetaConfirmation(orderId: string) {
   try {
-    // 1. Fetch order details
+    // 1. Fetch order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('*')
@@ -230,7 +342,7 @@ export async function sendAiSensyConfirmation(orderId: string) {
       return { success: false, error: 'Order not found' };
     }
 
-    // 2. Fetch store configuration
+    // 2. Fetch store
     const { data: store, error: storeError } = await supabase
       .from('stores')
       .select('*')
@@ -242,97 +354,77 @@ export async function sendAiSensyConfirmation(orderId: string) {
     }
 
     const config = store.whatsapp_config || {};
-    if (!config.aisensyEnabled) {
-      return { success: false, error: 'AiSensy is not enabled for this store' };
+    if (!config.metaEnabled) {
+      return { success: false, error: 'Meta WhatsApp API is not enabled for this store' };
     }
 
     // 3. Skip if self-confirmed
-    if (config.aisensyIgnoreSelfConfirmed && order.status === 'SELF_CONFIRMED') {
-      console.log(`[AiSensy] Order ${orderId} is self-confirmed. Skipping automated Campaign dispatch.`);
+    if (config.metaIgnoreSelfConfirmed && order.status === 'SELF_CONFIRMED') {
+      console.log(`[Meta] Order ${orderId} is self-confirmed. Skipping automated dispatch.`);
       return { success: true, skipped: true, reason: 'SELF_CONFIRMED' };
     }
 
-    // 4. Resolve template parameters
-    const paramsList = (config.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]').split(',');
-    
-    // Helper to get short order id
-    const shortId = order.id ? order.id.split('-')[0] : '';
-    const fullAddress = [order.address, order.commune, order.wilaya].filter(Boolean).join(', ') || 'No address';
+    const { metaPhoneNumberId, metaAccessToken, metaTemplateName, metaLanguageCode, metaTemplateParams } = config;
 
-    // Resolve product URL
-    const productUrl = await resolveProductUrl(store, order.product || '');
-
-    const mappedParams = paramsList.map((param: string) => {
-      const p = param.trim().toUpperCase();
-      if (p === '[NAME]') return order.name || '';
-      if (p === '[PRODUCT]') return order.product || '';
-      if (p === '[PRODUCT_URL]') return productUrl;
-      if (p === '[ADDRESS]') return fullAddress;
-      if (p === '[ORDER_ID]') return shortId;
-      if (p === '[STORE_NAME]') return store.name || '';
-      if (p === '[ORDER_TOTAL]') return order.total?.toString() || '';
-      return '';
-    });
-
-    const apiKey = config.aisensyApiKey;
-    const campaignName = config.aisensyCampaignName;
-
-    if (!apiKey || !campaignName) {
-      return { success: false, error: 'AiSensy API Key or Campaign Name is not configured.' };
+    if (!metaPhoneNumberId || !metaAccessToken || !metaTemplateName) {
+      return { success: false, error: 'Meta API credentials or template name not configured.' };
     }
 
-    // 5. POST to AiSensy Campaign API
-    const payload = {
-      apiKey,
-      campaignName,
-      destination: order.phone,
-      userName: order.name || 'Customer',
-      templateParams: mappedParams
-    };
+    // 4. Resolve params
+    const paramsList = (metaTemplateParams || '[NAME],[ORDER_ID],[PRODUCT],[ORDER_TOTAL]').split(',');
+    const bodyParams = await resolveTemplateParams(paramsList, order, store);
 
-    console.log(`[AiSensy] Dispatching confirmation Campaign to destination ${order.phone} with params:`, mappedParams);
+    console.log(`[Meta] Sending confirmation to ${order.phone} — template: ${metaTemplateName}`, bodyParams);
 
-    const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    // 5. Send via Meta Graph API
+    const { ok, data } = await sendMetaWhatsAppTemplate({
+      phoneNumberId: metaPhoneNumberId,
+      accessToken: metaAccessToken,
+      to: order.phone,
+      templateName: metaTemplateName,
+      languageCode: metaLanguageCode || 'en_US',
+      bodyParams,
     });
 
-    const data = await response.json();
-    console.log(`[AiSensy] Confirmation response:`, data);
+    const metaMessageId = data?.messages?.[0]?.id;
 
-    // Save notes log to order
-    const author = 'System (AiSensy)';
+    // 6. Log to message_logs
+    await logMetaMessage({
+      storeId: store.id,
+      orderId,
+      phone: order.phone,
+      messageType: 'CONFIRMATION',
+      status: ok ? 'SENT' : 'FAILED',
+      metaMessageId,
+    });
+
+    // 7. Append note to order
+    const author = 'System (Meta WhatsApp)';
     const createdAt = new Date().toISOString();
-    const newNote = response.ok && data.success
-      ? { author, text: `WhatsApp confirmation sent via campaign: "${campaignName}"`, createdAt }
-      : { author, text: `AiSensy confirmation failed: ${data.message || 'Unknown error'}`, createdAt };
+    const newNote = ok
+      ? { author, text: `WhatsApp confirmation sent via Meta template: "${metaTemplateName}" (msg: ${metaMessageId || 'n/a'})`, createdAt }
+      : { author, text: `Meta WhatsApp confirmation failed: ${JSON.stringify(data?.error || data)}`, createdAt };
 
     const updatedNotes = order.notes ? [...order.notes, newNote] : [newNote];
+    await supabase.from('orders').update({ notes: updatedNotes }).eq('id', orderId);
 
-    await supabase
-      .from('orders')
-      .update({ notes: updatedNotes })
-      .eq('id', orderId);
-
-    if (response.ok && data.success) {
-      return { success: true, response: data };
-    } else {
-      return { success: false, error: data.message || 'Campaign API call failed' };
-    }
+    return ok
+      ? { success: true, metaMessageId }
+      : { success: false, error: data?.error?.message || 'Meta API call failed' };
 
   } catch (err: any) {
-    console.error('AiSensy Confirmation Error:', err);
+    console.error('[Meta] Confirmation Error:', err);
     return { success: false, error: err.message };
   }
 }
 
+// Keep backward-compat alias used by old imports
+export const sendAiSensyConfirmation = sendMetaConfirmation;
+
 /**
- * Sends an abandoned cart recovery message via AiSensy campaign API
+ * Sends an abandoned cart recovery message via Meta Graph API
  */
-export async function sendAiSensyAbandonedCart(orderId: string) {
+export async function sendMetaAbandonedCart(orderId: string) {
   try {
     const { data: order, error: orderError } = await supabase
       .from('orders')
@@ -359,70 +451,70 @@ export async function sendAiSensyAbandonedCart(orderId: string) {
     }
 
     const config = store.whatsapp_config || {};
-    if (!config.aisensyEnabled || !config.abandonedCartCampaignName) {
-      return { success: false, error: 'AiSensy or abandoned cart campaign not configured' };
+    if (!config.metaEnabled || !config.metaAbandonedCartTemplateName) {
+      return { success: false, error: 'Meta API or abandoned cart template not configured' };
     }
 
-    const apiKey = config.aisensyApiKey;
-    const campaignName = config.abandonedCartCampaignName;
+    const { metaPhoneNumberId, metaAccessToken, metaAbandonedCartTemplateName, metaLanguageCode } = config;
 
-    if (!apiKey || !campaignName) {
-      return { success: false, error: 'AiSensy API Key or Abandoned Cart Campaign Name not configured.' };
+    if (!metaPhoneNumberId || !metaAccessToken) {
+      return { success: false, error: 'Meta API credentials not configured.' };
     }
 
-    const shortId = order.id ? order.id.split('-')[0] : '';
     const productUrl = await resolveProductUrl(store, order.product || '');
-
-    const mappedParams = [
+    const bodyParams = [
       order.name || 'Customer',
       order.product || '',
       productUrl,
       order.total?.toString() || '',
     ];
 
-    const payload = {
-      apiKey,
-      campaignName,
-      destination: order.phone,
-      userName: order.name || 'Customer',
-      templateParams: mappedParams,
-    };
+    console.log(`[Meta] Sending abandoned cart to ${order.phone} — template: ${metaAbandonedCartTemplateName}`);
 
-    console.log(`[AiSensy] Dispatching abandoned cart Campaign to ${order.phone} with params:`, mappedParams);
-
-    const response = await fetch('https://backend.aisensy.com/campaign/t1/api/v2', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    const { ok, data } = await sendMetaWhatsAppTemplate({
+      phoneNumberId: metaPhoneNumberId,
+      accessToken: metaAccessToken,
+      to: order.phone,
+      templateName: metaAbandonedCartTemplateName,
+      languageCode: metaLanguageCode || 'en_US',
+      bodyParams,
     });
 
-    const data = await response.json();
-    console.log(`[AiSensy] Abandoned cart response:`, data);
+    const metaMessageId = data?.messages?.[0]?.id;
 
-    const author = 'System (AiSensy)';
+    await logMetaMessage({
+      storeId: store.id,
+      orderId,
+      phone: order.phone,
+      messageType: 'ABANDONED_CART',
+      status: ok ? 'SENT' : 'FAILED',
+      metaMessageId,
+    });
+
+    const author = 'System (Meta WhatsApp)';
     const createdAt = new Date().toISOString();
-    const newNote = response.ok && data.success
-      ? { author, text: `Abandoned cart WhatsApp sent via campaign: "${campaignName}"`, createdAt }
-      : { author, text: `Abandoned cart AiSensy failed: ${data.message || 'Unknown error'}`, createdAt };
+    const newNote = ok
+      ? { author, text: `Abandoned cart WhatsApp sent via Meta template: "${metaAbandonedCartTemplateName}"`, createdAt }
+      : { author, text: `Meta abandoned cart failed: ${JSON.stringify(data?.error || data)}`, createdAt };
 
     const updatedNotes = order.notes ? [...order.notes, newNote] : [newNote];
+    await supabase.from('orders').update({ notes: updatedNotes, status: 'ABANDONED_NOTIFIED' }).eq('id', orderId);
 
-    await supabase
-      .from('orders')
-      .update({ notes: updatedNotes, status: 'ABANDONED_NOTIFIED' })
-      .eq('id', orderId);
-
-    if (response.ok && data.success) {
-      return { success: true, response: data };
-    } else {
-      return { success: false, error: data.message || 'Campaign API call failed' };
-    }
+    return ok
+      ? { success: true, metaMessageId }
+      : { success: false, error: data?.error?.message || 'Meta API call failed' };
 
   } catch (err: any) {
-    console.error('AiSensy Abandoned Cart Error:', err);
+    console.error('[Meta] Abandoned Cart Error:', err);
     return { success: false, error: err.message };
   }
 }
+
+// Backward-compat alias
+export const sendAiSensyAbandonedCart = sendMetaAbandonedCart;
+
+
+
 
 /**
  * Resolves the first product URL from an order's product string

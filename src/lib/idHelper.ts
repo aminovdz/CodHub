@@ -6,6 +6,6 @@ export function getShortOrderId(id: string | null | undefined): string {
   if (!id) return 'N/A';
   // If it's already a short format (or doesn't look like a full uuid), return it
   if (id.length < 15) return id.toUpperCase();
-  // Extract the last 6 characters of the UUID
-  return id.slice(-6).toUpperCase();
+  // Extract the last 5 characters of the UUID
+  return id.slice(-5).toUpperCase();
 }

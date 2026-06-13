@@ -615,8 +615,8 @@ export default function AdminProductsPage() {
                           <input type="text" value={variant.label} onChange={(e) => updateVariant(variant.id, { label: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="Variant name" />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-slate-500 mb-1">Price Modifier (e.g. +500 or -200)</label>
-                          <input type="number" value={variant.priceModifier} onChange={(e) => updateVariant(variant.id, { priceModifier: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="0" />
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Variant Price (Leave 0 to use base product price)</label>
+                          <input type="number" value={variant.priceModifier} onChange={(e) => updateVariant(variant.id, { priceModifier: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. 4500" />
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Stock Quantity</label>

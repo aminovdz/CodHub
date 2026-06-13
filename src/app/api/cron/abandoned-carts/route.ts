@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendAiSensyAbandonedCart } from '@/lib/actions/funnelActions';
+import { sendMetaAbandonedCart } from '@/lib/actions/funnelActions';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 
     for (const store of stores || []) {
       const config = store.whatsapp_config || {};
-      if (!config.aisensyEnabled || !config.abandonedCartCampaignName || !config.abandonedCartEnabled) continue;
+      if (!config.metaEnabled || !config.metaAbandonedCartTemplateName || !config.abandonedCartEnabled) continue;
 
       const delayMinutes = config.abandonedCartDelayMinutes || 15;
 
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
 
       for (const order of orders) {
         try {
-          const result = await sendAiSensyAbandonedCart(order.id);
+          const result = await sendMetaAbandonedCart(order.id);
           if (result.success) {
             sent++;
           } else {

@@ -47,7 +47,7 @@ export default async function RegionLayout({
   // Query store configurations from Supabase to check chatbot toggle
   const { data: store } = await supabase
     .from('stores')
-    .select('id, region, whatsapp_config')
+    .select('id, region, whatsapp_config, language')
     .ilike('region', region)
     .maybeSingle();
 
@@ -61,7 +61,9 @@ export default async function RegionLayout({
       <Suspense fallback={null}>
         <UTMTracker />
       </Suspense>
-      {children}
+      <div dir={store?.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-full flex flex-col flex-1">
+        {children}
+      </div>
       {isChatbotEnabled && (
         <ChatbotWidget 
           storeId={store.id} 

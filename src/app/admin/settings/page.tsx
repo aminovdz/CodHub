@@ -27,6 +27,7 @@ export default function AdminSettingsPage() {
   // Layout & SEO Settings
   const [isRtl, setIsRtl] = useState(true);
   const [announcementText, setAnnouncementText] = useState('⚡ Flash Sale: 50% OFF All Items');
+  const [localStoreName, setLocalStoreName] = useState(activeStore.name || 'CODHUB');
   const [seoTitle, setSeoTitle] = useState('CODHUB | The Premium Shopping Experience');
   const [seoDesc, setSeoDesc] = useState('Shop premium products with fast cash on delivery.');
   const [localApiKey, setLocalApiKey] = useState(globalApiKey || '');
@@ -44,6 +45,7 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
   const [isWebhookGuideOpen, setIsWebhookGuideOpen] = useState(false);
+  const [isWhatsappGuideOpen, setIsWhatsappGuideOpen] = useState(false);
 
   // New Store State
   const [newStoreName, setNewStoreName] = useState('');
@@ -103,12 +105,14 @@ export default function AdminSettingsPage() {
     thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
     thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
     thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
-    aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
-    aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
-    aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
-    aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
-    aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
-    abandonedCartCampaignName: activeStore.whatsappConfig?.abandonedCartCampaignName || '',
+    metaEnabled: activeStore.whatsappConfig?.metaEnabled ?? false,
+    metaPhoneNumberId: activeStore.whatsappConfig?.metaPhoneNumberId || '',
+    metaAccessToken: activeStore.whatsappConfig?.metaAccessToken || '',
+    metaTemplateName: activeStore.whatsappConfig?.metaTemplateName || '',
+    metaLanguageCode: activeStore.whatsappConfig?.metaLanguageCode || 'en_US',
+    metaTemplateParams: activeStore.whatsappConfig?.metaTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
+    metaIgnoreSelfConfirmed: activeStore.whatsappConfig?.metaIgnoreSelfConfirmed ?? true,
+    metaAbandonedCartTemplateName: activeStore.whatsappConfig?.metaAbandonedCartTemplateName || '',
     chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
     chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
     chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
@@ -185,12 +189,14 @@ export default function AdminSettingsPage() {
       thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
       thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
       thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
-      aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
-      aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
-      aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
-      aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
-      aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
-      abandonedCartCampaignName: activeStore.whatsappConfig?.abandonedCartCampaignName || '',
+      metaEnabled: activeStore.whatsappConfig?.metaEnabled ?? false,
+      metaPhoneNumberId: activeStore.whatsappConfig?.metaPhoneNumberId || '',
+      metaAccessToken: activeStore.whatsappConfig?.metaAccessToken || '',
+      metaTemplateName: activeStore.whatsappConfig?.metaTemplateName || '',
+      metaLanguageCode: activeStore.whatsappConfig?.metaLanguageCode || 'en_US',
+      metaTemplateParams: activeStore.whatsappConfig?.metaTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
+      metaIgnoreSelfConfirmed: activeStore.whatsappConfig?.metaIgnoreSelfConfirmed ?? true,
+      metaAbandonedCartTemplateName: activeStore.whatsappConfig?.metaAbandonedCartTemplateName || '',
       chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
       chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
       chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
@@ -207,11 +213,12 @@ export default function AdminSettingsPage() {
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
     setCustomDomain(activeStore.customDomain || '');
-  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain]);
+  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain, activeStore.name]);
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateStore(activeStore.id, { 
+      name: localStoreName,
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
@@ -808,6 +815,11 @@ export default function AdminSettingsPage() {
                   <label className="block text-sm font-bold text-slate-500 mb-2">Meta Title</label>
                   <input type="text" value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700" />
                 </div>
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Store Display Name</label>
+                  <p className="text-xs text-slate-500 mb-2">This is the name shown in the storefront header.</p>
+                  <input type="text" value={localStoreName} onChange={(e) => setLocalStoreName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700" />
+                </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-500 mb-2">Meta Description</label>
                   <textarea value={seoDesc} onChange={(e) => setSeoDesc(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700 resize-none" />
@@ -1019,40 +1031,55 @@ export default function AdminSettingsPage() {
               )}
             </div>
 
-            {/* AiSensy Settings */}
+
+            {/* Meta WhatsApp API Settings */}
             <div className="pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 mb-4">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white">AiSensy Automated WhatsApp Campaigns</div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Automatically send template confirmation messages via AiSensy.</div>
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">📱</span> Meta WhatsApp Business API
+                    <button type="button" onClick={() => setIsWhatsappGuideOpen(true)} className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 ml-2">Setup Guide</button>
+                  </div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Send automated WhatsApp messages directly via the official Meta Graph API — no third-party BSP required.</div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={whatsappConfig.aisensyEnabled} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyEnabled: e.target.checked})} className="sr-only peer" />
+                  <input type="checkbox" checked={whatsappConfig.metaEnabled ?? false} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaEnabled: e.target.checked})} className="sr-only peer" />
                   <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                 </label>
               </div>
-              {whatsappConfig.aisensyEnabled && (
+              {whatsappConfig.metaEnabled && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy API Key</label>
-                      <input type="password" value={whatsappConfig.aisensyApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyApiKey: e.target.value})} placeholder="Enter AiSensy campaign API Key" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Phone Number ID</label>
+                      <input type="text" value={whatsappConfig.metaPhoneNumberId || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaPhoneNumberId: e.target.value})} placeholder="e.g. 123456789012345" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <p className="text-[11px] text-slate-400 mt-1">Found in Meta Business Dashboard → WhatsApp → Phone Numbers</p>
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Order Confirmation Campaign Name</label>
-                      <input type="text" value={whatsappConfig.aisensyCampaignName} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyCampaignName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Permanent Access Token</label>
+                      <input type="password" value={whatsappConfig.metaAccessToken || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaAccessToken: e.target.value})} placeholder="EAAxxxx..." className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <p className="text-[11px] text-slate-400 mt-1">Generate a System User token in Meta Business Manager for production use</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Abandoned Cart Campaign Name</label>
-                      <input type="text" value={whatsappConfig.abandonedCartCampaignName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, abandonedCartCampaignName: e.target.value})} placeholder="e.g. abandoned_cart_recovery" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Order Confirmation Template Name</label>
+                      <input type="text" value={whatsappConfig.metaTemplateName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaTemplateName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Shortcodes / Params (comma-separated, in order)</label>
-                      <input type="text" value={whatsappConfig.aisensyTemplateParams} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                      <p className="text-[11px] text-slate-400 mt-1">Available for confirmation: [NAME], [PRODUCT], [PRODUCT_URL], [ADDRESS], [ORDER_ID], [STORE_NAME], [ORDER_TOTAL]</p>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Abandoned Cart Template Name</label>
+                      <input type="text" value={whatsappConfig.metaAbandonedCartTemplateName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaAbandonedCartTemplateName: e.target.value})} placeholder="e.g. abandoned_cart_recovery" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Language Code</label>
+                      <input type="text" value={whatsappConfig.metaLanguageCode || 'en_US'} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaLanguageCode: e.target.value})} placeholder="e.g. ar, en_US, fr" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Body Parameters (comma-separated, in order)</label>
+                    <input type="text" value={whatsappConfig.metaTemplateParams || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[PRODUCT_URL]</strong>, <strong>[ADDRESS]</strong>, <strong>[ORDER_ID]</strong>, <strong>[STORE_NAME]</strong>, <strong>[ORDER_TOTAL]</strong></p>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
                     <div>
@@ -1060,19 +1087,23 @@ export default function AdminSettingsPage() {
                       <p className="text-[10px] text-indigo-700 dark:text-indigo-400">Ignore orders where clients click WhatsApp thank-you link manually.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={whatsappConfig.aisensyIgnoreSelfConfirmed} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
+                      <input type="checkbox" checked={whatsappConfig.metaIgnoreSelfConfirmed ?? true} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
                       <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
                   </div>
                   <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mb-2">External Cron Setup (for automated abandoned cart recovery)</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Set up a cron job at <strong>cron-job.org</strong> (or similar) to hit this URL every 5 minutes:<br />
-                      <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs text-slate-800 dark:text-slate-200 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/abandoned-carts</code>
+                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mb-2">📡 Webhook for Delivery Status Tracking</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
+                      Configure this URL in your <strong>Meta App Dashboard → WhatsApp → Configuration → Webhook</strong> to receive delivery status updates (delivered, read, failed):
                     </p>
+                    <code className="bg-slate-200 dark:bg-slate-950 px-2 py-1 rounded text-xs text-slate-800 dark:text-slate-200 break-all block">{typeof window !== 'undefined' ? window.location.origin : ''}/api/meta/webhook</code>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                      Add HTTP header: <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">Authorization: Bearer YOUR_CRON_SECRET</code><br />
-                      Then add <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">CRON_SECRET=YOUR_CRON_SECRET</code> to your <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">.env</code> file.
+                      Webhook Verify Token: <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">Set <strong>META_WEBHOOK_VERIFY_TOKEN</strong> in your .env file</code>
+                    </p>
+                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mt-4 mb-2">⏱ Abandoned Cart Cron Setup</h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      Set up a cron job at <strong>cron-job.org</strong> to hit this URL every 5 minutes:<br />
+                      <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs text-slate-800 dark:text-slate-200 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/abandoned-carts</code>
                     </p>
                   </div>
                 </div>
@@ -1419,6 +1450,74 @@ function doPost(e) {
                 className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black rounded-xl text-xs transition-all"
               >
                 Close Guide
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Guide Modal */}
+      {isWhatsappGuideOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <MessageCircle className="text-green-500" /> Meta WhatsApp Business API Setup
+              </h3>
+              <button onClick={() => setIsWhatsappGuideOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                <X size={20} className="text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-8 text-slate-700">
+              <section>
+                <h4 className="font-bold text-slate-900 mb-2">1. Create a Meta Developer App</h4>
+                <ol className="list-decimal pl-5 space-y-2 text-sm">
+                  <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold hover:underline">Meta for Developers</a> and create an account.</li>
+                  <li>Click <strong>Create App</strong> and select <strong>Other</strong> -> <strong>Next</strong> -> <strong>Business</strong>.</li>
+                  <li>Enter an App name (e.g. "CODHUB WhatsApp") and select your Business Manager account, then click <strong>Create app</strong>.</li>
+                </ol>
+              </section>
+
+              <section>
+                <h4 className="font-bold text-slate-900 mb-2">2. Add the WhatsApp Product</h4>
+                <ol className="list-decimal pl-5 space-y-2 text-sm">
+                  <li>On your app dashboard, scroll down to <strong>WhatsApp</strong> and click <strong>Set up</strong>.</li>
+                  <li>Follow the onboarding steps to link or create a new WhatsApp Business Account.</li>
+                  <li>Go to <strong>WhatsApp &gt; API Setup</strong> in the left menu.</li>
+                  <li>Here you will find your <strong>Phone Number ID</strong> and a <strong>Temporary Access Token</strong>. Paste them into the fields in the CODHUB settings.</li>
+                </ol>
+                <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm">
+                  <strong>Note:</strong> To get a <strong>Permanent Access Token</strong> (so it doesn't expire in 24h), go to <strong>Business settings &gt; System Users</strong> in Meta Business Manager, create a System User, give it admin access to the WhatsApp app, and generate a token with `whatsapp_business_messaging` and `whatsapp_business_management` permissions.
+                </div>
+              </section>
+
+              <section>
+                <h4 className="font-bold text-slate-900 mb-2">3. Setup Webhook (Optional but Recommended)</h4>
+                <p className="text-sm mb-2">Webhooks allow CODHUB to know if your message was Delivered or Read.</p>
+                <ol className="list-decimal pl-5 space-y-2 text-sm">
+                  <li>Go to <strong>WhatsApp &gt; Configuration</strong> in the left menu.</li>
+                  <li>Under Webhooks, click <strong>Edit</strong>.</li>
+                  <li>Paste your Callback URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">https://your-domain.com/api/webhooks/whatsapp</code></li>
+                  <li>Paste the Verify Token: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">codhub_meta_webhook_token</code></li>
+                  <li>Click Verify and Save.</li>
+                  <li>Click <strong>Manage</strong> below Webhook fields and subscribe to the <code>messages</code> field.</li>
+                </ol>
+              </section>
+
+              <section>
+                <h4 className="font-bold text-slate-900 mb-2">4. Add Templates</h4>
+                <ol className="list-decimal pl-5 space-y-2 text-sm">
+                  <li>In Meta WhatsApp Manager, go to <strong>Message Templates</strong>.</li>
+                  <li>Create a new template for "Order Confirmation" and "Abandoned Cart".</li>
+                  <li>Approve the templates and put their exact names in the CODHUB settings fields.</li>
+                </ol>
+              </section>
+            </div>
+            
+            <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex justify-end">
+              <button onClick={() => setIsWhatsappGuideOpen(false)} className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-md">
+                Got it
               </button>
             </div>
           </div>

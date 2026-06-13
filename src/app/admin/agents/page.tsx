@@ -25,7 +25,7 @@ type Message = {
 };
 
 export default function AgentsHubPage() {
-  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog, addProduct } = useAdminStore();
+  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog, addProduct, categories, setCategories } = useAdminStore();
   const [previewPageData, setPreviewPageData] = useState<{
     msgId: string;
     action: any;
@@ -214,6 +214,9 @@ export default function AgentsHubPage() {
         disableOutOfStockPurchases: false,
         disableCoupons: false,
       };
+      if (newProduct.category && !categories.some(c => c.toLowerCase() === newProduct.category.toLowerCase())) {
+        setCategories(prev => [...prev, newProduct.category]);
+      }
       await addProduct(newProduct as any);
       addActivityLog({
         storeId: activeStore.id,

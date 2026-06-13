@@ -110,6 +110,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           setProvince(stateVal);
           setCountry(countryVal);
           setPostalCode(postalVal);
+          setWilaya(stateVal);
+          setCommune(cityVal);
 
           if (region === 'dz' || region === 'ro' || region === 'co') {
             if (stateVal) setWilaya(stateVal);
@@ -146,13 +148,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     if (!mainItem) return;
     const product = products.find(p => p.id === mainItem.id);
     if (!product?.quantityOffers || product.quantityOffers.length === 0) return;
-    const defaultOffer = product.quantityOffers.find(o => o.isDefault) ?? product.quantityOffers[0];
-    setSelectedQuantity(defaultOffer.qty);
-    state.addCartItem({
-      ...mainItem,
-      price: defaultOffer.price,
-      name: `${defaultOffer.qty}x ${product.title || mainItem.name}`
-    });
+    
+    // Check if the cart already has a quantity that matches an offer (e.g., selected on storefront)
+    const currentQty = mainItem.quantity || 1;
+    const existingOffer = product.quantityOffers.find(o => o.qty === currentQty);
+    
+    if (existingOffer) {
+      setSelectedQuantity(existingOffer.qty);
+    } else {
+      const defaultOffer = product.quantityOffers.find(o => (o as any).isDefault) ?? product.quantityOffers[0];
+      setSelectedQuantity(defaultOffer.qty);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
 
@@ -268,12 +274,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const abandonedCartTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const startAbandonedCartTimer = (orderId: string) => {
-    if (!store?.whatsappConfig?.abandonedCartEnabled || !store?.whatsappConfig?.aisensyEnabled || !store?.whatsappConfig?.abandonedCartCampaignName) return;
+    if (!store?.whatsappConfig?.abandonedCartEnabled || !store?.whatsappConfig?.metaEnabled || !store?.whatsappConfig?.metaAbandonedCartTemplateName) return;
     
     const delay = (store.whatsappConfig.abandonedCartDelayMinutes || 15) * 60 * 1000;
     abandonedCartTimerRef.current = setTimeout(async () => {
       try {
-        await fetch('/api/aisensy/abandoned-cart', {
+        await fetch('/api/meta/abandoned-cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storeId: store.id, orderId })
@@ -286,12 +292,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
   // Check for existing expired draft on mount
   useEffect(() => {
-    if (draftOrderId && store?.whatsappConfig?.abandonedCartEnabled && store?.whatsappConfig?.aisensyEnabled && store?.whatsappConfig?.abandonedCartCampaignName) {
+    if (draftOrderId && store?.whatsappConfig?.abandonedCartEnabled && store?.whatsappConfig?.metaEnabled && store?.whatsappConfig?.metaAbandonedCartTemplateName) {
       const delay = (store.whatsappConfig.abandonedCartDelayMinutes || 15) * 60 * 1000;
       const draftCreatedKey = `abandoned_ts_${draftOrderId}`;
       const created = parseInt(sessionStorage.getItem(draftCreatedKey) || '0', 10);
       if (created && Date.now() - created >= delay) {
-        fetch('/api/aisensy/abandoned-cart', {
+        fetch('/api/meta/abandoned-cart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ storeId: store.id, orderId: draftOrderId })
@@ -517,6 +523,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     if (draftOrderId) {
       try {
         await submitOrder(draftOrderId, region, {
+          customerName,
+          phone: `${prefix}${phone.replace(/^0+/, '')}`,
           address: finalAddress,
           instructions: addingNote ? deliveryInstructions : '',
           cart,
@@ -548,8 +556,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
             upsellList.push({
               id: cfg.id,
               productId: cfg.targetProductId,
-              name: cfg.titleOverride || target.title,
-              price: cfg.customPrice,
+              name: cfg.titleOverride ? `${cfg.titleOverride} (${target.title})` : target.title,
+              price: Number(cfg.customPrice),
               image: cfg.customImage || target.image
             });
           }
@@ -609,19 +617,35 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const mainCartItem = cart.find(i => !i.isUpsell);
   const mainProduct = mainCartItem ? products.find(p => p.id === mainCartItem.id) : null;
 
-  // Use product-defined quantity offers (set in admin), or empty array
-  const quantityOffers = (mainProduct?.quantityOffers && mainProduct.quantityOffers.length > 0)
-    ? mainProduct.quantityOffers
-    : [];
+  const quantityOffers = useMemo(() => {
+    let offers = (mainProduct?.quantityOffers && mainProduct.quantityOffers.length > 0)
+      ? [...mainProduct.quantityOffers]
+      : [];
+      
+    if (offers.length > 0 && !offers.some(o => o.qty === 1)) {
+       // Insert default 1 quantity offer
+       offers.unshift({
+         id: 'default-1',
+         qty: 1,
+         label: `1x ${mainProduct?.title || 'Item'}`,
+         price: mainProduct?.price || 0
+       });
+    }
+    offers.sort((a,b) => a.qty - b.qty);
+    return offers;
+  }, [mainProduct]);
 
-  const handleQuantitySelect = (offerQty: number, offerPrice: number) => {
-    setSelectedQuantity(offerQty);
+  const handleQuantitySelect = (offer: any) => {
+    setSelectedQuantity(offer.qty);
     if (mainCartItem) {
-      addCartItem({
+      // Replace cart item entirely (remove old, add new with correct price)
+      const updatedItem = {
         ...mainCartItem,
-        price: offerPrice,
-        name: `${offerQty}x ${mainProduct?.title || mainCartItem.name.replace(/^\dx\s/, '')}`
-      });
+        name: offer.qty > 1 ? `${mainProduct?.title || mainCartItem.name} (${offer.label})` : (mainProduct?.title || mainCartItem.name),
+        price: Number(offer.price),
+        quantity: Number(offer.qty),
+      };
+      addCartItem(updatedItem);
     }
   };
 
@@ -675,7 +699,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                       return (
                         <label key={offer.id} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>
                           {offer.badge && <span className="absolute -top-2.5 right-4 bg-rose-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-full shadow-sm">{offer.badge}</span>}
-                          <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer.qty, offer.price)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
+                          <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
                           <div className="flex-1">
                             <p className={`font-black text-sm ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{offer.label}</p>
                             {perItem && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{perItem} {currency} / item</p>}
@@ -774,12 +798,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   )}
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'WhatsApp Number')} *</label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" dir="ltr">
                       <div className="px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl font-bold text-slate-600 flex items-center shrink-0">{prefix}</div>
-                      <input type="tel" value={phone}
+                      <input type="tel" value={phone} dir="ltr" maxLength={region === 'dz' ? 10 : 15}
                         onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
-                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide"
-                        placeholder="55 55 55 55 55"
+                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
+                        placeholder="555 55 55 55"
                       />
                     </div>
                   </div>
@@ -806,7 +830,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                             checked={isBumpAdded}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                addCartItem({ id: bump.id, name: bump.title, price: bump.price, isUpsell: true, isBump: true, imageUrl: bump.image });
+                                addCartItem({ id: bump.id, name: bump.title, price: Number(bump.price), isUpsell: true, isBump: true, imageUrl: bump.image });
                               } else {
                                 removeCartItem(bump.id);
                               }
@@ -895,15 +919,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
                   {checkoutConfig?.showAddressFields !== false && (
                     <>
-                      {checkoutConfig?.addressAutocomplete ? (
-                        <div>
-                          <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Precise Address')} *</label>
-                          <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                            placeholder="Search street, flat number..."
-                          />
-                        </div>
-                      ) : region === 'dz' ? (
+                      {region === 'dz' ? (
                         <>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -923,23 +939,32 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                               />
                             </div>
                           </div>
-                          <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'Detailed Address')} *</label>
-                            <input type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                              placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
-                            />
-                          </div>
+                          {/* Only show detailed address for Home Delivery */}
+                          {deliveryType === 'home' && (
+                            <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'Detailed Address')} *</label>
+                              <input 
+                                ref={checkoutConfig?.addressAutocomplete ? addressInputRef : undefined}
+                                type="text" 
+                                value={detailedAddress} 
+                                onChange={(e) => setDetailedAddress(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
+                              />
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="space-y-3">
-                          <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Address')} *</label>
-                            <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
-                              className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                              placeholder={t('checkout.searchStreet', 'Street, building number...')}
-                            />
-                          </div>
+                          {deliveryType === 'home' && (
+                            <div>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Address')} *</label>
+                              <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                placeholder={t('checkout.searchStreet', 'Street, building number...')}
+                              />
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-3">
                             {checkoutConfig?.fields?.showCity !== false && (
                               <div>
@@ -1049,9 +1074,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                     onClick={handleComplete}
                     disabled={
                       checkoutConfig?.showAddressFields !== false
-                        ? (region === 'dz' && !checkoutConfig?.addressAutocomplete
-                          ? (!wilaya || !commune || !detailedAddress)
-                          : (!detailedAddress || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
+                        ? (region === 'dz'
+                          ? (!wilaya || !commune || (deliveryType === 'home' && !detailedAddress))
+                          : ((deliveryType === 'home' && !detailedAddress) || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
                         : false
                     }
                     style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}

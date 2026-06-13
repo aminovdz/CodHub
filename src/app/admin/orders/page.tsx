@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Edit2, Plus, RefreshCw, Trash2, Send, Download, Phone, CheckCircle, XCircle, Clock, PhoneCall, PhoneMissed, MessageSquare, UserCheck, Calendar, ShieldCheck, MapPin, LayoutGrid, List } from 'lucide-react';
 import { useAdminStore, Order } from '@/lib/store/useAdminStore';
 import { supabase } from '@/lib/supabase';
-import { sendAiSensyConfirmation } from '@/lib/actions/funnelActions';
+import { sendMetaConfirmation } from '@/lib/actions/funnelActions';
 import { getShortOrderId } from '@/lib/idHelper';
 
 import OrderDrawer from '@/components/admin/orders/OrderDrawer';
@@ -20,7 +20,7 @@ export default function AdminOrdersPage() {
   
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [whatsappModal, setWhatsappModal] = useState<{ orderId: string; phone: string; message: string; } | null>(null);
-  const [isSendingAiSensy, setIsSendingAiSensy] = useState(false);
+  const [isSendingMeta, setIsSendingMeta] = useState(false);
   
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
@@ -222,7 +222,8 @@ export default function AdminOrdersPage() {
       {/* Main Views */}
       <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[1200px]">
+            {/* Desktop Table */}
+            <table className="w-full text-left border-collapse min-w-[1000px] hidden lg:table">
               <thead>
                 <tr className="bg-slate-50 text-xs uppercase tracking-widest text-slate-500 border-b border-slate-200">
                   <th className="p-5 w-12 text-center"><input type="checkbox" checked={filteredOrders.length > 0 && selectedIds.size === filteredOrders.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600" /></th>
@@ -243,7 +244,7 @@ export default function AdminOrdersPage() {
                   return (
                     <tr key={o.id} onClick={() => setSelectedOrderId(o.id)} className={`border-b border-slate-100 transition-colors cursor-pointer ${selectedIds.has(o.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50'}`}>
                       <td className="p-5 text-center" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600" />
+                         <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600" />
                       </td>
                       <td className="p-5">
                         <div className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block mb-1 font-bold">{getShortOrderId(o.id)}</div>
@@ -258,10 +259,13 @@ export default function AdminOrdersPage() {
                         <div className="text-xs text-slate-500">{o.commune || o.city || '—'}</div>
                       </td>
                       <td className="p-5">
-                        <div className="text-xs font-bold text-slate-900 truncate max-w-[200px]" title={o.product}>{o.product.split(',')[0]}</div>
-                        {o.product.includes(',') && <div className="text-[9px] mt-1 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded inline-block font-black uppercase" title={o.product.substring(o.product.indexOf(',') + 1)}>+ {o.product.split(',').length - 1} UPSELLS</div>}
+                        <div className="text-xs font-bold text-slate-900" title={o.product}>
+                          {o.product.split(',').map((p, idx) => (
+                            <div key={idx} className="mb-0.5">{p.trim()}</div>
+                          ))}
+                        </div>
                         {o.notes && o.notes.length > 0 && (
-                          <div className="text-[10px] mt-1 text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded inline-block font-bold truncate max-w-[200px]" title={o.notes[0].text}>
+                          <div className="text-[10px] mt-2 text-amber-700 bg-amber-50 p-2 rounded border border-amber-100 font-bold whitespace-pre-wrap" title={o.notes[0].text}>
                             📝 {o.notes[0].text}
                           </div>
                         )}
@@ -283,7 +287,7 @@ export default function AdminOrdersPage() {
                           o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
                           'bg-amber-100 text-amber-700 border border-amber-200'
                         }`}>{formatStatus(o.status)}</span>
-                        {calls.length > 0 && <div className="mt-1.5 text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={10}/> {calls.length} CALLS LOGGED</div>}
+                        {calls.length > 0 && <div className="mt-1.5 text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={10}/> {calls.length} CALLS</div>}
                       </td>
                       <td className="p-5 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -300,6 +304,65 @@ export default function AdminOrdersPage() {
                 })}
               </tbody>
             </table>
+
+            {/* Mobile Cards View */}
+            <div className="lg:hidden flex flex-col divide-y divide-slate-100">
+              {filteredOrders.length === 0 && <div className="p-16 text-center text-slate-400 font-bold">No orders found.</div>}
+              {paginatedOrders.map(o => {
+                const calls = callLogs.filter(c => c.orderId === o.id);
+                return (
+                  <div key={o.id} onClick={() => setSelectedOrderId(o.id)} className={`p-4 transition-colors cursor-pointer ${selectedIds.has(o.id) ? 'bg-indigo-50/50' : 'hover:bg-slate-50'}`}>
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(o.id)} onChange={() => toggleSelect(o.id)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div>
+                            <div className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold">#{getShortOrderId(o.id)}</div>
+                            <div className="font-black text-slate-900 mt-1">{o.customer}</div>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-1">
+                            <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
+                              o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                              o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                              'bg-amber-100 text-amber-700 border-amber-200'
+                            }`}>{formatStatus(o.status)}</span>
+                            <div className="font-black text-indigo-600 text-sm mt-1">{o.total} <span className="text-[10px]">{activeStore.currency}</span></div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 mb-2">
+                          <div className="flex flex-col gap-0.5">
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Location</div>
+                            <div className="text-xs font-bold text-slate-700">{o.wilaya || '—'} / {o.commune || '—'}</div>
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="text-[10px] uppercase font-bold text-slate-400">Phone</div>
+                            <div className="text-xs font-bold text-slate-700 flex items-center gap-1"><Phone size={10}/> {o.phone}</div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 mb-2">
+                           <div className="text-xs font-bold text-slate-800 line-clamp-2">{o.product.split(',').join(' + ')}</div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                          <div onClick={e => e.stopPropagation()}>
+                            {o.claimedBy ? (
+                              <span className="text-[10px] font-bold text-slate-500">Claimed by <span className="text-indigo-600">{o.claimedBy}</span></span>
+                            ) : (
+                              <button onClick={() => handleClaimOrder(o.id)} className="text-[10px] uppercase tracking-wider bg-slate-900 text-white px-3 py-1 rounded-full font-black">Claim</button>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-bold">{new Date(o.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -332,17 +395,17 @@ export default function AdminOrdersPage() {
             </div>
             <div className="p-6 bg-slate-50 border-t flex justify-end gap-3 shrink-0">
               <button type="button" onClick={() => setWhatsappModal(null)} className="px-5 py-3 font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancel</button>
-              {activeStore.whatsappConfig?.aisensyEnabled && (
-                <button type="button" disabled={isSendingAiSensy} onClick={async () => {
-                    setIsSendingAiSensy(true);
+              {activeStore.whatsappConfig?.metaEnabled && (
+                <button type="button" disabled={isSendingMeta} onClick={async () => {
+                    setIsSendingMeta(true);
                     try {
-                      const res = await sendAiSensyConfirmation(whatsappModal.orderId);
-                      if (res.success) alert('AiSensy confirmation triggered!');
-                      else alert('Failed to trigger AiSensy: ' + res.error);
+                      const res = await sendMetaConfirmation(whatsappModal.orderId);
+                      if (res.success) alert('✅ WhatsApp confirmation sent via Meta!');
+                      else alert('❌ Failed to send via Meta: ' + (res as any).error);
                     } catch (e: any) { alert('Error: ' + e.message); } 
-                    finally { setIsSendingAiSensy(false); setWhatsappModal(null); }
+                    finally { setIsSendingMeta(false); setWhatsappModal(null); }
                   }} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-500/20 active:scale-95 transition-all disabled:opacity-50">
-                  {isSendingAiSensy ? 'Sending...' : 'Send via AiSensy'}
+                  {isSendingMeta ? 'Sending...' : '📱 Send via Meta API'}
                 </button>
               )}
               <button type="button" onClick={() => {

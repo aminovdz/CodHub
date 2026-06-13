@@ -180,3 +180,26 @@ create table public.activity_logs (
 );
 
 alter table public.activity_logs disable row level security;
+
+-- Message Logs for Meta API Integration
+CREATE TABLE IF NOT EXISTS public.message_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    store_id UUID REFERENCES public.stores(id) ON DELETE CASCADE,
+    order_id UUID REFERENCES public.orders(id) ON DELETE SET NULL,
+    phone_number TEXT NOT NULL,
+    message_type TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'SENT',
+    meta_message_id TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER handle_updated_at BEFORE UPDATE ON public.message_logs
+  FOR EACH ROW EXECUTE FUNCTION public.moddatetime (updated_at);
+
+ALTER TABLE public.message_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Enable all access for message_logs" ON public.message_logs
+    AS PERMISSIVE FOR ALL
+    USING (true)
+    WITH CHECK (true);

@@ -90,7 +90,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     compare_at_price: p.compareAtPrice,
     active: p.active,
     image: p.image,
-    images: p.images,
+    // images: p.images, // Schema does not have this column
     short_desc: p.shortDesc,
     main_desc: p.mainDesc,
     stock: p.stock,
@@ -98,11 +98,11 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     variants: p.variants,
     enable_variants: p.enableVariants,
     related_products: p.relatedProducts,
-    maximizer_upsells: [
+    maximizer_upsells: (p.maximizerUpsells !== undefined || p.orderBumps !== undefined || p.quantityOffers !== undefined) ? [
       ...(p.maximizerUpsells || []).map(u => ({ ...u, _type: 'maximizer' })),
       ...(p.orderBumps || []).map(b => ({ ...b, _type: 'bump' })),
       ...(p.quantityOffers || []).map(q => ({ ...q, _type: 'quantity' }))
-    ],
+    ] : undefined,
     blocks: p.blocks,
     seo_title: p.seoTitle,
     seo_description: p.seoDescription,
@@ -112,7 +112,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     oto_product_id: p.otoProductId || null,
     disable_out_of_stock_purchases: p.disableOutOfStockPurchases,
     disable_coupons: p.disableCoupons,
-    delivery_agency: p.deliveryAgency,
+
     cost_price: p.costPrice,
     weight: p.weight,
     shipping_cost: p.shippingCost,
@@ -336,12 +336,14 @@ export interface Store {
     thankYouEnabled: boolean;
     thankYouNumber: string;
     thankYouMessage: string;
-    aisensyEnabled?: boolean;
-    aisensyApiKey?: string;
-    aisensyCampaignName?: string;
-    aisensyTemplateParams?: string;
-    aisensyIgnoreSelfConfirmed?: boolean;
-    abandonedCartCampaignName?: string;
+    metaEnabled?: boolean;
+    metaPhoneNumberId?: string;
+    metaAccessToken?: string;
+    metaTemplateName?: string;
+    metaLanguageCode?: string;
+    metaTemplateParams?: string; // Comma separated, e.g. '[NAME],[ORDER_ID]'
+    metaIgnoreSelfConfirmed?: boolean;
+    metaAbandonedCartTemplateName?: string;
     chatbotEnabled?: boolean;
     chatbotName?: string;
     chatbotInstructions?: string;
@@ -941,7 +943,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const row = productToRow(data as Partial<Product>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
         const { error } = await supabase.from('products').update(cleanRow).eq('id', productId);
-        if (error) console.error("Failed to update product in Supabase", error);
+        if (error) console.error("Failed to update product in Supabase", error.message || error);
       },
       deleteProduct: async (productId) => {
         set((state) => ({

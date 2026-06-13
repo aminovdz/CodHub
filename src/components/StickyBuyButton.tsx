@@ -59,11 +59,11 @@ export default function StickyBuyButton({
         <div className="sh-sticky-bar-inner max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-baseline gap-2">
             <span className="sh-sticky-bar-price text-xl font-black text-slate-900">
-              {currency} {price.toFixed(2)}
+              {price.toFixed(0)} {currency}
             </span>
             {comparePrice && (
               <span className="sh-sticky-bar-compare text-sm font-semibold text-slate-400 line-through">
-                {currency} {comparePrice.toFixed(2)}
+                {comparePrice.toFixed(0)} {currency}
               </span>
             )}
           </div>

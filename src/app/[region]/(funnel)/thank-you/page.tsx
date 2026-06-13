@@ -143,7 +143,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 </h3>
                 <p className="text-green-100 text-lg">
                   {selfConfirmed 
-                    ? 'Thank you for confirming your order via WhatsApp. We will process it immediately!'
+                    ? t('thankyou.whatsappConfirmedDesc', 'Thank you for confirming your order via WhatsApp. We will process it immediately!')
                     : t('thankyou.priorityDesc', 'Click to confirm your order on WhatsApp and jump the queue for fast delivery.')}
                 </p>
               </div>
@@ -154,7 +154,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 onClick={handleConfirmClick}
                 className="flex-shrink-0 bg-white text-green-700 font-black px-8 py-4 rounded-2xl hover:bg-green-50 transition-all flex items-center gap-2 shadow-lg text-lg active:scale-95"
               >
-                <MessageCircle size={20} /> {selfConfirmed ? 'Message Sent' : t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
+                <MessageCircle size={20} /> {selfConfirmed ? t('thankyou.whatsappConfirmed', 'Message Sent') : t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
               </a>
             </div>
           </div>
@@ -163,18 +163,18 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
         {/* ===== POST-PURCHASE OTO ===== */}
         {otoProduct && !otoClaimed && (
           <div className="bg-gradient-to-br from-indigo-900 to-indigo-700 rounded-3xl shadow-2xl overflow-hidden mb-8 text-white relative">
-            <div className="absolute top-4 left-4 bg-amber-400 text-amber-900 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-              <Zap size={12} /> One-Time Offer
+            <div className="absolute top-4 left-4 bg-amber-400 text-amber-900 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1 z-10">
+              <Zap size={12} /> {t('thankyou.otoLabel', 'One-Time Offer')}
             </div>
             <div className="flex flex-col md:flex-row">
               {otoProduct.image && (
-                <div className="md:w-64 h-48 md:h-auto flex-shrink-0 overflow-hidden">
+                <div className="w-full md:w-2/5 shrink-0 bg-white p-6 flex items-center justify-center rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={otoProduct.image} alt={otoProduct.title} className="w-full h-full object-cover" />
+                  <img src={otoProduct.image} alt={otoProduct.title} className="max-w-full max-h-56 object-contain drop-shadow-xl" />
                 </div>
               )}
               <div className="p-8 flex flex-col justify-center flex-1">
-                <p className="text-indigo-200 text-sm font-bold uppercase tracking-wider mb-2">Add to your order — one time only</p>
+                <p className="text-indigo-200 text-sm font-bold uppercase tracking-wider mb-2">{t('thankyou.otoSubtitle', 'Add to your order — one time only')}</p>
                 <h3 className="text-3xl font-black mb-2">{otoProduct.title}</h3>
                 {otoProduct.shortDesc && (
                   <p className="text-indigo-200 mb-4">{otoProduct.shortDesc}</p>
@@ -190,13 +190,13 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                     onClick={handleOtoClaim}
                     className="bg-amber-400 hover:bg-amber-300 text-amber-900 font-black px-8 py-4 rounded-2xl transition-all active:scale-95 flex items-center gap-2 shadow-lg text-lg"
                   >
-                    <ShoppingBag size={20} /> Yes, Add to My Order!
+                    <ShoppingBag size={20} /> {t('thankyou.otoYes', 'Yes, Add to My Order!')}
                   </button>
                   <button
                     onClick={() => setOtoClaimed(true)}
                     className="bg-white/10 hover:bg-white/20 text-white font-bold px-6 py-4 rounded-2xl transition-all text-sm"
                   >
-                    No thanks
+                    {t('thankyou.otoNo', 'No thanks')}
                   </button>
                 </div>
               </div>
@@ -238,7 +238,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
             </div>
           ) : (
             <div className="bg-green-100 border border-green-200 rounded-2xl p-6 text-center text-green-800 font-bold mb-8">
-              ✅ Discount code and receipt will be sent to your email shortly!
+              ✅ {t('thankyou.receiptSuccess', 'Discount code and receipt will be sent to your email shortly!')}
             </div>
           )
         )}

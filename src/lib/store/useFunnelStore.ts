@@ -10,6 +10,7 @@ export interface CartItem {
   imageUrl?: string;
   variantId?: string;
   variantName?: string;
+  quantity?: number;
 }
 
 interface FunnelState {

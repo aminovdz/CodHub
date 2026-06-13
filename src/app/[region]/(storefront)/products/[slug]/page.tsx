@@ -75,6 +75,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
 
@@ -93,15 +94,16 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   }, [(product as any)?.relatedProducts, products, product?.id]);
 
   useEffect(() => {
-    if (product && (product as any).variants && (product as any).variants.length > 0) {
+    if (!hasAutoSelected && product && (product as any).variants && (product as any).variants.length > 0) {
       const inStockVariants = (product as any).variants.filter((v: any) => v.stock > 0);
       if (inStockVariants.length > 0 && !selectedVariant) {
         setSelectedVariant(inStockVariants[0]);
       } else if (!selectedVariant) {
         setSelectedVariant((product as any).variants[0]);
       }
+      setHasAutoSelected(true);
     }
-  }, [product]);
+  }, [product, hasAutoSelected]);
 
   useEffect(() => {
     if (product) {
@@ -141,17 +143,17 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
     }
 
     const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];
-    const finalPrice = basePrice + (selectedVariant?.priceModifier || 0);
+    const finalPrice = (selectedVariant && selectedVariant.priceModifier > 0) ? selectedVariant.priceModifier : basePrice;
 
     // 1. Overwrite cart with just this item
     buyNow({
       id: product.id,
-      name: product.title + (selectedVariant ? ` - ${selectedVariant.name}` : ''),
+      name: product.title + (selectedVariant ? ` - ${selectedVariant.label}` : ''),
       price: finalPrice,
       isUpsell: false,
       imageUrl: product.image,
       variantId: selectedVariant?.id,
-      variantName: selectedVariant?.name
+      variantName: selectedVariant?.label
     });
 
     // 2. Add any selected cross-sell items
@@ -168,9 +170,9 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   };
 
   const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];
-  const finalPrice = basePrice + (selectedVariant?.priceModifier || 0);
+  const finalPrice = (selectedVariant && selectedVariant.priceModifier > 0) ? selectedVariant.priceModifier : basePrice;
   const compareAt = (product as any).compareAtPrice || (product as any).originalPrice?.[region];
-  const finalCompareAt = compareAt ? compareAt + (selectedVariant?.priceModifier || 0) : null;
+  const finalCompareAt = compareAt ? compareAt : null;
 
   const isSoldOut = (product as any).disableOutOfStockPurchases && ((product as any).stock || 0) <= 0;
 
@@ -221,16 +223,18 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
             </h1>
 
             {/* Ratings */}
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center text-amber-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={18} className={i < Math.floor((product as any).starsRate || (product as any).rating || 5) ? "fill-current" : ""} />
-                ))}
+            {(((product as any).starsRate && (product as any).starsRate > 0) || ((product as any).reviewsCount && (product as any).reviewsCount > 0)) && (
+              <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center text-amber-400">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={18} className={i < Math.floor((product as any).starsRate || 5) ? "fill-current" : ""} />
+                  ))}
+                </div>
+                <div className="text-sm font-bold text-slate-500 underline cursor-pointer hover:text-slate-700">
+                  {(product as any).reviewsCount || 0} {t('product.reviews', 'reviews')}
+                </div>
               </div>
-              <div className="text-sm font-bold text-slate-500 underline cursor-pointer hover:text-slate-700">
-                {(product as any).reviewsCount || (product as any).reviews || 120} {t('product.reviews', 'reviews')}
-              </div>
-            </div>
+            )}
 
             {/* Pricing block */}
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
@@ -263,9 +267,9 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
                       <button
                         key={variant.id}
                         disabled={isOutOfStock}
-                        onClick={() => setSelectedVariant(variant)}
+                        onClick={() => setSelectedVariant(isSelected ? null : variant)}
                         style={isSelected && store?.primaryColor ? { borderColor: store.primaryColor, backgroundColor: store.primaryColor + '10', color: store.primaryColor } : {}}
-                        className={`relative overflow-hidden px-5 py-3 rounded-xl border-2 font-bold text-sm transition-all
+                        className={`relative overflow-hidden px-5 py-3 rounded-xl border-2 font-bold transition-all flex flex-col items-start
                           ${isSelected && !store?.primaryColor
                             ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(79,70,229,0.1)]' 
                             : isSelected && store?.primaryColor
@@ -276,9 +280,12 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
                           }
                         `}
                       >
-                        {variant.name}
-                        {variant.priceModifier > 0 && ` (+${variant.priceModifier} ${currency})`}
-                        {variant.priceModifier < 0 && ` (${variant.priceModifier} ${currency})`}
+                        <span className="text-sm">{variant.label}</span>
+                        {variant.priceModifier > 0 && variant.priceModifier !== basePrice && (
+                           <span className={`text-xs font-black ${isSelected ? '' : 'text-indigo-600'}`}>
+                             {variant.priceModifier} {currency}
+                           </span>
+                        )}
                         
                         {isOutOfStock && (
                           <div className="absolute inset-0 flex items-center justify-center">
@@ -386,11 +393,10 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
               </div>
             )}
 
-            {/* Sticky Buy Button */}
             <StickyBuyButton
               enabled={store?.stickyBuyButton?.enabled ?? false}
               onBuy={handleBuyNow}
-              price={basePrice}
+              price={finalPrice}
               comparePrice={compareAt}
               currency={store?.currency || 'DZD'}
               buttonText={store?.stickyBuyButton?.text || 'Order Now'}
@@ -449,6 +455,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
           </div>
         )}
       </div>
+      <div className="h-32"></div> {/* Spacer to prevent sticky button overlap */}
     </div>
   );
 }
