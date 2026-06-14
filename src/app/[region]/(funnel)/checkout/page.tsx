@@ -797,15 +797,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'WhatsApp Number')} *</label>
-                    <div className="flex gap-2" dir="ltr">
-                      <div className="px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl font-bold text-slate-600 flex items-center shrink-0">{prefix}</div>
-                      <input type="tel" value={phone} dir="ltr" maxLength={region === 'dz' ? 10 : 15}
-                        onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
-                        className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
-                        placeholder="555 55 55 55"
-                      />
-                    </div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'Phone Number')} *</label>
+                    <input type="tel" value={phone} dir="ltr" maxLength={10}
+                      onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
+                      placeholder="0555 55 55 55"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">Enter your number starting with 0 (e.g. 0555 12 34 56)</p>
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
                     <div key={field.id}>

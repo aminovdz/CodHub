@@ -285,9 +285,19 @@ export default function AdminOrdersPage() {
                           o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
                           o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border border-teal-200' :
                           o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                          'bg-amber-100 text-amber-700 border border-amber-200'
+                          o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                          'bg-violet-100 text-violet-700 border border-violet-200'
                         }`}>{formatStatus(o.status)}</span>
-                        {calls.length > 0 && <div className="mt-1.5 text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={10}/> {calls.length} CALLS</div>}
+                        {(() => {
+                          const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
+                          const noteCount = (o.notes || []).filter((n: any) => !n.text?.startsWith('[Call -') && !n.text?.startsWith('Status changed')).length;
+                          return (
+                            <div className="mt-1.5 flex gap-2 flex-wrap">
+                              {callCount > 0 && <div className="text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1"><Phone size={10}/> {callCount} CALLS</div>}
+                              {noteCount > 0 && <div className="text-[9px] text-amber-500 font-bold uppercase flex items-center gap-1"><MessageSquare size={10}/> {noteCount} NOTES</div>}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="p-5 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -325,10 +335,16 @@ export default function AdminOrdersPage() {
                           <div className="text-right flex flex-col items-end gap-1">
                             <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
                               o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                              o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border-teal-200' :
                               o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border-rose-200' :
-                              'bg-amber-100 text-amber-700 border-amber-200'
+                              o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              'bg-violet-100 text-violet-700 border-violet-200'
                             }`}>{formatStatus(o.status)}</span>
                             <div className="font-black text-indigo-600 text-sm mt-1">{o.total} <span className="text-[10px]">{activeStore.currency}</span></div>
+                            {(() => {
+                              const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
+                              return callCount > 0 ? <div className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Phone size={9}/> {callCount} calls</div> : null;
+                            })()}
                           </div>
                         </div>
                         
