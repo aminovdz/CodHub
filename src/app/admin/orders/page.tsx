@@ -102,6 +102,16 @@ export default function AdminOrdersPage() {
     } catch (err: any) { alert("Failed to claim order: " + err.message); }
   };
 
+  const handleUnclaimOrder = async (id: string) => {
+    try {
+      const { error } = await supabase.from('orders').update({ claimed_by: null }).eq('id', id);
+      if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, claimedBy: null } : o));
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Unclaimed', detail: `Agent ${sessionUser} unclaimed order ${id}` });
+    } catch (err: any) { alert("Failed to unclaim order: " + err.message); }
+  };
+
+
   const handleSmartClaim = async () => {
     // Find oldest unassigned pending order
     const pendingOrder = filteredOrders.find(o => !o.claimedBy && (o.status === 'PENDING_AGENT_CONFIRMATION' || o.status === 'PENDING'));
@@ -273,21 +283,33 @@ export default function AdminOrdersPage() {
                       <td className="p-5 font-black text-indigo-600">{o.total} {activeStore.currency}</td>
                       <td className="p-5" onClick={e => e.stopPropagation()}>
                         {o.claimedBy ? (
-                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${o.claimedBy === sessionUser ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
-                            {o.claimedBy === sessionUser ? 'You' : o.claimedBy}
+                          <div className="flex flex-col items-start gap-2">
+                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${o.claimedBy === sessionUser ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                              {o.claimedBy === sessionUser ? 'You' : o.claimedBy}
+                            </div>
+                            {o.claimedBy === sessionUser && (
+                              <button onClick={() => handleUnclaimOrder(o.id)} className="text-[9px] uppercase tracking-wider text-slate-500 hover:text-rose-600 font-bold transition-colors">Unclaim</button>
+                            )}
                           </div>
                         ) : (
                           <button onClick={() => handleClaimOrder(o.id)} className="text-[10px] uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-full transition-colors font-black shadow-sm">Claim</button>
                         )}
                       </td>
                       <td className="p-5">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                          o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                          o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border border-teal-200' :
-                          o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
-                          o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                          'bg-violet-100 text-violet-700 border border-violet-200'
-                        }`}>{formatStatus(o.status)}</span>
+                        <div className="flex flex-col gap-1.5 items-start">
+                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                            o.status === 'CONFIRMED' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                            o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border border-teal-200' :
+                            o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                            o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                            'bg-violet-100 text-violet-700 border border-violet-200'
+                          }`}>{formatStatus(o.status)}</span>
+                          {o.fulfillmentStatus && (
+                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+                              🚚 {o.fulfillmentStatus}
+                            </span>
+                          )}
+                        </div>
                         {(() => {
                           const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
                           const noteCount = (o.notes || []).filter((n: any) => !n.text?.startsWith('[Call -') && !n.text?.startsWith('Status changed')).length;
@@ -340,6 +362,11 @@ export default function AdminOrdersPage() {
                               o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                               'bg-violet-100 text-violet-700 border-violet-200'
                             }`}>{formatStatus(o.status)}</span>
+                            {o.fulfillmentStatus && (
+                              <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
+                                🚚 {o.fulfillmentStatus}
+                              </span>
+                            )}
                             <div className="font-black text-indigo-600 text-sm mt-1">{o.total} <span className="text-[10px]">{activeStore.currency}</span></div>
                             {(() => {
                               const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
@@ -366,7 +393,12 @@ export default function AdminOrdersPage() {
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
                           <div onClick={e => e.stopPropagation()}>
                             {o.claimedBy ? (
-                              <span className="text-[10px] font-bold text-slate-500">Claimed by <span className="text-indigo-600">{o.claimedBy}</span></span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-slate-500">Claimed by <span className="text-indigo-600">{o.claimedBy === sessionUser ? 'You' : o.claimedBy}</span></span>
+                                {o.claimedBy === sessionUser && (
+                                  <button onClick={() => handleUnclaimOrder(o.id)} className="text-[9px] uppercase text-rose-500 font-bold">Unclaim</button>
+                                )}
+                              </div>
                             ) : (
                               <button onClick={() => handleClaimOrder(o.id)} className="text-[10px] uppercase tracking-wider bg-slate-900 text-white px-3 py-1 rounded-full font-black">Claim</button>
                             )}

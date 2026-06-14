@@ -66,6 +66,8 @@ export default function OrderDrawer({
     
     if (result === 'confirmed') { newStatus = 'CONFIRMED'; newConfirmedBy = sessionUser; }
     else if (result === 'canceled') { newStatus = 'CANCELED'; }
+    else if (result === 'rescheduled') { newStatus = 'RESCHEDULED'; }
+    else if (result === 'no_answer') { newStatus = 'NO_ANSWER'; }
     
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, confirmedBy: newConfirmedBy, notes: updatedNotes } : o));
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Call Logged', detail: `Order ${getShortOrderId(orderId)} — ${result.toUpperCase()}` });
