@@ -1037,7 +1037,6 @@ export default function AdminSettingsPage() {
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 mb-4">
                 <div>
                   <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <div className="flex items-center gap-2">
                     <span className="text-green-600">📱</span> Meta WhatsApp Business API
                     <button type="button" onClick={() => setIsWhatsappGuideOpen(true)} className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 ml-2">Setup Guide</button>
                   </div>
@@ -1474,7 +1473,7 @@ function doPost(e) {
                 <h4 className="font-bold text-slate-900 mb-2">1. Create a Meta Developer App</h4>
                 <ol className="list-decimal pl-5 space-y-2 text-sm">
                   <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold hover:underline">Meta for Developers</a> and create an account.</li>
-                  <li>Click <strong>Create App</strong> and select <strong>Other</strong> -> <strong>Next</strong> -> <strong>Business</strong>.</li>
+                  <li>Click <strong>Create App</strong> and select <strong>Other</strong> &rarr; <strong>Next</strong> &rarr; <strong>Business</strong>.</li>
                   <li>Enter an App name (e.g. "CODHUB WhatsApp") and select your Business Manager account, then click <strong>Create app</strong>.</li>
                 </ol>
               </section>

@@ -72,6 +72,8 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
 
     try {
       await submitOrder(orderId, region, {
+        customerName: name,
+        phone: fullPhone,
         address: { wilaya, commune: '', detailedAddress: '' },
         instructions: '',
         cart: [{ id: product.id, name: product.title, price: product.price * qty, isUpsell: false }],
