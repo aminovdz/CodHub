@@ -15,7 +15,8 @@ export default function AdminSettingsPage() {
     categories, setCategories, checkoutConfigs, saveCheckoutConfig, 
     globalApiKey, setGlobalApiKey, claudeApiKey, setClaudeApiKey, 
     openAiApiKey, setOpenAiApiKey, openRouterApiKey, setOpenRouterApiKey, 
-    openRouterModel, setOpenRouterModel, aiProvider, setAiProvider,
+    openRouterModel, setOpenRouterModel, nvidiaApiKey, setNvidiaApiKey,
+    nvidiaModel, setNvidiaModel, aiProvider, setAiProvider,
     addActivityLog
   } = useAdminStore();
 
@@ -35,7 +36,9 @@ export default function AdminSettingsPage() {
   const [localOpenAiKey, setLocalOpenAiKey] = useState(openAiApiKey || '');
   const [localOpenRouterKey, setLocalOpenRouterKey] = useState(openRouterApiKey || '');
   const [localOpenRouterModel, setLocalOpenRouterModel] = useState(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
-  const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'>(aiProvider || 'gemini');
+  const [localNvidiaKey, setLocalNvidiaKey] = useState(nvidiaApiKey || '');
+  const [localNvidiaModel, setLocalNvidiaModel] = useState(nvidiaModel || 'meta/llama-3.1-405b-instruct');
+  const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
   const [stickyBuyEnabled, setStickyBuyEnabled] = useState(activeStore.stickyBuyButton?.enabled ?? false);
@@ -83,7 +86,9 @@ export default function AdminSettingsPage() {
     yalidine: { apiKey: '', apiToken: '' },
     zrexpress: { apiKey: '', apiToken: '', branchId: '' },
     mayestro: { apiKey: '' },
-    dhd: { apiKey: '', apiToken: '' }
+    dhd: { apiKey: '', apiToken: '' },
+    autoRoutingEnabled: false,
+    trackConfirmationTime: false
   });
 
   // Checkout & Upsell State
@@ -129,19 +134,7 @@ export default function AdminSettingsPage() {
     highValueThreshold: 15000
   });
 
-  // Staff Accounts State
-  const { staffAccounts, addStaffAccount, updateStaffAccount, deleteStaffAccount } = useAdminStore();
-  const [newStaffName, setNewStaffName] = useState('');
-  const [newStaffRole, setNewStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
-  const [newStaffPin, setNewStaffPin] = useState('');
-  const [newStaffStoreIds, setNewStaffStoreIds] = useState<string[]>([]);
 
-  // Editing Staff State
-  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
-  const [editStaffName, setEditStaffName] = useState('');
-  const [editStaffRole, setEditStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
-  const [editStaffPin, setEditStaffPin] = useState('');
-  const [editStaffStoreIds, setEditStaffStoreIds] = useState<string[]>([]);
 
   // Category State
   const { notify } = useNotificationStore();
@@ -169,7 +162,9 @@ export default function AdminSettingsPage() {
       yalidine: { apiKey: '', apiToken: '' },
       zrexpress: { apiKey: '', apiToken: '', branchId: '' },
       mayestro: { apiKey: '' },
-      dhd: { apiKey: '', apiToken: '' }
+      dhd: { apiKey: '', apiToken: '' },
+      autoRoutingEnabled: false,
+      trackConfirmationTime: false
     });
 
     setCheckoutConfig({
@@ -231,6 +226,8 @@ export default function AdminSettingsPage() {
     setOpenAiApiKey(localOpenAiKey);
     setOpenRouterApiKey(localOpenRouterKey);
     setOpenRouterModel(localOpenRouterModel);
+    setNvidiaApiKey(localNvidiaKey);
+    setNvidiaModel(localNvidiaModel);
     setAiProvider(localProvider);
 
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
@@ -416,6 +413,7 @@ export default function AdminSettingsPage() {
               <option value="claude">Anthropic Claude (Best Quality, Paid)</option>
               <option value="openai">OpenAI ChatGPT (Industry Standard)</option>
               <option value="openrouter">OpenRouter (Free / Open Source Models)</option>
+              <option value="nvidia">Nvidia NIM (Nvidia NIM API)</option>
             </select>
           </div>
 
@@ -469,6 +467,26 @@ export default function AdminSettingsPage() {
               onChange={(e) => setLocalOpenRouterModel(e.target.value)} 
               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
               placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free" 
+            />
+          </div>
+
+          <div className={localProvider !== 'nvidia' ? 'opacity-50' : ''}>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Nvidia API Key</label>
+            <input 
+              type="password" 
+              value={localNvidiaKey} 
+              onChange={(e) => setLocalNvidiaKey(e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium mb-4" 
+              placeholder="nvapi-..." 
+            />
+            
+            <label className="block text-sm font-bold text-slate-700 mb-2">Nvidia Model</label>
+            <input 
+              type="text" 
+              value={localNvidiaModel} 
+              onChange={(e) => setLocalNvidiaModel(e.target.value)} 
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
+              placeholder="e.g. meta/llama-3.1-405b-instruct" 
             />
           </div>
         </div>
@@ -555,218 +573,7 @@ export default function AdminSettingsPage() {
         {categoryError && <p className="text-rose-600 text-xs font-bold mt-2">{categoryError}</p>}
       </div>
 
-      {/* STAFF ACCOUNTS */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
-          <Users className="text-indigo-600" /> Staff Accounts
-        </h2>
-        <div className="space-y-3 mb-6">
-          {staffAccounts.map(acc => {
-            if (editingStaffId === acc.id) {
-              return (
-                <form key={acc.id} onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (editStaffName && editStaffPin.length >= 4) {
-                    await updateStaffAccount(acc.id, {
-                      name: editStaffName,
-                      role: editStaffRole,
-                      pin: editStaffPin,
-                      storeId: editStaffStoreIds.length === 1 ? editStaffStoreIds[0] : undefined,
-                      storeIds: editStaffStoreIds
-                    });
-                    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Updated', detail: `Updated staff account ${editStaffName} (${editStaffRole})` });
-                    setEditingStaffId(null);
-                    notify('Staff account updated successfully!', 'success');
-                  } else {
-                    notify('PIN must be at least 4 digits', 'error');
-                  }
-                }} className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b border-indigo-100">
-                    <div className="font-bold text-indigo-900">Edit Staff Account</div>
-                    <button type="button" onClick={() => setEditingStaffId(null)} className="text-slate-400 hover:text-slate-600">
-                      <X size={18} />
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-4">
-                    <div className="flex-1 min-w-[150px]">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
-                      <input type="text" value={editStaffName} onChange={e => setEditStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="Agent Name" />
-                    </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
-                      <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
-                        <option value="fulfillment">Fulfillment Agent</option>
-                        <option value="confirmation">Confirmation Agent</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                    </div>
-                    <div className="flex-1 min-w-[150px]">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">PIN / Password</label>
-                      <input type="text" value={editStaffPin} onChange={e => setEditStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="e.g. 1234" />
-                    </div>
-                  </div>
-                  <div className="w-full">
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
-                    <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
-                      <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
-                        <input 
-                          type="checkbox" 
-                          checked={editStaffStoreIds.length === 0}
-                          onChange={() => setEditStaffStoreIds([])}
-                          className="accent-indigo-600"
-                        />
-                        All Stores (Global)
-                      </label>
-                      {availableStores.map(s => {
-                        const isSelected = editStaffStoreIds.includes(s.id);
-                        return (
-                          <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={isSelected}
-                              onChange={() => {
-                                if (isSelected) {
-                                  setEditStaffStoreIds(editStaffStoreIds.filter(id => id !== s.id));
-                                } else {
-                                  setEditStaffStoreIds([...editStaffStoreIds, s.id]);
-                                }
-                              }}
-                              className="accent-indigo-600"
-                            />
-                            {s.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button type="button" onClick={() => setEditingStaffId(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                      Cancel
-                    </button>
-                    <button type="submit" className="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
-                      Save Changes
-                    </button>
-                  </div>
-                </form>
-              );
-            }
 
-            return (
-              <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                <div>
-                  <div className="font-bold text-slate-900">{acc.name}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                      {acc.storeIds && acc.storeIds.length > 0
-                        ? acc.storeIds.map(sid => availableStores.find(s => s.id === sid)?.name || 'Store').join(', ')
-                        : acc.storeId ? availableStores.find(s => s.id === acc.storeId)?.name || 'Restricted Store' : 'All Stores (Global)'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      setEditingStaffId(acc.id);
-                      setEditStaffName(acc.name);
-                      setEditStaffRole(acc.role);
-                      setEditStaffPin(acc.pin || '');
-                      setEditStaffStoreIds(acc.storeIds || (acc.storeId ? [acc.storeId] : []));
-                    }}
-                    className="p-2 text-slate-500 hover:bg-slate-200/60 rounded-lg transition-colors"
-                    title="Edit Staff Account"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      deleteStaffAccount(acc.id);
-                      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Deleted', detail: `Deleted staff account ${acc.name} (${acc.role})` });
-                    }}
-                    className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
-                    disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
-                    title="Delete Staff Account"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <form onSubmit={async (e) => {
-          e.preventDefault();
-          if (newStaffName && newStaffPin.length >= 4) {
-            await addStaffAccount({ 
-              name: newStaffName, 
-              role: newStaffRole, 
-              pin: newStaffPin,
-              storeId: newStaffStoreIds.length === 1 ? newStaffStoreIds[0] : undefined,
-              storeIds: newStaffStoreIds
-            });
-            addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Created', detail: `Created staff account ${newStaffName} (${newStaffRole})` });
-            setNewStaffName('');
-            setNewStaffPin('');
-            setNewStaffStoreIds([]);
-          }
-        }} className="flex flex-wrap items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
-            <input type="text" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="Agent Name" />
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
-            <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
-              <option value="fulfillment">Fulfillment Agent</option>
-              <option value="confirmation">Confirmation Agent</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          <div className="w-full">
-            <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
-            <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
-              <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
-                <input 
-                  type="checkbox" 
-                  checked={newStaffStoreIds.length === 0}
-                  onChange={() => setNewStaffStoreIds([])}
-                  className="accent-indigo-600"
-                />
-                All Stores (Global)
-              </label>
-              {availableStores.map(s => {
-                const isSelected = newStaffStoreIds.includes(s.id);
-                return (
-                  <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected}
-                      onChange={() => {
-                        if (isSelected) {
-                          setNewStaffStoreIds(newStaffStoreIds.filter(id => id !== s.id));
-                        } else {
-                          setNewStaffStoreIds([...newStaffStoreIds, s.id]);
-                        }
-                      }}
-                      className="accent-indigo-600"
-                    />
-                    {s.name} ({s.region.toUpperCase()})
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-          <div className="flex-1 min-w-[100px]">
-            <label className="block text-xs font-bold text-slate-500 mb-1">PIN (Login)</label>
-            <input type="password" value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="4+ digits" />
-          </div>
-          <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px] min-w-[120px] justify-center">
-            <Plus size={16} /> Add Staff
-          </button>
-        </form>
-      </div>
 
       {/* SEO & LAYOUT */}
       <form onSubmit={handleSaveSEO} className="space-y-8">
@@ -851,7 +658,7 @@ export default function AdminSettingsPage() {
             {/* Fulfillment Setup */}
             <div className="pb-6 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 mb-4">Fulfillment Provider</h3>
-              {activeStore.region === 'dz' ? (
+              {activeStore?.region?.toLowerCase() === 'dz' ? (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-amber-900 mb-1">Default Provider</label>
@@ -865,6 +672,40 @@ export default function AdminSettingsPage() {
                       <option value="mayestro">Mayestro Delivery</option>
                       <option value="dhd">DHD</option>
                     </select>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl mt-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-950">Auto-Routing (Round-Robin)</h4>
+                      <p className="text-[10px] text-amber-800/80">Automatically assign new incoming PENDING orders to online confirmation staff</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={!!dzFulfillment.autoRoutingEnabled} 
+                        onChange={(e) => setDzFulfillment({...dzFulfillment, autoRoutingEnabled: e.target.checked})}
+                        className="sr-only peer" 
+                        id="setting-auto-routing"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl mt-4">
+                    <div>
+                      <h4 className="text-xs font-bold text-amber-950">Track Confirmation Time</h4>
+                      <p className="text-[10px] text-amber-800/80">Track and store elapsed time between order creation and agent confirmation</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={!!dzFulfillment.trackConfirmationTime} 
+                        onChange={(e) => setDzFulfillment({...dzFulfillment, trackConfirmationTime: e.target.checked})}
+                        className="sr-only peer" 
+                        id="setting-track-confirmation-time"
+                      />
+                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                    </label>
                   </div>
 
                   {dzFulfillment.defaultProvider === 'yalidine' && (

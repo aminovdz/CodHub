@@ -62,7 +62,8 @@ export default function AdminAbandonedCartsPage() {
       </div>
 
       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        {/* Desktop Table View */}
+        <table className="w-full text-left border-collapse hidden lg:table">
           <thead>
             <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
               <th className="p-4 font-bold">Time</th>
@@ -107,6 +108,51 @@ export default function AdminAbandonedCartsPage() {
             )}
           </tbody>
         </table>
+
+        {/* Mobile Cards View */}
+        <div className="lg:hidden flex flex-col divide-y divide-slate-100">
+          {storeCarts.length === 0 && <div className="p-16 text-center text-slate-400 font-bold">No abandoned carts right now.</div>}
+          {storeCarts.map(cart => (
+            <div key={cart.id} className="p-4 hover:bg-slate-50 transition-colors">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div>
+                  <div className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold mb-1">#{cart.id.slice(0,8)}</div>
+                  <div className="font-black text-slate-900">{cart.customer}</div>
+                </div>
+                <div className="text-right flex flex-col items-end gap-1">
+                  <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-700`}>
+                    {cart.step}
+                  </span>
+                  <div className="text-[10px] text-slate-400 font-bold">{formatDistanceToNow(new Date(cart.date), { addSuffix: true })}</div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Value</div>
+                  <div className="text-xs font-bold text-emerald-600">{cart.total} {activeStore.currency}</div>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Phone</div>
+                  <div className="text-xs font-bold text-slate-700 flex items-center gap-1"><PhoneCall size={10}/> {cart.phone}</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3">
+                <div className="text-xs font-bold text-slate-800 line-clamp-2">{cart.product}</div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                <button onClick={() => handleRecover(cart)} className="flex items-center gap-2 px-3 py-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-lg font-bold text-xs transition-colors shadow-sm">
+                  <MessageCircle size={14} /> Recover via WhatsApp
+                </button>
+                <button onClick={() => handleRemove(cart.id)} className="flex items-center justify-center w-8 h-8 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors border border-rose-200">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* WhatsApp Modal */}

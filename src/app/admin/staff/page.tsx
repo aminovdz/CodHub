@@ -2,18 +2,36 @@
 
 import { useState, useMemo } from 'react';
 import { useAdminStore, StaffGoal, CommissionEntry } from '@/lib/store/useAdminStore';
-import { Target, DollarSign, Award, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
+import { Target, DollarSign, Award, Plus, Trash2, CheckCircle, Clock, Users, X, Edit2, Shield } from 'lucide-react';
 
 export default function AdminStaffPage() {
-  const { activeStore, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries, staffAccounts, addActivityLog } = useAdminStore();
+  const { activeStore, availableStores, orders, callLogs, staffGoals, setStaffGoals, commissionEntries, setCommissionEntries, staffAccounts, addStaffAccount, updateStaffAccount, deleteStaffAccount, addActivityLog } = useAdminStore();
   
   const sessionData = typeof window !== 'undefined'
     ? (() => { try { return JSON.parse(sessionStorage.getItem('codadmin-auth') || '{}'); } catch { return {}; } })()
     : {};
   const sessionUser = sessionData.user || sessionData.username || 'System';
+  const sessionRole = sessionData.role || '';
 
   const [newGoal, setNewGoal] = useState({ agentName: '', targetOrders: 100, targetRevenue: 5000, month: new Date().toISOString().slice(0, 7) });
   const [newCommission, setNewCommission] = useState({ agentName: '', amount: 0, reason: '', type: 'BONUS' as const });
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d' | 'month'>('month');
+
+  // Staff Management State
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
+  const [newStaffPin, setNewStaffPin] = useState('');
+  const [newStaffStoreIds, setNewStaffStoreIds] = useState<string[]>([]);
+  const [newStaffPermissions, setNewStaffPermissions] = useState({ canExport: true, canEditTotals: false, canDeleteNotes: false, canAssignOrders: false });
+
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editStaffName, setEditStaffName] = useState('');
+  const [editStaffEmail, setEditStaffEmail] = useState('');
+  const [editStaffRole, setEditStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
+  const [editStaffPin, setEditStaffPin] = useState('');
+  const [editStaffStoreIds, setEditStaffStoreIds] = useState<string[]>([]);
+  const [editStaffPermissions, setEditStaffPermissions] = useState({ canExport: true, canEditTotals: false, canDeleteNotes: false, canAssignOrders: false });
 
   // Get active agents based on staff accounts, call logs, and claimed orders
   const activeAgents = useMemo(() => {
@@ -38,15 +56,26 @@ export default function AdminStaffPage() {
   const currentMonth = new Date().toISOString().slice(0, 7);
   
   const staffPerformance = useMemo(() => {
+    const rangeDate = new Date();
+    if (dateRange === '7d') rangeDate.setDate(rangeDate.getDate() - 7);
+    else if (dateRange === '30d') rangeDate.setDate(rangeDate.getDate() - 30);
+    else if (dateRange === '90d') rangeDate.setDate(rangeDate.getDate() - 90);
+    const cutoffStr = rangeDate.toISOString();
+
     return activeAgents.map(agent => {
       // Find orders claimed by this agent
-      const agentOrders = orders.filter(o => o.storeId === activeStore.id && o.claimedBy === agent && o.date.startsWith(currentMonth));
+      const agentOrders = orders.filter(o => 
+        o.storeId === activeStore.id && 
+        o.claimedBy === agent && 
+        (dateRange === 'month' ? o.date.startsWith(currentMonth) : (!o.date || o.date >= cutoffStr))
+      );
       const confirmedOrders = agentOrders.filter(o => o.status === 'CONFIRMED' || o.status === 'SHIPPED' || o.status === 'DELIVERED');
       const deliveredOrders = agentOrders.filter(o => o.status === 'DELIVERED');
+      const canceledOrders = agentOrders.filter(o => o.status === 'CANCELED' || o.status === 'NO_ANSWER' || o.status === 'RTO');
       
       const totalRevenue = deliveredOrders.reduce((s, o) => s + (o.total || 0), 0);
       
-      // Get agent's goal for this month
+      // Get agent's goal for this month (goals are strictly monthly)
       const goal = staffGoals.find(g => g.storeId === activeStore.id && g.agentName === agent && g.month === currentMonth);
       
       // Calculate total commission for this month
@@ -57,6 +86,7 @@ export default function AdminStaffPage() {
         agent,
         ordersProcessed: agentOrders.length,
         confirmedOrders: confirmedOrders.length,
+        canceledOrders: canceledOrders.length,
         deliveredOrders: deliveredOrders.length,
         totalRevenue,
         goal,
@@ -64,7 +94,7 @@ export default function AdminStaffPage() {
         totalCommission
       };
     }).sort((a, b) => b.deliveredOrders - a.deliveredOrders);
-  }, [activeAgents, orders, activeStore.id, currentMonth, staffGoals, commissionEntries]);
+  }, [activeAgents, orders, activeStore.id, currentMonth, dateRange, staffGoals, commissionEntries]);
 
   const handleAddGoal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,12 +163,234 @@ export default function AdminStaffPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Left Col: Performance & Goals */}
+        {/* Left Col: Performance & Goals & Staff Management */}
         <div className="lg:col-span-2 space-y-8">
+          
+          {/* STAFF MANAGEMENT */}
+          {sessionRole === 'admin' && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-6">
+                <Users className="text-indigo-600" /> Manage Staff & Permissions
+              </h2>
+              <div className="space-y-3 mb-6">
+                {staffAccounts.map(acc => {
+                  if (editingStaffId === acc.id) {
+                    return (
+                      <form key={acc.id} onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (editStaffName && editStaffPin.length >= 4) {
+                          await updateStaffAccount(acc.id, {
+                            name: editStaffName,
+                            email: editStaffEmail || undefined,
+                            role: editStaffRole,
+                            pin: editStaffPin,
+                            storeIds: editStaffStoreIds,
+                            permissions: editStaffPermissions
+                          });
+                          addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Updated', detail: `Updated staff account ${editStaffName} (${editStaffRole})` });
+                          setEditingStaffId(null);
+                        } else {
+                          alert('PIN must be at least 4 digits');
+                        }
+                      }} className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-4">
+                        <div className="flex justify-between items-center pb-2 border-b border-indigo-100">
+                          <div className="font-bold text-indigo-900">Edit Staff Account</div>
+                          <button type="button" onClick={() => setEditingStaffId(null)} className="text-slate-400 hover:text-slate-600">
+                            <X size={18} />
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-4">
+                          <div className="flex-1 min-w-[150px]">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+                            <input type="text" value={editStaffName} onChange={e => setEditStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="Agent Name" />
+                          </div>
+                          <div className="flex-1 min-w-[150px]">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+                            <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+                              <option value="fulfillment">Fulfillment Agent</option>
+                              <option value="confirmation">Confirmation Agent</option>
+                              <option value="admin">Admin</option>
+                            </select>
+                          </div>
+                          <div className="flex-1 min-w-[150px]">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">PIN / Password</label>
+                            <input type="text" value={editStaffPin} onChange={e => setEditStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="e.g. 1234" />
+                          </div>
+                        </div>
+
+                        <div className="w-full border-t border-indigo-100 pt-3 mt-1">
+                          <label className="block text-xs font-bold text-indigo-900 mb-2 flex items-center gap-1"><Shield size={14}/> Granular Permissions</label>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                              <input type="checkbox" checked={editStaffPermissions.canExport} onChange={e => setEditStaffPermissions({...editStaffPermissions, canExport: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                              Export Data
+                            </label>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                              <input type="checkbox" checked={editStaffPermissions.canEditTotals} onChange={e => setEditStaffPermissions({...editStaffPermissions, canEditTotals: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                              Edit Totals
+                            </label>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                              <input type="checkbox" checked={editStaffPermissions.canDeleteNotes} onChange={e => setEditStaffPermissions({...editStaffPermissions, canDeleteNotes: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                              Delete Notes
+                            </label>
+                            <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                              <input type="checkbox" checked={editStaffPermissions.canAssignOrders} onChange={e => setEditStaffPermissions({...editStaffPermissions, canAssignOrders: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                              Assign Orders
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                          <button type="button" onClick={() => setEditingStaffId(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                            Cancel
+                          </button>
+                          <button type="submit" className="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                            Save Changes
+                          </button>
+                        </div>
+                      </form>
+                    );
+                  }
+
+                  const onlineStaffIds = activeStore?.translations?.onlineStaffIds || [];
+                  const isOnline = onlineStaffIds.includes(acc.id);
+
+                  return (
+                    <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div>
+                        <div className="font-bold text-slate-900">{acc.name}</div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // toggle logic could be simplified to call updateStaffAccount(acc.id, { isOnline: !acc.isOnline }) 
+                            // wait, we update activeStore.translations.staffStatus in the store. 
+                            await updateStaffAccount(acc.id, { isOnline: !(acc.isOnline) });
+                          }}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all border ${
+                            acc.isOnline
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/70'
+                              : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200/70'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${acc.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                          {acc.isOnline ? 'ONLINE' : 'OFFLINE'}
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              setEditingStaffId(acc.id);
+                              setEditStaffName(acc.name);
+                              setEditStaffEmail(acc.email || '');
+                              setEditStaffRole(acc.role);
+                              setEditStaffPin(acc.pin || '');
+                              setEditStaffStoreIds(acc.storeIds || []);
+                              setEditStaffPermissions(acc.permissions || { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true });
+                            }}
+                            className="p-2 text-slate-500 hover:bg-slate-200/60 rounded-lg transition-colors"
+                          >
+                            <Edit2 size={18} />
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => {
+                              deleteStaffAccount(acc.id);
+                              addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Deleted', detail: `Deleted staff account ${acc.name}` });
+                            }}
+                            className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
+                            disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (newStaffName && newStaffPin.length >= 4) {
+                  await addStaffAccount({ 
+                    name: newStaffName,
+                    role: newStaffRole, 
+                    pin: newStaffPin,
+                    storeIds: newStaffStoreIds,
+                    permissions: newStaffPermissions
+                  });
+                  addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Created', detail: `Created staff account ${newStaffName}` });
+                  setNewStaffName('');
+                  setNewStaffPin('');
+                  setNewStaffStoreIds([]);
+                  setNewStaffPermissions({ canExport: true, canEditTotals: false, canDeleteNotes: false, canAssignOrders: false });
+                }
+              }} className="flex flex-col gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+                    <input type="text" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="Agent Name" />
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+                    <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+                      <option value="fulfillment">Fulfillment Agent</option>
+                      <option value="confirmation">Confirmation Agent</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[100px]">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">PIN (Login)</label>
+                    <input type="password" value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="4+ digits" />
+                  </div>
+                  <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px] min-w-[120px] justify-center">
+                    <Plus size={16} /> Add Staff
+                  </button>
+                </div>
+                <div className="w-full border-t border-slate-200 pt-3">
+                  <label className="block text-xs font-bold text-slate-500 mb-2 flex items-center gap-1"><Shield size={14}/> Granular Permissions</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                      <input type="checkbox" checked={newStaffPermissions.canExport} onChange={e => setNewStaffPermissions({...newStaffPermissions, canExport: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                      Export Data
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                      <input type="checkbox" checked={newStaffPermissions.canEditTotals} onChange={e => setNewStaffPermissions({...newStaffPermissions, canEditTotals: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                      Edit Totals
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                      <input type="checkbox" checked={newStaffPermissions.canDeleteNotes} onChange={e => setNewStaffPermissions({...newStaffPermissions, canDeleteNotes: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                      Delete Notes
+                    </label>
+                    <label className="flex items-center gap-2 text-sm font-bold text-slate-700 bg-white p-2 rounded-lg border border-slate-200">
+                      <input type="checkbox" checked={newStaffPermissions.canAssignOrders} onChange={e => setNewStaffPermissions({...newStaffPermissions, canAssignOrders: e.target.checked})} className="accent-indigo-600 w-4 h-4" />
+                      Assign Orders
+                    </label>
+                  </div>
+                </div>
+              </form>
+            </div>
+          )}
           
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-              <h2 className="font-black text-lg text-slate-800 flex items-center gap-2"><Target className="text-indigo-500" size={20}/> Performance Tracker ({currentMonth})</h2>
+              <h2 className="font-black text-lg text-slate-800 flex items-center gap-2">
+                <Target className="text-indigo-500" size={20}/> 
+                Performance Tracker 
+                <span className="text-slate-400 text-sm font-medium">({dateRange === 'month' ? currentMonth : dateRange})</span>
+              </h2>
+              <div className="flex bg-white rounded-lg p-0.5 border border-slate-200 shadow-sm">
+                <button onClick={() => setDateRange('month')} className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase transition-colors ${dateRange === 'month' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}>Month</button>
+                <button onClick={() => setDateRange('7d')} className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase transition-colors ${dateRange === '7d' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}>7d</button>
+                <button onClick={() => setDateRange('30d')} className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase transition-colors ${dateRange === '30d' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}>30d</button>
+                <button onClick={() => setDateRange('90d')} className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase transition-colors ${dateRange === '90d' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:text-slate-900'}`}>90d</button>
+              </div>
             </div>
             <div className="divide-y divide-slate-100">
               {staffPerformance.length === 0 && (
@@ -157,7 +409,11 @@ export default function AdminStaffPage() {
                         </div>
                         <div>
                           <h3 className="font-black text-slate-900 text-lg">{staff.agent}</h3>
-                          <div className="text-sm font-medium text-slate-500">{staff.ordersProcessed} orders handled</div>
+                          <div className="text-sm font-medium text-slate-500 mt-1">
+                            {staff.ordersProcessed} handled <span className="mx-1">•</span> 
+                            <span className="text-emerald-600 font-bold">{staff.confirmedOrders} confirmed</span> <span className="mx-1">•</span> 
+                            <span className="text-rose-500 font-bold">{staff.canceledOrders} canceled</span>
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">

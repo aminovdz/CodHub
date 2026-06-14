@@ -113,11 +113,35 @@ export default function KanbanBoard({
     const order = orders.find(o => o.id === orderId);
 
     if (order && order.status !== newStatus) {
+      let updatedCustomFields = { ...(order.customFields || {}) };
+      let updatedConfirmedBy = order.confirmedBy;
+      
+      if (newStatus === 'CONFIRMED' && order.status !== 'CONFIRMED') {
+        if (activeStore?.dzFulfillment?.trackConfirmationTime === true) {
+          const confirmedAt = new Date().toISOString();
+          const creationTime = new Date(order.date);
+          const diffMs = new Date(confirmedAt).getTime() - creationTime.getTime();
+          const durationSec = Math.floor(diffMs / 1000);
+          updatedCustomFields = {
+            ...updatedCustomFields,
+            confirmed_at: confirmedAt,
+            confirmation_duration_seconds: durationSec
+          };
+        }
+        if (!updatedConfirmedBy) {
+          updatedConfirmedBy = sessionUser || 'Admin';
+        }
+      }
+
       // Optimistic UI update
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, customFields: updatedCustomFields, confirmedBy: updatedConfirmedBy } : o));
       
       try {
-        await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+        const payload: any = { status: newStatus, custom_fields: updatedCustomFields };
+        if (updatedConfirmedBy) {
+          payload.confirmed_by = updatedConfirmedBy;
+        }
+        await supabase.from('orders').update(payload).eq('id', orderId);
         addActivityLog({ 
           storeId: activeStore.id, 
           user: sessionUser || 'Admin', 
@@ -127,7 +151,7 @@ export default function KanbanBoard({
       } catch (err) {
         console.error('Failed to move order:', err);
         // Revert on failure
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: order.status } : o));
+        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: order.status, customFields: order.customFields, confirmedBy: order.confirmedBy } : o));
       }
     }
   };

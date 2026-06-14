@@ -1,17 +1,19 @@
 'use client';
 
 import { useAdminStore } from '@/lib/store/useAdminStore';
-import { TrendingUp, ShoppingCart, DollarSign, Package, AlertCircle, RefreshCw, PhoneCall, Truck, Sparkles } from 'lucide-react';
+import { TrendingUp, ShoppingCart, DollarSign, Package, AlertCircle, RefreshCw, PhoneCall, Truck, Sparkles, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { format } from 'date-fns';
 
 export default function AdminDashboard() {
-  const { activeStore, orders, products, staffGoals, commissionEntries } = useAdminStore();
+  const { activeStore, orders, products, staffGoals, commissionEntries, activityLogs } = useAdminStore();
 
   const [role, setRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('admin');
   const [staffName, setStaffName] = useState('Admin');
   const [chiefOfStaffBrief, setChiefOfStaffBrief] = useState<string | null>(null);
   const [isGeneratingBrief, setIsGeneratingBrief] = useState(false);
+  const [dateRange, setDateRange] = useState<'7d' | '30d' | '90d'>('30d');
 
   useEffect(() => {
     try {
@@ -42,14 +44,25 @@ export default function AdminDashboard() {
   const myCommissions = commissionEntries.filter(c => c.storeId === activeStore.id && c.agentName === staffName && c.date.startsWith(currentMonth));
   const myTotalCommission = myCommissions.reduce((s, c) => s + c.amount, 0);
 
-  const myOrders = storeOrders.filter(o => o.claimedBy === staffName && o.date.startsWith(currentMonth));
+  const rangeDate = new Date();
+  if (dateRange === '7d') rangeDate.setDate(rangeDate.getDate() - 7);
+  else if (dateRange === '30d') rangeDate.setDate(rangeDate.getDate() - 30);
+  else if (dateRange === '90d') rangeDate.setDate(rangeDate.getDate() - 90);
+  const cutoffStr = rangeDate.toISOString();
+
+  const myOrders = storeOrders.filter(o => o.claimedBy === staffName && (!o.date || o.date >= cutoffStr));
   const myDeliveredOrders = myOrders.filter(o => o.status === 'DELIVERED').length;
   const myRevenue = myDeliveredOrders > 0 ? myOrders.filter(o => o.status === 'DELIVERED').reduce((s, o) => s + (o.total || 0), 0) : 0;
 
   const orderProgress = myGoal ? Math.min(100, Math.round((myDeliveredOrders / myGoal.targetOrders) * 100)) : 0;
   const revenueProgress = myGoal ? Math.min(100, Math.round((myRevenue / myGoal.targetRevenue) * 100)) : 0;
 
-  const statCards = [
+  // Pending shouldn't be date filtered so they don't lose old pending orders
+  const myPendingOrders = storeOrders.filter(o => o.claimedBy === staffName && o.status === 'PENDING_AGENT_CONFIRMATION').length;
+  const myConfirmedOrders = myOrders.filter(o => o.status === 'CONFIRMED').length;
+  const myCanceledOrders = myOrders.filter(o => o.status === 'CANCELED').length;
+
+  const statCards = role === 'admin' ? [
     {
       label: 'Total Revenue',
       value: `${totalRevenue.toLocaleString()} ${activeStore.currency}`,
@@ -76,6 +89,35 @@ export default function AdminDashboard() {
       value: activeProducts.toString(),
       icon: <Package size={22} />,
       iconBg: 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-500',
+      badge: null,
+    },
+  ] : [
+    {
+      label: 'My Revenue',
+      value: `${myRevenue.toLocaleString()} ${activeStore.currency}`,
+      icon: <DollarSign size={22} />,
+      iconBg: 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-500',
+      badge: null,
+    },
+    {
+      label: 'My Confirmed Orders',
+      value: myConfirmedOrders.toString(),
+      icon: <ShoppingCart size={22} />,
+      iconBg: 'bg-blue-500/10 dark:bg-blue-500/20 text-blue-500',
+      badge: null,
+    },
+    {
+      label: 'My Canceled Orders',
+      value: myCanceledOrders.toString(),
+      icon: <AlertCircle size={22} />,
+      iconBg: 'bg-rose-500/10 dark:bg-rose-500/20 text-rose-500',
+      badge: null,
+    },
+    {
+      label: 'My Pending Orders',
+      value: myPendingOrders.toString(),
+      icon: <Package size={22} />,
+      iconBg: 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-500',
       badge: null,
     },
   ];
@@ -175,7 +217,14 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h2 className="text-2xl font-black tracking-tight">{staffName}'s Dashboard</h2>
-              <p className="text-xs text-indigo-300/80 font-bold tracking-wider uppercase mt-1">Goal & Commission Tracking ({currentMonth})</p>
+              <div className="flex items-center gap-2 mt-2">
+                <p className="text-xs text-indigo-300/80 font-bold tracking-wider uppercase">Filter:</p>
+                <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-white/10">
+                  <button onClick={() => setDateRange('7d')} className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-colors ${dateRange === '7d' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}>7d</button>
+                  <button onClick={() => setDateRange('30d')} className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-colors ${dateRange === '30d' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}>30d</button>
+                  <button onClick={() => setDateRange('90d')} className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition-colors ${dateRange === '90d' ? 'bg-indigo-500 text-white' : 'text-slate-400 hover:text-white'}`}>90d</button>
+                </div>
+              </div>
             </div>
           </div>
           <div className="bg-indigo-500/10 border border-indigo-500/20 px-6 py-4 rounded-2xl text-right">
@@ -234,7 +283,7 @@ export default function AdminDashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {role === 'admin' && statCards.map((card) => (
+        {statCards.map((card) => (
           <div
             key={card.label}
             className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md dark:hover:shadow-slate-900/50 transition-all flex flex-col justify-between"
@@ -358,6 +407,46 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Activity Log Grid */}
+      <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col h-[400px]">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+          <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <Activity className="text-indigo-500" size={20} />
+            {role === 'admin' ? 'Store Activity Log' : 'My Activity Log'}
+          </h2>
+        </div>
+        <div className="p-6 flex-1 overflow-y-auto space-y-4">
+          {activityLogs
+            .filter(log => log.storeId === activeStore.id && (role === 'admin' || log.user === staffName))
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 50)
+            .map((log) => (
+              <div key={log.id} className="flex gap-4 group">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 border-2 border-white dark:border-slate-800 flex items-center justify-center font-bold text-slate-500 dark:text-slate-400 z-10 relative">
+                    {log.user[0]?.toUpperCase() || '?'}
+                  </div>
+                  <div className="absolute top-10 bottom-[-1rem] left-1/2 w-0.5 bg-slate-100 dark:bg-slate-700 group-last:hidden" />
+                </div>
+                <div className="pt-1 pb-4">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    {log.user} <span className="font-medium text-slate-500 dark:text-slate-400">{log.action}</span>
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{log.detail}</p>
+                  <p className="text-xs font-medium text-slate-400 mt-2">
+                    {format(new Date(log.timestamp), 'MMM d, h:mm a')}
+                  </p>
+                </div>
+              </div>
+          ))}
+          {activityLogs.filter(log => log.storeId === activeStore.id && (role === 'admin' || log.user === staffName)).length === 0 && (
+            <div className="text-center py-10 text-slate-500 text-sm font-bold">
+              No recent activity found.
+            </div>
+          )}
         </div>
       </div>
     </div>

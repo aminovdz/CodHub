@@ -162,18 +162,20 @@ function rowToProduct(row: any): Product {
 
 // --- Staff mappers ---
 function staffToRow(s: Partial<StaffAccount> & { id?: string }) {
-  return {
-    name: s.name,
-    role: s.role,
-    pin: s.pin,
-    store_id: s.storeId || null,
-  };
+  const row: any = {};
+  if (s.name !== undefined) row.name = s.name;
+  // email is intentionally omitted because it does not exist in the staff_accounts DB schema
+  if (s.role !== undefined) row.role = s.role;
+  if (s.pin !== undefined) row.pin = s.pin;
+  if (s.storeId !== undefined) row.store_id = s.storeId || null;
+  return row;
 }
 
 function rowToStaff(row: any): StaffAccount {
   return {
     id: row.id,
     name: row.name,
+    email: row.email,
     role: row.role,
     pin: row.pin,
     storeId: row.store_id || undefined,
@@ -357,6 +359,8 @@ export interface Store {
     zrexpress?: { apiKey: string; apiToken: string; branchId: string };
     mayestro?: { apiKey: string };
     dhd?: { apiKey: string; apiToken: string };
+    autoRoutingEnabled?: boolean;
+    trackConfirmationTime?: boolean;
   };
   fraudConfig?: {
     blockDuplicateIps: boolean;
@@ -374,10 +378,19 @@ export interface Store {
 export interface StaffAccount {
   id: string;
   name: string;
+  email?: string;
   role: 'admin' | 'fulfillment' | 'confirmation';
   pin: string;
   storeId?: string;
   storeIds?: string[];
+  permissions?: {
+    canExport: boolean;
+    canEditTotals: boolean;
+    canDeleteNotes: boolean;
+    canAssignOrders: boolean;
+  };
+  isOnline?: boolean;
+  lastActive?: string;
 }
 
 export interface MaximizerUpsell {
@@ -755,12 +768,16 @@ interface AdminStore {
 
   openRouterApiKey?: string;
   setOpenRouterApiKey: (key: string) => void;
-
-  openRouterModel?: string;
+  openRouterModel: string;
   setOpenRouterModel: (model: string) => void;
 
-  aiProvider: 'gemini' | 'claude' | 'openai' | 'openrouter';
-  setAiProvider: (provider: 'gemini' | 'claude' | 'openai' | 'openrouter') => void;
+  nvidiaApiKey?: string;
+  setNvidiaApiKey: (key: string) => void;
+  nvidiaModel: string;
+  setNvidiaModel: (model: string) => void;
+
+  aiProvider: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia';
+  setAiProvider: (provider: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia') => void;
 
   // Customer Intelligence
   customerBlacklist: BlacklistedCustomer[];
@@ -781,7 +798,7 @@ const MOCK_PRODUCTS: Product[] = [];
 const MOCK_ORDERS: Order[] = [];
 
 const DEFAULT_STATUSES = [
-  'DRAFT', 'PENDING_AGENT_CONFIRMATION', 'HIGH_RISK_ADMIN_APPROVAL',
+  'DRAFT', 'PENDING_AGENT_CONFIRMATION', 'HIGH_RISK_ADMIN_APPROVAL', 'ESCALATED_TO_ADMIN',
   'SELF_CONFIRMED', 'CONFIRMED', 'DELIVERED', 'CONTINUITY_SUBSCRIBED', 'CANCELED', 'RTO'
 ];
 
@@ -1093,15 +1110,17 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const finalAccount = { ...account, id: newId, storeIds: account.storeIds || (account.storeId ? [account.storeId] : []) };
         set((state) => ({ staffAccounts: [...state.staffAccounts, finalAccount] }));
 
-        // Persist multi-store assignments to activeStore.translations.staffAssignments
+        // Persist multi-store assignments and permissions to activeStore.translations
         const state = get();
-        if (finalAccount.storeIds && finalAccount.storeIds.length > 0) {
+        if (finalAccount.storeIds && finalAccount.storeIds.length > 0 || finalAccount.permissions) {
           const activeStore = state.activeStore || state.availableStores[0];
           if (activeStore) {
             const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
+            const currentPermissions = (activeStore.translations as any)?.staffPermissions || {};
             const updatedTranslations = {
               ...(activeStore.translations as any || {}),
-              staffAssignments: { ...currentAssignments, [newId]: finalAccount.storeIds }
+              staffAssignments: { ...currentAssignments, [newId]: finalAccount.storeIds || [] },
+              staffPermissions: { ...currentPermissions, [newId]: finalAccount.permissions || { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true } }
             };
             supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
             set(st => ({
@@ -1119,18 +1138,38 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
         if (Object.keys(cleanRow).length > 0) {
           const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
-          if (error) console.error("Failed to update staff account", error);
+          if (error) {
+            console.error("Failed to update staff account", error);
+            useNotificationStore.getState().notify(`Failed to update staff: ${error.message || 'Check console'}`, 'error');
+          }
         }
 
-        if (data.storeIds !== undefined) {
+        if (data.storeIds !== undefined || data.permissions !== undefined || data.isOnline !== undefined) {
           const state = get();
           const activeStore = state.activeStore || state.availableStores[0];
           if (activeStore) {
             const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
-            const updatedTranslations = {
-              ...(activeStore.translations as any || {}),
-              staffAssignments: { ...currentAssignments, [id]: data.storeIds }
-            };
+            const currentPermissions = (activeStore.translations as any)?.staffPermissions || {};
+            const currentStatuses = (activeStore.translations as any)?.staffStatus || {};
+            
+            const updatedTranslations: any = { ...(activeStore.translations as any || {}) };
+            
+            if (data.storeIds !== undefined) {
+              updatedTranslations.staffAssignments = { ...currentAssignments, [id]: data.storeIds };
+            }
+            if (data.permissions !== undefined) {
+              updatedTranslations.staffPermissions = { ...currentPermissions, [id]: data.permissions };
+            }
+            if (data.isOnline !== undefined || data.lastActive !== undefined) {
+              updatedTranslations.staffStatus = { 
+                ...currentStatuses, 
+                [id]: { 
+                  isOnline: data.isOnline !== undefined ? data.isOnline : currentStatuses[id]?.isOnline,
+                  lastActive: data.lastActive !== undefined ? data.lastActive : currentStatuses[id]?.lastActive
+                }
+              };
+            }
+
             supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
             set(st => ({
               availableStores: st.availableStores.map(s => s.id === activeStore.id ? { ...s, translations: updatedTranslations } : s),
@@ -1314,10 +1353,21 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         set({ openRouterApiKey: key });
       },
 
-      openRouterModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openrouter-model') || 'meta-llama/llama-3.3-70b-instruct:free' : 'meta-llama/llama-3.3-70b-instruct:free',
+      openRouterModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openrouter-model') || 'anthropic/claude-3-haiku' : 'anthropic/claude-3-haiku',
       setOpenRouterModel: (model) => {
         if (typeof window !== 'undefined') localStorage.setItem('codadmin-openrouter-model', model);
         set({ openRouterModel: model });
+      },
+
+      nvidiaApiKey: typeof window !== 'undefined' ? localStorage.getItem('codadmin-nvidia-api-key') || '' : '',
+      setNvidiaApiKey: (key) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-nvidia-api-key', key);
+        set({ nvidiaApiKey: key });
+      },
+      nvidiaModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-nvidia-model') || 'meta/llama-3.1-405b-instruct' : 'meta/llama-3.1-405b-instruct',
+      setNvidiaModel: (model) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-nvidia-model', model);
+        set({ nvidiaModel: model });
       },
 
       aiProvider: typeof window !== 'undefined' ? (localStorage.getItem('codadmin-ai-provider') as any) || 'gemini' : 'gemini',
@@ -1398,10 +1448,31 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             if (staff) {
               const mappedStaff = staff.map(row => {
                 const baseStaff = rowToStaff(row);
-                const assigned = staffAssignments[baseStaff.id];
+                const assigned = staffAssignments[baseStaff.id] || (baseStaff.storeId ? [baseStaff.storeId] : []);
+                
+                let perms = { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true };
+                let isOnline = false;
+                let lastActive;
+                
+                if (stores) {
+                  for (const store of stores) {
+                    const storePerms = (store.translations as any)?.staffPermissions || {};
+                    if (storePerms[baseStaff.id]) perms = storePerms[baseStaff.id];
+                    
+                    const storeStatus = (store.translations as any)?.staffStatus || {};
+                    if (storeStatus[baseStaff.id]) {
+                      isOnline = storeStatus[baseStaff.id].isOnline;
+                      lastActive = storeStatus[baseStaff.id].lastActive;
+                    }
+                  }
+                }
+
                 return {
                   ...baseStaff,
-                  storeIds: assigned || (baseStaff.storeId ? [baseStaff.storeId] : [])
+                  storeIds: assigned,
+                  permissions: perms,
+                  isOnline,
+                  lastActive
                 };
               });
               set({ staffAccounts: mappedStaff });
@@ -1426,16 +1497,17 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
               published: row.published
             } as LandingPage))
           });
-          // staff is already set inside the stores block above if stores exist, but fallback if no stores
-          if (staff && (!stores || stores.length === 0)) set({ staffAccounts: staff.map(rowToStaff) });
 
-          // Async load activity logs from Supabase if available
+          // Async load activity logs from Supabase if available (last 90 days)
           try {
+            const ninetyDaysAgo = new Date();
+            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+            
             const { data: logsData, error: logsError } = await supabase
               .from('activity_logs')
               .select('*')
-              .order('timestamp', { ascending: false })
-              .limit(500);
+              .gte('timestamp', ninetyDaysAgo.toISOString())
+              .order('timestamp', { ascending: false });
             if (!logsError && logsData) {
               const fetchedLogs = logsData.map(row => ({
                 id: row.id,
@@ -1453,7 +1525,15 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           } catch (e) {
             console.warn("Failed to fetch initial activity logs:", e);
           }
-          
+          // Force merge new default statuses into existing persisted store statuses
+          set((state) => {
+            const missingStatuses = DEFAULT_STATUSES.filter(s => !state.orderStatuses.includes(s));
+            if (missingStatuses.length > 0) {
+              return { orderStatuses: [...state.orderStatuses, ...missingStatuses] };
+            }
+            return {};
+          });
+
           set({ _hasHydrated: true });
         } catch (error) {
           console.error("Failed to fetch initial data from Supabase:", error);

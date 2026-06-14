@@ -26,12 +26,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin/login' || pathname === '/superadmin/login';
-  const { activeStore, availableStores, setActiveStore, staffAccounts, _hasHydrated } = useAdminStore(
+  const { activeStore, availableStores, setActiveStore, staffAccounts, updateStaffAccount, _hasHydrated } = useAdminStore(
     useShallow((s: any) => ({
       activeStore: s.activeStore,
       availableStores: s.availableStores,
       setActiveStore: s.setActiveStore,
       staffAccounts: s.staffAccounts,
+      updateStaffAccount: s.updateStaffAccount,
       _hasHydrated: s._hasHydrated,
     }))
   );
@@ -321,6 +322,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
             </select>
           </div>
+
+          {/* Shift Tracking (Online/Offline) */}
+          {currentStaffAccount && (
+            <div className="bg-slate-800/60 rounded-xl p-3">
+              <div className="text-xs text-slate-500 font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5"><Activity size={10} /> Shift Status</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full text-white ${currentStaffAccount.isOnline ? 'bg-emerald-500' : 'bg-slate-500'}`}>
+                  {currentStaffAccount.isOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
+              </div>
+              <button
+                onClick={async () => {
+                  await updateStaffAccount(currentStaffAccount.id, { isOnline: !currentStaffAccount.isOnline });
+                }}
+                className={`w-full py-2 px-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  currentStaffAccount.isOnline
+                    ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${currentStaffAccount.isOnline ? 'bg-rose-400' : 'bg-emerald-400'} animate-pulse`} />
+                {currentStaffAccount.isOnline ? 'End Shift (Go Offline)' : 'Start Shift (Go Online)'}
+              </button>
+            </div>
+          )}
+
 
           {/* Dark Mode Toggle */}
           <button

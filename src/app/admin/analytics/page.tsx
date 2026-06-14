@@ -61,7 +61,7 @@ export default function AdminAnalyticsPage() {
   const wilayaData = useMemo(() => {
     const map: Record<string, { orders: number; revenue: number; canceled: number }> = {};
     rangeOrders.forEach(o => {
-      const w = o.wilaya || 'Unknown';
+      const w = o.wilaya || o.province || 'Unknown';
       if (!map[w]) map[w] = { orders: 0, revenue: 0, canceled: 0 };
       map[w].orders++;
       map[w].revenue += o.total || 0;
@@ -114,7 +114,7 @@ export default function AdminAnalyticsPage() {
   const sourceData = useMemo(() => {
     const map: Record<string, { orders: number; revenue: number }> = {};
     rangeOrders.forEach(o => {
-      const s = o.source || 'Unknown';
+      const s = o.source || 'direct';
       if (!map[s]) map[s] = { orders: 0, revenue: 0 };
       map[s].orders++;
       map[s].revenue += o.total || 0;

@@ -63,17 +63,32 @@ export default function OrderDrawer({
     
     let newStatus = order.status;
     let newConfirmedBy = order.confirmedBy;
+    let updatedCustomFields = { ...(order.customFields || {}) };
     
-    if (result === 'confirmed') { newStatus = 'CONFIRMED'; newConfirmedBy = sessionUser; }
+    if (result === 'confirmed') { 
+      newStatus = 'CONFIRMED'; 
+      newConfirmedBy = sessionUser;
+      if (activeStore?.dzFulfillment?.trackConfirmationTime === true) {
+        const confirmedAt = new Date().toISOString();
+        const creationTime = new Date(order.date);
+        const diffMs = new Date(confirmedAt).getTime() - creationTime.getTime();
+        const durationSec = Math.floor(diffMs / 1000);
+        updatedCustomFields = {
+          ...updatedCustomFields,
+          confirmed_at: confirmedAt,
+          confirmation_duration_seconds: durationSec
+        };
+      }
+    }
     else if (result === 'canceled') { newStatus = 'CANCELED'; }
     else if (result === 'rescheduled') { newStatus = 'RESCHEDULED'; }
     else if (result === 'no_answer') { newStatus = 'NO_ANSWER'; }
     
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, confirmedBy: newConfirmedBy, notes: updatedNotes } : o));
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus, confirmedBy: newConfirmedBy, notes: updatedNotes, customFields: updatedCustomFields } : o));
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Call Logged', detail: `Order ${getShortOrderId(orderId)} — ${result.toUpperCase()}` });
     
     try {
-      const p: any = { notes: updatedNotes, status: newStatus };
+      const p: any = { notes: updatedNotes, status: newStatus, custom_fields: updatedCustomFields };
       if (newConfirmedBy) p.confirmed_by = newConfirmedBy;
       const { error } = await supabase.from('orders').update(p).eq('id', orderId);
       if (error) {
@@ -88,16 +103,46 @@ export default function OrderDrawer({
   const handleSave = async () => {
     if (!editForm) return;
     setIsSaving(true);
-    setOrders(prev => prev.map(o => o.id === editForm.id ? editForm : o));
+    
+    let updatedCustomFields = { ...(editForm.customFields || {}) };
+    let confirmedByVal = editForm.confirmedBy;
+    
+    if (editForm.status === 'CONFIRMED' && order.status !== 'CONFIRMED') {
+      if (activeStore?.dzFulfillment?.trackConfirmationTime === true) {
+        const confirmedAt = new Date().toISOString();
+        const creationTime = new Date(order.date);
+        const diffMs = new Date(confirmedAt).getTime() - creationTime.getTime();
+        const durationSec = Math.floor(diffMs / 1000);
+        updatedCustomFields = {
+          ...updatedCustomFields,
+          confirmed_at: confirmedAt,
+          confirmation_duration_seconds: durationSec
+        };
+      }
+      if (!confirmedByVal) {
+        confirmedByVal = sessionUser;
+      }
+    }
+    
+    const finalForm = { ...editForm, customFields: updatedCustomFields, confirmedBy: confirmedByVal };
+    setOrders(prev => prev.map(o => o.id === finalForm.id ? finalForm : o));
+    
     try {
-      const { error } = await supabase.from('orders').update({
-        customer: editForm.customer, phone: editForm.phone,
-        product: editForm.product, total: editForm.total,
-        status: editForm.status, notes: editForm.notes || [],
-        wilaya: editForm.wilaya, commune: editForm.commune, address: editForm.address
-      }).eq('id', editForm.id);
+      const payload: any = {
+        customer: finalForm.customer, phone: finalForm.phone,
+        product: finalForm.product, total: finalForm.total,
+        status: finalForm.status, notes: finalForm.notes || [],
+        wilaya: finalForm.wilaya, commune: finalForm.commune, address: finalForm.address,
+        custom_fields: updatedCustomFields,
+        fulfillment_provider: finalForm.fulfillmentProvider,
+        tracking_number: finalForm.trackingNumber
+      };
+      if (confirmedByVal) {
+        payload.confirmed_by = confirmedByVal;
+      }
+      const { error } = await supabase.from('orders').update(payload).eq('id', finalForm.id);
       if (error) throw error;
-      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Updated', detail: `Updated ${getShortOrderId(editForm.id)}` });
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Updated', detail: `Updated ${getShortOrderId(finalForm.id)}` });
       setShowEditForm(false);
     } catch (err: any) { 
       console.error(err);
@@ -106,13 +151,38 @@ export default function OrderDrawer({
     setIsSaving(false);
   };
 
+  const canEdit = order.claimedBy === sessionUser;
+
   const statusColor = order.status === 'CONFIRMED' ? 'bg-emerald-500' :
     order.status === 'CANCELED' ? 'bg-rose-500' :
-    order.status === 'SELF_CONFIRMED' ? 'bg-teal-500' : 'bg-amber-500';
+    order.status === 'SELF_CONFIRMED' ? 'bg-teal-500' : 
+    order.status === 'ESCALATED_TO_ADMIN' ? 'bg-purple-500' : 'bg-amber-500';
 
   const userNotes = (order.notes || []).filter(n =>
     !n.text.startsWith('[Call -') && !n.text.startsWith('Status changed')
   );
+
+  const claimToEditAction = async () => {
+    if (order.claimedBy && order.claimedBy !== sessionUser) {
+      alert(`Order is already claimed by ${order.claimedBy}`);
+      return;
+    }
+    try {
+      const { error } = await supabase.from('orders').update({ claimed_by: sessionUser }).eq('id', order.id);
+      if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, claimedBy: sessionUser } : o));
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Claimed', detail: `Agent ${sessionUser} claimed order ${order.id} inside Drawer` });
+    } catch (err: any) { alert("Failed to claim: " + err.message); }
+  };
+
+  const unclaimAction = async () => {
+    try {
+      const { error } = await supabase.from('orders').update({ claimed_by: null }).eq('id', order.id);
+      if (error) throw error;
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, claimedBy: undefined } : o));
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Unclaimed', detail: `Admin ${sessionUser} force unclaimed order ${order.id}` });
+    } catch (err: any) { alert("Failed to unclaim: " + err.message); }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/20 backdrop-blur-sm" onClick={onClose}>
@@ -121,7 +191,26 @@ export default function OrderDrawer({
         onClick={e => e.stopPropagation()}
       >
         {/* ── Sticky Header with Status + Actions ─────── */}
-        <div className="bg-white border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-sm">
+        <div className="bg-white border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-sm relative">
+          {!canEdit && (
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center border-b border-slate-200 p-4">
+              <p className="text-sm font-black text-slate-800 mb-2">Order is read-only</p>
+              {!order.claimedBy ? (
+                <button onClick={claimToEditAction} className="bg-indigo-600 text-white px-6 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-indigo-700 transition-colors">
+                  Claim to Edit
+                </button>
+              ) : (
+                <div className="text-center">
+                  <p className="text-rose-600 font-bold mb-2 bg-rose-50 px-3 py-1 rounded-full border border-rose-100">Claimed by {order.claimedBy}</p>
+                  {isAdmin && (
+                    <button onClick={unclaimAction} className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 transition-colors border border-slate-200">
+                      Force Unclaim (Admin)
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="p-4">
             <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex-1 min-w-0">
@@ -132,6 +221,11 @@ export default function OrderDrawer({
                   <span className={`text-[9px] font-black uppercase text-white px-2 py-0.5 rounded ${statusColor}`}>
                     {formatStatus(order.status)}
                   </span>
+                  {order.claimedBy && order.claimedBy !== sessionUser && (
+                    <span className="text-[9px] font-black uppercase bg-rose-100 text-rose-700 px-2 py-0.5 rounded border border-rose-200">
+                      Claimed by {order.claimedBy}
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-lg font-black text-slate-900 truncate">{order.customer}</h2>
               </div>
@@ -140,13 +234,11 @@ export default function OrderDrawer({
               </button>
             </div>
             
-            <div className="flex items-center gap-2 flex-wrap">
-              <a href={`tel:${order.phone}`} className="flex items-center gap-1 text-indigo-600 font-bold text-lg hover:underline">
-                {order.phone}
-              </a>
-              <button onClick={() => window.open(`tel:${order.phone}`)} className="p-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-lg transition-colors">
-                <PhoneCall size={16} />
-              </button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 text-sm font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg w-fit">
+                <Phone size={14} className="text-slate-400" />
+                <span dir="ltr">{order.phone}</span>
+              </div>
               <button onClick={() => onOpenWhatsApp(order)} className="p-1.5 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg transition-colors">
                 <MessageSquare size={16} />
               </button>
@@ -185,18 +277,22 @@ export default function OrderDrawer({
         </div>
 
         {/* ── Scrollable Body ─────────────────────────── */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+          {!canEdit && (
+            <div className="absolute inset-0 z-10 bg-slate-50/50 cursor-not-allowed" />
+          )}
 
           {/* Order Details Card */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden relative z-0">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/50">
               <div className="flex items-center gap-2 text-slate-700">
                 <Package size={14} className="text-indigo-500" />
                 <span className="font-black text-sm uppercase tracking-wider">Order Info</span>
               </div>
               <button
+                disabled={!canEdit}
                 onClick={() => setShowEditForm(v => !v)}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors disabled:opacity-50"
               >
                 <Edit2 size={12} />{showEditForm ? 'Cancel' : 'Edit'}
                 {showEditForm ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -329,6 +425,23 @@ export default function OrderDrawer({
                   <div>
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total ({activeStore.currency})</label>
                     <input type="number" value={editForm.total} onChange={e => setEditForm({ ...editForm, total: Number(e.target.value) })}
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none text-sm" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Fulfillment Provider</label>
+                    <select value={editForm.fulfillmentProvider || ''} onChange={e => setEditForm({ ...editForm, fulfillmentProvider: e.target.value })}
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none text-sm">
+                      <option value="">Unassigned</option>
+                      <option value="yalidine">Yalidine</option>
+                      <option value="dhd">DHD</option>
+                      <option value="custom">Custom Courier</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Tracking Number</label>
+                    <input type="text" value={editForm.trackingNumber || ''} onChange={e => setEditForm({ ...editForm, trackingNumber: e.target.value })} placeholder="e.g. YAL-12345"
                       className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none text-sm" />
                   </div>
                 </div>

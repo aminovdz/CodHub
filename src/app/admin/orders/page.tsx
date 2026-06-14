@@ -5,6 +5,7 @@ import { Edit2, Plus, RefreshCw, Trash2, Send, Download, Phone, CheckCircle, XCi
 import { useAdminStore, Order } from '@/lib/store/useAdminStore';
 import { supabase } from '@/lib/supabase';
 import { sendMetaConfirmation } from '@/lib/actions/funnelActions';
+import { syncDeliveryStatuses } from '@/lib/actions/syncDelivery';
 import { getShortOrderId } from '@/lib/idHelper';
 
 import OrderDrawer from '@/components/admin/orders/OrderDrawer';
@@ -21,6 +22,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [whatsappModal, setWhatsappModal] = useState<{ orderId: string; phone: string; message: string; } | null>(null);
   const [isSendingMeta, setIsSendingMeta] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 50;
@@ -28,6 +30,7 @@ export default function AdminOrdersPage() {
   // Bulk Actions
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusMenu, setBulkStatusMenu] = useState(false);
+  const [bulkDeliveryMenu, setBulkDeliveryMenu] = useState(false);
 
   // Role & Session handling
   const sessionData = typeof window !== 'undefined'
@@ -106,7 +109,7 @@ export default function AdminOrdersPage() {
     try {
       const { error } = await supabase.from('orders').update({ claimed_by: null }).eq('id', id);
       if (error) throw error;
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, claimedBy: null } : o));
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, claimedBy: undefined } : o));
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Unclaimed', detail: `Agent ${sessionUser} unclaimed order ${id}` });
     } catch (err: any) { alert("Failed to unclaim order: " + err.message); }
   };
@@ -138,11 +141,46 @@ export default function AdminOrdersPage() {
     if (selectedIds.size === 0) return;
     const idsArray = Array.from(selectedIds);
     setOrders(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, status } : o));
-    try { await supabase.from('orders').update({ status }).in('id', idsArray); } catch (err) { console.error(err); }
-    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Status Update', detail: `${selectedIds.size} orders marked as ${status}` });
-    setSelectedIds(new Set());
-    setBulkStatusMenu(false);
+    try {
+      const { error } = await supabase.from('orders').update({ status }).in('id', idsArray);
+      if (error) throw error;
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Status Update', detail: `${selectedIds.size} orders marked as ${status}` });
+      setSelectedIds(new Set());
+      setBulkStatusMenu(false);
+    } catch (err: any) { alert("Failed to update status: " + err.message); }
   };
+
+  const handleBulkDelivery = async (provider: string) => {
+    if (selectedIds.size === 0) return;
+    const idsArray = Array.from(selectedIds);
+    setOrders(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, fulfillmentProvider: provider } : o));
+    try {
+      const { error } = await supabase.from('orders').update({ fulfillment_provider: provider }).in('id', idsArray);
+      if (error) throw error;
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Delivery Update', detail: `${selectedIds.size} orders assigned to ${provider || 'Unassigned'}` });
+      setSelectedIds(new Set());
+      setBulkDeliveryMenu(false);
+    } catch (err: any) { alert("Failed to update delivery provider: " + err.message); }
+  };
+
+  const handleSyncDelivery = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncDeliveryStatuses(activeStore.id);
+      if (res.success) {
+        alert(res.message);
+        // Soft refresh orders by re-triggering the useEffect via a small delay or manual fetch
+        // For now, Next.js page will refresh or we rely on supabase realtime
+      } else {
+        alert("Sync failed: " + res.error);
+      }
+    } catch (err: any) {
+      alert("Error syncing delivery: " + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
 
   const handlePushToFulfillment = async (order: Order) => {
     if (!order.wilaya || !order.commune) { alert("Please set Wilaya and Commune before fulfillment."); return; }
@@ -205,6 +243,9 @@ export default function AdminOrdersPage() {
         ))}
         
         <div className="ml-auto flex items-center gap-2">
+           <button onClick={handleSyncDelivery} disabled={isSyncing} className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white text-xs font-bold rounded-xl transition-all shadow-sm disabled:opacity-50">
+             <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""}/> {isSyncing ? 'Syncing...' : 'Sync Delivery'}
+           </button>
            <button onClick={() => exportCSV()} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 text-xs font-bold rounded-xl transition-all shadow-sm">
              <Download size={14}/> Export CSV
            </button>
@@ -216,12 +257,22 @@ export default function AdminOrdersPage() {
         <div className="bg-indigo-600 text-white p-4 rounded-2xl mb-6 flex items-center justify-between shadow-xl shadow-indigo-500/20 animate-in fade-in slide-in-from-top-2">
           <div className="text-sm font-black flex items-center gap-2"><CheckCircle size={18}/> {selectedIds.size} Orders Selected</div>
           <div className="flex gap-3 relative">
-            <button onClick={() => setBulkStatusMenu(!bulkStatusMenu)} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/10">Change Status...</button>
+            <button onClick={() => { setBulkStatusMenu(!bulkStatusMenu); setBulkDeliveryMenu(false); }} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/10">Change Status...</button>
             {bulkStatusMenu && (
               <div className="absolute top-full mt-2 right-0 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-20 overflow-hidden">
                 {orderStatuses.map(s => (
                   <button key={s} onClick={() => handleBulkStatus(s)} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">Mark as {formatStatus(s)}</button>
                 ))}
+              </div>
+            )}
+            <button onClick={() => { setBulkDeliveryMenu(!bulkDeliveryMenu); setBulkStatusMenu(false); }} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all border border-white/10">Assign Delivery...</button>
+            {bulkDeliveryMenu && (
+              <div className="absolute top-full mt-2 right-0 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-20 overflow-hidden">
+                <button onClick={() => handleBulkDelivery('yalidine')} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">Assign to Yalidine</button>
+                <button onClick={() => handleBulkDelivery('dhd')} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">Assign to DHD</button>
+                <button onClick={() => handleBulkDelivery('custom')} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition-colors">Assign to Custom Courier</button>
+                <div className="h-px bg-slate-100 my-1"></div>
+                <button onClick={() => handleBulkDelivery('')} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition-colors">Clear Assignment</button>
               </div>
             )}
             {isAdmin && <button onClick={handleBulkDelete} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2"><Trash2 size={14} /> Delete</button>}
@@ -244,6 +295,7 @@ export default function AdminOrdersPage() {
                   <th className="p-5 font-bold">Total</th>
                   <th className="p-5 font-bold">Claimed By</th>
                   <th className="p-5 font-bold">Status</th>
+                  <th className="p-5 font-bold">Delivery Status</th>
                   <th className="p-5 font-bold text-right">Actions</th>
                 </tr>
               </thead>
@@ -302,13 +354,9 @@ export default function AdminOrdersPage() {
                             o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border border-teal-200' :
                             o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
                             o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                            o.status === 'ESCALATED_TO_ADMIN' ? 'bg-purple-100 text-purple-700 border border-purple-200' :
                             'bg-violet-100 text-violet-700 border border-violet-200'
                           }`}>{formatStatus(o.status)}</span>
-                          {o.fulfillmentStatus && (
-                            <span className="px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
-                              🚚 {o.fulfillmentStatus}
-                            </span>
-                          )}
                         </div>
                         {(() => {
                           const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
@@ -320,6 +368,35 @@ export default function AdminOrdersPage() {
                             </div>
                           );
                         })()}
+                      </td>
+                      <td className="p-5">
+                        {o.fulfillmentStatus ? (
+                          <div className="flex flex-col gap-1.5 items-start">
+                            {o.fulfillmentProvider && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border transition-all duration-300 hover:scale-105 hover:shadow-sm ${
+                                o.fulfillmentProvider.toLowerCase() === 'yalidine'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-250 hover:bg-amber-100'
+                                  : o.fulfillmentProvider.toLowerCase() === 'dhd'
+                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-250 hover:bg-indigo-100'
+                                  : 'bg-slate-50 text-slate-600 border-slate-250 hover:bg-slate-100'
+                              }`}>
+                                <span className={`w-1 h-1 rounded-full ${
+                                  o.fulfillmentProvider.toLowerCase() === 'yalidine'
+                                    ? 'bg-amber-500 animate-pulse'
+                                    : o.fulfillmentProvider.toLowerCase() === 'dhd'
+                                    ? 'bg-indigo-500 animate-pulse'
+                                    : 'bg-slate-400'
+                                }`}></span>
+                                {o.fulfillmentProvider}
+                              </span>
+                            )}
+                            <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100 inline-flex items-center gap-1 transition-all duration-300 hover:bg-blue-100">
+                              🚚 {o.fulfillmentStatus}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">—</span>
+                        )}
                       </td>
                       <td className="p-5 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-end gap-2">
@@ -353,6 +430,12 @@ export default function AdminOrdersPage() {
                           <div>
                             <div className="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded inline-block font-bold">#{getShortOrderId(o.id)}</div>
                             <div className="font-black text-slate-900 mt-1">{o.customer}</div>
+                            {o.wilaya && (
+                              <div className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                <MapPin size={10} className="text-slate-400" />
+                                {o.wilaya} {o.commune && `/ ${o.commune}`}
+                              </div>
+                            )}
                           </div>
                           <div className="text-right flex flex-col items-end gap-1">
                             <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${
@@ -360,17 +443,44 @@ export default function AdminOrdersPage() {
                               o.status === 'SELF_CONFIRMED' ? 'bg-teal-100 text-teal-800 border-teal-200' :
                               o.status === 'CANCELED' ? 'bg-rose-100 text-rose-700 border-rose-200' :
                               o.status === 'PENDING_AGENT_CONFIRMATION' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                              o.status === 'ESCALATED_TO_ADMIN' ? 'bg-purple-100 text-purple-700 border-purple-200' :
                               'bg-violet-100 text-violet-700 border-violet-200'
                             }`}>{formatStatus(o.status)}</span>
                             {o.fulfillmentStatus && (
-                              <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100">
-                                🚚 {o.fulfillmentStatus}
-                              </span>
+                              <div className="flex flex-col items-end gap-1 mt-1">
+                                {o.fulfillmentProvider && (
+                                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider border transition-all duration-300 hover:scale-105 hover:shadow-sm ${
+                                    o.fulfillmentProvider.toLowerCase() === 'yalidine'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-250'
+                                      : o.fulfillmentProvider.toLowerCase() === 'dhd'
+                                      ? 'bg-indigo-50 text-indigo-700 border-indigo-250'
+                                      : 'bg-slate-50 text-slate-600 border-slate-250'
+                                  }`}>
+                                    <span className={`w-1 h-1 rounded-full ${
+                                      o.fulfillmentProvider.toLowerCase() === 'yalidine'
+                                        ? 'bg-amber-500 animate-pulse'
+                                        : o.fulfillmentProvider.toLowerCase() === 'dhd'
+                                        ? 'bg-indigo-500 animate-pulse'
+                                        : 'bg-slate-400'
+                                    }`}></span>
+                                    {o.fulfillmentProvider}
+                                  </span>
+                                )}
+                                <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 border border-blue-100 inline-flex items-center gap-1 transition-all duration-300 hover:bg-blue-100">
+                                  🚚 {o.fulfillmentStatus}
+                                </span>
+                              </div>
                             )}
                             <div className="font-black text-indigo-600 text-sm mt-1">{o.total} <span className="text-[10px]">{activeStore.currency}</span></div>
                             {(() => {
                               const callCount = (o.notes || []).filter((n: any) => n.text?.startsWith('[Call -')).length;
-                              return callCount > 0 ? <div className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Phone size={9}/> {callCount} calls</div> : null;
+                              const noteCount = (o.notes || []).filter((n: any) => !n.text?.startsWith('[Call -') && !n.text?.startsWith('Status changed')).length;
+                              return (
+                                <div className="mt-1 flex gap-2 justify-end">
+                                  {callCount > 0 && <div className="text-[9px] text-slate-400 font-bold flex items-center gap-1"><Phone size={9}/> {callCount} calls</div>}
+                                  {noteCount > 0 && <div className="text-[9px] text-amber-500 font-bold flex items-center gap-1"><MessageSquare size={9}/> {noteCount} notes</div>}
+                                </div>
+                              );
                             })()}
                           </div>
                         </div>
@@ -378,7 +488,7 @@ export default function AdminOrdersPage() {
                         <div className="grid grid-cols-2 gap-2 mb-2">
                           <div className="flex flex-col gap-0.5">
                             <div className="text-[10px] uppercase font-bold text-slate-400">Location</div>
-                            <div className="text-xs font-bold text-slate-700">{o.wilaya || '—'} / {o.commune || '—'}</div>
+                            <div className="text-xs font-bold text-slate-700">{o.wilaya || o.province || '—'} / {o.commune || o.city || '—'}</div>
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <div className="text-[10px] uppercase font-bold text-slate-400">Phone</div>
@@ -403,7 +513,19 @@ export default function AdminOrdersPage() {
                               <button onClick={() => handleClaimOrder(o.id)} className="text-[10px] uppercase tracking-wider bg-slate-900 text-white px-3 py-1 rounded-full font-black">Claim</button>
                             )}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-bold">{new Date(o.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            {activeStore.genericWebhookUrl && (o.status === 'CONFIRMED' || o.status === 'SELF_CONFIRMED') && (
+                              <button onClick={() => handlePushToFulfillment(o)} className="p-1.5 text-indigo-600 bg-indigo-50 rounded-lg">
+                                <Send size={14} />
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <button onClick={() => handleDeleteOrder(o.id)} className="p-1.5 text-rose-500 bg-rose-50 rounded-lg">
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                            <div className="text-[10px] text-slate-400 font-bold ml-1">{new Date(o.date).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                          </div>
                         </div>
                       </div>
                     </div>

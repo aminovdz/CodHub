@@ -118,11 +118,12 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 
     const finalTotal = payload.total !== undefined ? payload.total : totalPrice;
 
-    // Fetch the store to get the webhook URL
-    const { data: store } = await supabase.from('stores').select('id, generic_webhook_url').ilike('region', regionCode).single();
+    // Fetch the store to get the webhook URL, API keys, dz_fulfillment, and translations
+    const { data: store } = await supabase.from('stores').select('id, generic_webhook_url, resend_api_key, notify_email, dz_fulfillment, translations').ilike('region', regionCode).single();
     let webhookUrl = store?.generic_webhook_url;
+    const dzFulfillment = store?.dz_fulfillment as any;
 
-    const payloadObj = {
+    const payloadObj: any = {
       store_id: store?.id,
       customer: payload.customerName,
       phone: payload.phone,
@@ -139,10 +140,56 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       discount_amount: payload.discountAmount || 0,
       delivery_rate: payload.deliveryRate || 0,
       status: 'PENDING_AGENT_CONFIRMATION',
+      claimed_by: null as string | null,
       notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
       custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', ...(payload.customFields || {}) },
       ...(payload.source ? { source: payload.source } : {})
     };
+
+    // Auto-Routing (Round-Robin) Dispatcher
+    if (store && dzFulfillment?.autoRoutingEnabled === true) {
+      try {
+        const { data: allStaff } = await supabase
+          .from('staff_accounts')
+          .select('id, name, role, store_id, store_ids')
+          .eq('role', 'confirmation');
+
+        const staffAssignments = store.translations?.staffAssignments || {};
+        const eligibleStaff = (allStaff || []).filter(staff => {
+          if (staff.store_id === store.id) return true;
+          if (Array.isArray(staff.store_ids) && staff.store_ids.includes(store.id)) return true;
+          const assignedStoreIds = staffAssignments[staff.id];
+          return Array.isArray(assignedStoreIds) && assignedStoreIds.includes(store.id);
+        });
+
+        const onlineStaffIds = store.translations?.onlineStaffIds || [];
+        let activeStaff = eligibleStaff.filter(s => onlineStaffIds.includes(s.id));
+
+        if (activeStaff.length === 0) {
+          activeStaff = eligibleStaff;
+        }
+
+        if (activeStaff.length > 0) {
+          const lastIndex = Number(store.translations?.last_assigned_index) || 0;
+          const targetIndex = lastIndex % activeStaff.length;
+          const assignedStaff = activeStaff[targetIndex];
+
+          payloadObj.claimed_by = assignedStaff.name;
+
+          const updatedTranslations = {
+            ...(store.translations || {}),
+            last_assigned_index: targetIndex + 1
+          };
+
+          await supabase
+            .from('stores')
+            .update({ translations: updatedTranslations })
+            .eq('id', store.id);
+        }
+      } catch (routingErr) {
+        console.error('[AutoRouting] Dispatcher failed:', routingErr);
+      }
+    }
 
     let actualOrderId = orderId;
     
@@ -168,6 +215,48 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       }, 60000);
     } catch (e) {
       console.error('[submitOrder] Failed to schedule Meta confirmation:', e);
+    }
+
+    // ── Email Notification to Confirmation Staff ──
+    try {
+      // Find staff in this store with 'confirmation' role
+      const { data: storeStaff } = await supabase
+        .from('staff_accounts')
+        .select('name, email, role')
+        .eq('store_id', payloadObj.store_id)
+        .eq('role', 'confirmation');
+        
+      if (storeStaff && storeStaff.length > 0) {
+        const staffEmails = storeStaff.map(s => s.email).filter(Boolean);
+        if (staffEmails.length > 0 && store?.resend_api_key) {
+          try {
+            const res = await fetch('https://api.resend.com/emails', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${store.resend_api_key}`
+              },
+              body: JSON.stringify({
+                from: store.notify_email || 'orders@resend.dev',
+                to: staffEmails,
+                subject: `New Order #${actualOrderId.slice(0, 8)} - ${payload.cart.map(i => i.name).join(', ')}`,
+                html: `<p>A new order has been placed for <strong>${payload.cart.map(i => i.name).join(', ')}</strong> by ${payload.customerName}.</p>
+                       <p>Phone: ${payload.phone}</p>
+                       <p>Value: ${finalTotal}</p>
+                       <p><a href="https://your-domain.com/admin">Log in to Admin Panel</a> to claim and confirm.</p>`
+              })
+            });
+            const resData = await res.json();
+            console.log(`[Email] Resend API sent to ${staffEmails.length} staff:`, resData);
+          } catch (err) {
+            console.error('[Email] Resend API failed:', err);
+          }
+        } else if (staffEmails.length > 0) {
+          console.log(`[Email] Simulating New Order Email (No API Key):`, staffEmails);
+        }
+      }
+    } catch (e) {
+      console.error('[submitOrder] Failed to notify staff:', e);
     }
 
     // Fire Webhook for submitted order

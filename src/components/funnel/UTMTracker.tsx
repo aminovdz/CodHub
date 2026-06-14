@@ -28,6 +28,14 @@ export function UTMTracker() {
         else if (s.includes('snap')) resolvedSource = 'snapchat';
         else if (s.includes('direct')) resolvedSource = 'direct';
         else resolvedSource = 'other';
+      } else {
+        // Fallback to referrer
+        const referrer = document.referrer.toLowerCase();
+        if (referrer.includes('facebook.com') || referrer.includes('instagram.com')) resolvedSource = 'facebook';
+        else if (referrer.includes('tiktok.com')) resolvedSource = 'tiktok';
+        else if (referrer.includes('snapchat.com')) resolvedSource = 'snapchat';
+        else if (referrer === '') resolvedSource = 'direct'; // Direct traffic
+        else resolvedSource = 'other';
       }
     }
 
