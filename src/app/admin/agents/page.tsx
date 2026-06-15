@@ -153,7 +153,7 @@ export default function AgentsHubPage() {
         }
       }
 
-      const response = await aiService.chatWithAgent(selectedAgent.promptRole, enrichedContent, getContextForAgent(), userMessage.attachments);
+      const response = await aiService.chatWithAgent(selectedAgent.promptRole, enrichedContent, getContextForAgent(), userMessage.attachments, messages);
       
       if (response) {
         const agentMessage: Message = {

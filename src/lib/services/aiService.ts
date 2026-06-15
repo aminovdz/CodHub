@@ -388,6 +388,8 @@ RULES:
     Here is the current store context (data you might need):
     ${JSON.stringify(storeContext)}
     
+    ${chatHistoryText}
+    
     The user is asking:
     "${prompt}"
     
