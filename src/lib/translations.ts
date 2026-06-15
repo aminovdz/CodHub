@@ -257,6 +257,7 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'product.save': 'وفر',
     'product.payOnDelivery': 'الدفع عند الاستلام',
     'checkout.orderNow': 'اطلب الآن - وادفع لاحقاً',
+    'checkout.trustBadge': 'جودة مضمونة وتوصيل آمن - الدفع فقط عند استلام طلبك',
     'product.noCreditCard': 'لا حاجة لبطاقة ائتمان',
     'footer.storeLinks': 'روابط المتجر',
     'footer.legalSupport': 'القانونية والدعم',

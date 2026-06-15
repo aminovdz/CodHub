@@ -104,9 +104,8 @@ export default function SuperAdminLoginPage() {
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className={`w-full px-4 py-4 rounded-xl border focus:ring-2 focus:ring-rose-500 outline-none text-center tracking-[0.5em] font-mono text-2xl transition-colors ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
-            placeholder="••••"
-            maxLength={8}
+            className={`w-full px-4 py-4 rounded-xl border focus:ring-2 focus:ring-rose-500 outline-none text-center tracking-widest font-mono text-xl transition-colors ${isDark ? 'bg-slate-900 border-slate-600 text-white placeholder:text-slate-600' : 'bg-slate-50 border-slate-300 text-slate-900'}`}
+            placeholder="••••••••"
             autoComplete="off"
             required
           />
