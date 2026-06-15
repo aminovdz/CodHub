@@ -3,7 +3,7 @@
 import { useState, memo } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
-import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin, BadgeCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { submitOrder } from '@/lib/actions/funnelActions';
 
@@ -128,7 +128,7 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
           )}
           <div className="flex-1 min-w-0">
             <div className="text-indigo-200 text-xs font-bold uppercase tracking-wider mb-0.5">{t('checkout.includes', 'Your Order')}</div>
-            <div className="font-black text-lg leading-tight truncate">{product.title}</div>
+            <div className="font-black text-lg leading-tight truncate flex items-center gap-1.5">{product.title} <BadgeCheck size={18} className="text-emerald-400 shrink-0" /></div>
             <div className="text-indigo-200 text-sm font-bold mt-0.5">
               {product.compareAtPrice && (
                 <span className="line-through mr-2 opacity-60">{product.compareAtPrice} {currency}</span>
