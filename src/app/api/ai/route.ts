@@ -150,6 +150,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `OpenRouter API Error: ${errMsg}` }, { status: response.status });
       }
       const data = await response.json();
+      if (data.error) {
+        console.error("OpenRouter returned error in 200 OK:", data.error);
+        return NextResponse.json({ error: `OpenRouter Error: ${data.error.message || JSON.stringify(data.error)}` }, { status: 500 });
+      }
       textOutput = data.choices?.[0]?.message?.content || '';
     }
 
@@ -157,9 +161,6 @@ export async function POST(req: Request) {
     if (type === 'json') {
       try {
         let jsonString = textOutput;
-
-        // Strip any markdown code block fences
-        jsonString = jsonString.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
 
         // Find the first '{' and last '}' to extract just the JSON object
         const firstBrace = jsonString.indexOf('{');
@@ -170,12 +171,27 @@ export async function POST(req: Request) {
 
         // Try to fix common JSON issues: trailing commas before closing brace
         jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+        
+        // Escape literal control characters (like newlines) inside strings if the model failed to escape them
+        jsonString = jsonString.replace(/[\u0000-\u001F]+/g, (match) => {
+          return match === '\n' ? '\\n' : match === '\r' ? '\\r' : match === '\t' ? '\\t' : '';
+        });
 
         const parsed = JSON.parse(jsonString);
         return NextResponse.json({ result: parsed });
       } catch (e) {
-        console.error("Failed to parse AI JSON output. Raw text:", textOutput);
-        return NextResponse.json({ error: 'AI returned invalid JSON format. Try a more specific prompt.' }, { status: 500 });
+        console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
+        // Try one more fallback: sometimes the model uses markdown ```json ... ``` but puts text outside
+        const jsonMatch = textOutput.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+        if (jsonMatch && jsonMatch[1]) {
+           try {
+             const fallbackParse = JSON.parse(jsonMatch[1].replace(/,(\s*[}\]])/g, '$1').replace(/[\u0000-\u001F]+/g, ''));
+             return NextResponse.json({ result: fallbackParse });
+           } catch (fallbackErr) {
+             console.error("Fallback JSON parse also failed:", fallbackErr);
+           }
+        }
+        return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput.slice(0, 200)}...` }, { status: 500 });
       }
     }
 
