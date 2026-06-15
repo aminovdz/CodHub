@@ -4,7 +4,7 @@ import { use, useEffect, useState, useRef, useMemo } from 'react';
 import { useFunnelStore, CartItem } from '@/lib/store/useFunnelStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
-import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3 } from 'lucide-react';
+import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3, User, Phone, Mail } from 'lucide-react';
 import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
 import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
@@ -769,20 +769,26 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">
                       {checkoutConfig?.fields?.showLastName ? t('form.firstName', 'First Name') + ' *' : t('form.fullName', 'Full Name') + ' *'}
                     </label>
-                    <input
-                      type="text" value={customerName}
-                      onChange={(e) => setLead(e.target.value, phone)}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
-                      placeholder={checkoutConfig?.fields?.showLastName ? 'e.g. John' : 'e.g. John Doe'}
-                    />
+                    <div className="relative">
+                      <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text" value={customerName}
+                        onChange={(e) => setLead(e.target.value, phone)}
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
+                        placeholder={checkoutConfig?.fields?.showLastName ? 'e.g. John' : 'e.g. John Doe'}
+                      />
+                    </div>
                   </div>
                   {checkoutConfig?.fields?.showLastName && (
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.lastName', 'Last Name')} *</label>
-                      <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
-                        placeholder="e.g. Doe"
-                      />
+                      <div className="relative">
+                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
+                          placeholder="e.g. Doe"
+                        />
+                      </div>
                     </div>
                   )}
                   {checkoutConfig?.fields?.showEmail && (
@@ -790,19 +796,25 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">
                         {t('form.email', 'Email')} {checkoutConfig?.fields?.requireEmail ? '*' : '(Optional)'}
                       </label>
-                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
-                        placeholder="e.g. john@example.com"
-                      />
+                      <div className="relative">
+                        <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                          className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
+                          placeholder="e.g. john@example.com"
+                        />
+                      </div>
                     </div>
                   )}
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'Phone Number')} *</label>
-                    <input type="tel" value={phone} dir="ltr" maxLength={10}
-                      onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
-                      placeholder="0555 55 55 55"
-                    />
+                    <div className="relative">
+                      <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input type="tel" value={phone} dir="ltr" maxLength={10}
+                        onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
+                        className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
+                        placeholder="0555 55 55 55"
+                      />
+                    </div>
                     <p className="text-[11px] text-slate-400 mt-1">Enter your number starting with 0 (e.g. 0555 12 34 56)</p>
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
@@ -922,33 +934,42 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.wilaya', 'Wilaya')} *</label>
-                              <select value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white"
-                              >
-                                <option value="" disabled>Select</option>
-                                {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
-                              </select>
+                              <div className="relative">
+                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <select value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
+                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
+                                >
+                                  <option value="" disabled>Select</option>
+                                  {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
+                                </select>
+                              </div>
                             </div>
                             <div>
                               <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'Commune')} *</label>
-                              <input type="text" value={commune} onChange={(e) => setCommune(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                placeholder="e.g. Bab El Oued"
-                              />
+                              <div className="relative">
+                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input type="text" value={commune} onChange={(e) => setCommune(e.target.value)}
+                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                  placeholder="e.g. Bab El Oued"
+                                />
+                              </div>
                             </div>
                           </div>
                           {/* Only show detailed address for Home Delivery */}
                           {deliveryType === 'home' && (
                             <div>
                               <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'Detailed Address')} *</label>
-                              <input 
-                                ref={checkoutConfig?.addressAutocomplete ? addressInputRef : undefined}
-                                type="text" 
-                                value={detailedAddress} 
-                                onChange={(e) => setDetailedAddress(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
-                              />
+                              <div className="relative">
+                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input 
+                                  ref={checkoutConfig?.addressAutocomplete ? addressInputRef : undefined}
+                                  type="text" 
+                                  value={detailedAddress} 
+                                  onChange={(e) => setDetailedAddress(e.target.value)}
+                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
+                                  placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
+                                />
+                              </div>
                             </div>
                           )}
                         </>
@@ -1083,6 +1104,12 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                     <Truck size={20} />
                     {t('checkout.orderNow', 'CONFIRM ORDER')}
                   </button>
+                </div>
+                <div className="mt-5 flex items-center justify-center gap-2 text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <ShieldCheck size={18} className="text-emerald-500" />
+                  <p className="text-xs font-bold text-center">
+                    {t('checkout.trustBadge', 'Guaranteed Quality & Secure Delivery - Pay only upon receiving your order')}
+                  </p>
                 </div>
               </div>
             )}
