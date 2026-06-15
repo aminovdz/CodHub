@@ -12,10 +12,18 @@ export const aiService = {
     const state = useAdminStore.getState();
     const provider = state.aiProvider || 'gemini';
     let apiKey = state.globalApiKey;
+    let model = undefined;
     if (provider === 'claude') apiKey = state.claudeApiKey;
     if (provider === 'openai') apiKey = state.openAiApiKey;
-    if (provider === 'openrouter') apiKey = state.openRouterApiKey;
-    return { provider, apiKey, model: state.openRouterModel };
+    if (provider === 'openrouter') {
+      apiKey = state.openRouterApiKey;
+      model = state.openRouterModel;
+    }
+    if (provider === 'nvidia') {
+      apiKey = state.nvidiaApiKey;
+      model = state.nvidiaModel;
+    }
+    return { provider, apiKey, model };
   },
 
   /**

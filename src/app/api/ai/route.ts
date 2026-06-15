@@ -156,6 +156,48 @@ export async function POST(req: Request) {
       }
       textOutput = data.choices?.[0]?.message?.content || '';
     }
+    else if (provider === 'nvidia') {
+      const contentBlocks: any[] = [{ type: "text", text: prompt }];
+
+      if (images && images.length > 0) {
+        images.forEach((imgObj: { data: string, mimeType: string }) => {
+          const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
+          contentBlocks.push({
+            type: "image_url",
+            image_url: { url: base64Data }
+          });
+        });
+      }
+
+      const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model || 'meta/llama-3.1-405b-instruct',
+          messages: [{ role: 'user', content: contentBlocks }],
+          max_tokens: 4096,
+          temperature: 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("NVIDIA API Error:", errText);
+        let errMsg = 'NVIDIA generation failed';
+        try { const parsed = JSON.parse(errText); errMsg = parsed.error?.message || errText; } catch(e) {}
+        return NextResponse.json({ error: `NVIDIA API Error: ${errMsg}` }, { status: response.status });
+      }
+      const data = await response.json();
+      if (data.error) {
+        console.error("NVIDIA returned error in 200 OK:", data.error);
+        return NextResponse.json({ error: `NVIDIA Error: ${data.error.message || JSON.stringify(data.error)}` }, { status: 500 });
+      }
+      textOutput = data.choices?.[0]?.message?.content || '';
+    }
 
     // If the expected output is JSON, try to parse it
     if (type === 'json') {
