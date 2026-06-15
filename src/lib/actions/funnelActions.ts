@@ -33,9 +33,8 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
       phone: data.phone,
       store_id: store.id,
       status: 'DRAFT',
-      custom_fields: { step: data.step || 'Checkout', utm_campaign: data.utmCampaign || '' }
+      custom_fields: { step: data.step || 'Checkout', utm_campaign: data.utmCampaign || '', source: data.source || '' }
     };
-    if (data.source) payload.source = data.source;
 
     console.log(`[saveDraftOrder] Payload:`, payload);
 
@@ -142,8 +141,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       status: 'PENDING_AGENT_CONFIRMATION',
       claimed_by: null as string | null,
       notes: payload.instructions ? [{ author: 'System', text: payload.instructions, createdAt: new Date().toISOString() }] : null,
-      custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', ...(payload.customFields || {}) },
-      ...(payload.source ? { source: payload.source } : {})
+      custom_fields: { step: 'Completed', coupon: payload.couponCode || '', utm_campaign: payload.utmCampaign || '', source: payload.source || '', ...(payload.customFields || {}) }
     };
 
     // Auto-Routing (Round-Robin) Dispatcher
