@@ -3,7 +3,7 @@
 import { useState, memo } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
-import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin, BadgeCheck } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin, BadgeCheck, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { submitOrder } from '@/lib/actions/funnelActions';
 
@@ -241,8 +241,8 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
               </>
             )}
           </button>
-          <p className="text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
-            🔒 {t('checkout.secureCheckout', 'No Credit Card · Pay when your order arrives')}
+          <p className="text-center text-xs font-bold text-slate-500 flex items-center justify-center gap-1.5 mt-4">
+            <ShieldCheck size={16} className="text-emerald-500" /> {t('checkout.secureCheckout', 'No Credit Card · Pay when your order arrives')}
           </p>
         </form>
       </div>
