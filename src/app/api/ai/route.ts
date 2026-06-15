@@ -213,21 +213,17 @@ export async function POST(req: Request) {
 
         // Try to fix common JSON issues: trailing commas before closing brace
         jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
-        
-        // Escape literal control characters (like newlines) inside strings if the model failed to escape them
-        jsonString = jsonString.replace(/[\u0000-\u001F]+/g, (match) => {
-          return match === '\n' ? '\\n' : match === '\r' ? '\\r' : match === '\t' ? '\\t' : '';
-        });
 
         const parsed = JSON.parse(jsonString);
         return NextResponse.json({ result: parsed });
       } catch (e) {
         console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
-        // Try one more fallback: sometimes the model uses markdown ```json ... ``` but puts text outside
+        // Fallback: Use regex to extract ```json blocks
         const jsonMatch = textOutput.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
         if (jsonMatch && jsonMatch[1]) {
            try {
-             const fallbackParse = JSON.parse(jsonMatch[1].replace(/,(\s*[}\]])/g, '$1').replace(/[\u0000-\u001F]+/g, ''));
+             let fallbackStr = jsonMatch[1].replace(/,(\s*[}\]])/g, '$1');
+             const fallbackParse = JSON.parse(fallbackStr);
              return NextResponse.json({ result: fallbackParse });
            } catch (fallbackErr) {
              console.error("Fallback JSON parse also failed:", fallbackErr);
