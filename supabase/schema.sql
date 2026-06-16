@@ -30,6 +30,8 @@ create table public.stores (
     whatsapp_config jsonb,
     dz_fulfillment jsonb,
     fraud_config jsonb,
+    sticky_buy_button jsonb,
+    custom_domain text,
     created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 

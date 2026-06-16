@@ -218,7 +218,7 @@ export default function AdminSettingsPage() {
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
-      customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
+      customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
       stickyBuyButton: { enabled: stickyBuyEnabled, text: stickyBuyText, customCss: stickyBuyCss }
     });
 
@@ -271,7 +271,7 @@ export default function AdminSettingsPage() {
       phonePrefix: newStorePrefix,
       currency: newStoreCurrency.toUpperCase(),
       language: newStoreLanguage.toLowerCase(),
-      customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
+      customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
       translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
     });
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
