@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const storeReady = _hasHydrated;
 
   const currentStaffAccount = !isSuperAdminRoute && isAuthenticated && username
-    ? staffAccounts.find(a => a.name.trim().toLowerCase() === username.trim().toLowerCase())
+    ? staffAccounts.find((a: any) => a.name.trim().toLowerCase() === username.trim().toLowerCase())
     : null;
   const allowedStoreIds = currentStaffAccount 
     ? (currentStaffAccount.storeIds && currentStaffAccount.storeIds.length > 0 
