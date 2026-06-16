@@ -70,25 +70,45 @@ export const aiService = {
    * Generates a high-converting Next.js React component for a landing page.
    */
   async generateLandingPage(title: string, region: string): Promise<{ componentCode: string; metadata: any } | null> {
+    const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
+    const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
+    
     const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Next.js expert. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
 
 You will receive raw product text/data and a list of direct, external Image URLs. Output a fully functional, single-file Next.js React component. Do not explain the code; output only the final code.
 
-### 1. Content & Asset Strategy
-* Transform the Copy: Never output raw supplier descriptions. Rewrite all text to be benefit-driven and emotionally resonant.
-* Image Mapping: Dynamically map the provided external image URLs into this hierarchy: Hero Image, Detail Shots, and Action Shots.
+### 1. Copywriting Requirements (CRITICAL)
+- Language: Write ALL copy in **${languageStr}**.
+- No Cheap Tricks: Absolutely no fake urgency, fake scarcity, or exaggerated fluff (e.g., "revolutionary," "magical").
+- COD Optimization: The store uses Cash on Delivery. The copy must build supreme confidence so the buyer physically accepts the package. Emphasize "Pay Only When You Receive It."
+- Feature-to-Benefit Translation: Never list a technical feature without immediately explaining the real-world payoff. (e.g., Do not just say "stainless steel blades"; say "stainless steel blades that prevent razor burn and never require sharpening").
+- Readability: Use short sentences, active voice, and high-impact formatting (bullet points, bold text).
 
-### 2. Technical Execution (CRITICAL)
-* No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
-* Single-File Output: Consolidate all functional sections (Hero, Gallery, Features, Trust Stack) into one cohesive default function.
-* Tailwind CSS: Use Tailwind for all styling. 
+### 2. Page Structure Requirements
+Design the layout mapped to the following sections:
+1. **The Hero Section (The Hook):**
+   - Primary Headline: Focus entirely on the ultimate desired result or the biggest pain point solved. Keep it under 8 words.
+   - Sub-headline: Explain how the product achieves the headline's promise.
+   - Call to Action (CTA): Action-oriented, friction-free (e.g., "Order Now - Pay on Delivery"). Include a dynamic price comparison.
+2. **The Problem/Agitation/Solution (PAS) Block:**
+   - Identify the specific frustration the user currently experiences without this product.
+   - Agitate that problem briefly, then introduce the product as the definitive solution.
+3. **Objection Handling & Benefits (The Logic):**
+   - Extract the top 3-4 features from the raw data.
+   - Format them as: [Clear Benefit]: [Brief explanation of the feature that makes it possible].
+   - Pre-emptively answer the biggest doubt a buyer would have (e.g., "Is this difficult to install?" or "Will this break in a month?").
+4. **Social Proof & Trust (The Validation):**
+   - Synthesize 3 realistic customer reviews based on the provided data. Highlight specific use-cases, not just "Great product!"
+   - Include a strong Risk Reversal statement (e.g., "Check the product before you pay").
 
-### 3. High-Conversion Page Anatomy
-* Above the Fold: Product Title, dynamic Price comparison, and primary Call to Action (CTA) must be immediately visible on mobile.
-* Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
-* Sticky Footer: Implement a sticky footer CTA bar (\`fixed bottom-0 w-full\`) visible on mobile.
-* Trust Stack: Explicitly highlight "Cash on Delivery" availability, secure checkout icons, and clear return policies.
-* Distraction-Free: Strip away standard global headers or navigation menus.
+### 3. Technical Execution (CRITICAL)
+${isArabic ? '- RTL Formatting: Since the language is Arabic, you MUST wrap the main container or relevant text blocks with `dir="rtl"` so the text correctly starts from the right to the left.' : ''}
+- No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
+- Single-File Output: Consolidate all functional sections into one cohesive default export function.
+- Tailwind CSS: Use Tailwind for all styling. 
+- Above the Fold: Product Title, dynamic Price, and primary CTA must be immediately visible on mobile.
+- Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
+- Sticky Footer: Implement a sticky footer CTA bar (\`fixed bottom-0 w-full z-50\`) visible on mobile.
 
 ### 4. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
