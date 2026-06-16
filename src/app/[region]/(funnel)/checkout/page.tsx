@@ -146,19 +146,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     const state = useFunnelStore.getState();
     const mainItem = state.cart.find(i => !i.isUpsell);
     if (!mainItem) return;
+    
+    // We already have a specific quantity chosen from the product page
+    const currentQty = mainItem.quantity || 1;
+    setSelectedQuantity(currentQty);
+
     const product = products.find(p => p.id === mainItem.id);
     if (!product?.quantityOffers || product.quantityOffers.length === 0) return;
     
-    // Check if the cart already has a quantity that matches an offer (e.g., selected on storefront)
-    const currentQty = mainItem.quantity || 1;
-    const existingOffer = product.quantityOffers.find(o => o.qty === currentQty);
-    
-    if (existingOffer) {
-      setSelectedQuantity(existingOffer.qty);
-    } else {
-      const defaultOffer = product.quantityOffers.find(o => (o as any).isDefault) ?? product.quantityOffers[0];
-      setSelectedQuantity(defaultOffer.qty);
-    }
+    // The user requested: "dont select any quantity offer"
+    // We only set selected quantity if it's already defined via URL or previous step (like in cart),
+    // but we won't auto-select a default offer.
+    // If the cart doesn't have a quantity or has 1, we still want to keep the radio buttons unselected 
+    // unless they explicitly chose one. By default, selectedQuantity is 1 from the cart.
+    // We will just let the user explicitly click if they want a bundle.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
 
@@ -368,9 +369,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
   const handleProceedToStep3 = () => setStep(3);
 
-  // Countdown timer — fires when entering step 2
+  // Countdown timer — Start countdown on mount if step is 1 and configured
   useEffect(() => {
-    if (step === 2 && checkoutConfig && (checkoutConfig.countdownMinutes ?? 5) > 0) {
+    if (checkoutConfig && (checkoutConfig.countdownMinutes ?? 5) > 0) {
       const totalSecs = (checkoutConfig.countdownMinutes ?? 5) * 60;
       setCountdownSecs(totalSecs);
       const interval = setInterval(() => {
@@ -381,7 +382,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       }, 1000);
       return () => clearInterval(interval);
     }
-  }, [step, checkoutConfig]);
+  }, [checkoutConfig]);
 
   const handleComplete = async () => {
     setStatus('CONFIRMING');
@@ -673,9 +674,18 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
           {/* Header */}
           <div className="p-5 text-center border-b border-slate-100">
-            <h2 className="text-lg font-black text-slate-900 uppercase tracking-wide">
-              {t('checkout.secureCheckout', '🔒 Secure Checkout — Pay on Delivery')}
-            </h2>
+
+            {countdownSecs !== null && countdownSecs > 0 && (
+              <div className="mt-4 mx-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center gap-3 shadow-sm">
+                <div className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                </div>
+                <div className="text-sm font-bold text-rose-700">
+                  {t('checkout.highDemand', 'طلب مرتفع - تم حجز طلبك لمدة:')} <span className="font-black tabular-nums tracking-tight ml-1 text-rose-800 text-base">{String(Math.floor(countdownSecs / 60)).padStart(2,'0')}:{String(countdownSecs % 60).padStart(2,'0')}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="p-5 md:p-7">
@@ -694,7 +704,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   </p>
                   <div className="space-y-3">
                     {quantityOffers.map(offer => {
-                      const isSelected = selectedQuantity === offer.qty;
+                      const isSelected = selectedQuantity === offer.qty && offer.qty !== 1; // Don't pre-select the 1x option visually either if they haven't interacted with it as an offer
                       const perItem = offer.qty > 1 ? Math.round(offer.price / offer.qty) : null;
                       return (
                         <label key={offer.id} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>
@@ -702,7 +712,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                           <input type="radio" name="quantity_offer" checked={isSelected} onChange={() => handleQuantitySelect(offer)} className="w-5 h-5 text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0" />
                           <div className="flex-1">
                             <p className={`font-black text-sm ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{offer.label}</p>
-                            {perItem && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{perItem} {currency} / item</p>}
+                            {perItem && <p className="text-[10px] text-emerald-600 font-bold mt-0.5">{perItem} {currency} / للقطعة</p>}
                           </div>
                           <div className="text-right shrink-0">
                             <p className="font-black text-lg text-indigo-600">{offer.price} <span className="text-xs">{currency}</span></p>
@@ -722,11 +732,6 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                       <span className="text-xs font-black text-slate-700 uppercase tracking-widest">
                         ⚡ {t('checkout.upsellTitle', 'Exclusive Add-ons — Limited Offer')}
                       </span>
-                      {countdownSecs !== null && countdownSecs > 0 && (
-                        <span className={`ml-auto text-xs font-black px-2 py-0.5 rounded-full ${countdownSecs <= 60 ? 'bg-rose-100 text-rose-600 animate-pulse' : 'bg-amber-100 text-amber-700'}`}>
-                          ⏱ {String(Math.floor(countdownSecs / 60)).padStart(2,'0')}:{String(countdownSecs % 60).padStart(2,'0')}
-                        </span>
-                      )}
                     </div>
                     <div className="space-y-3">
                       {dynamicUpsells.map((upsell) => {
@@ -815,7 +820,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                         placeholder="0555 55 55 55"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">Enter your number starting with 0 (e.g. 0555 12 34 56)</p>
+                    <p className="text-[11px] text-slate-400 mt-1">أدخل رقمك يبدأ بـ 0 (مثال 0555 12 34 56)</p>
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
                     <div key={field.id}>
@@ -840,7 +845,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                             checked={isBumpAdded}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                addCartItem({ id: bump.id, name: bump.title, price: Number(bump.price), isUpsell: true, isBump: true, imageUrl: bump.image });
+                                const targetProduct = bump.targetProductId ? products.find(p => p.id === bump.targetProductId) : null;
+                                const bumpName = targetProduct ? targetProduct.title : bump.title;
+                                addCartItem({ id: bump.id, name: bumpName, price: Number(bump.price), isUpsell: true, isBump: true, imageUrl: bump.image });
                               } else {
                                 removeCartItem(bump.id);
                               }
@@ -1039,16 +1046,17 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                           <button onClick={() => setShowCouponInput(!showCouponInput)}
                             className="text-indigo-600 font-bold text-sm hover:underline"
                           >
-                            {t('checkout.haveCoupon', '🏷️ Have a coupon?')}
+                            {t('checkout.haveCoupon', '🏷️ لديك كوبون خصم؟')}
                           </button>
                           {showCouponInput && (
                             <div className="flex gap-2 mt-2">
                               <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
                                 className="flex-1 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 uppercase"
-                                placeholder="DISCOUNT20"
+                                placeholder="أدخل رمز الكوبون..."
                               />
-                              <button onClick={handleApplyCoupon} className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">
-                                {t('checkout.apply', 'Apply')}
+                              <button type="button" onClick={handleApplyCoupon} className="px-5 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors">
+                                {t('checkout.apply', 'تطبيق')}
                               </button>
                             </div>
                           )}
@@ -1057,10 +1065,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                       ) : (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
                           <div>
-                            <div className="text-emerald-700 font-bold text-xs">{t('checkout.couponApplied', '✓ Coupon Applied!')}</div>
+                            <div className="text-emerald-700 font-bold text-xs">{t('checkout.couponApplied', '✓ تم تطبيق الكوبون!')}</div>
                             <div className="text-emerald-600 font-black">{appliedCoupon.type === 'fixed' ? `-${appliedCoupon.value} ${currency}` : `-${appliedCoupon.value}%`}</div>
                           </div>
-                          <button onClick={handleRemoveCoupon} className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline">Remove</button>
+                          <button onClick={handleRemoveCoupon} className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline">{t('checkout.remove', 'إزالة')}</button>
                         </div>
                       )}
                     </div>

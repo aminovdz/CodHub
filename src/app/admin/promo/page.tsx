@@ -64,10 +64,13 @@ export default function AdminPromoPage() {
     setIsGenerating(true);
     try {
       const { aiService } = await import('@/lib/services/aiService');
-      const html = await aiService.generateLandingPage(prod.title, activeStore.region);
-      if (html) {
-        setHtmlContent(html);
+      const result = await aiService.generateLandingPage(prod.title, activeStore.region);
+      if (result) {
+        setHtmlContent(result.componentCode);
         setTitle(`Promo: ${prod.title}`);
+        if (result.metadata?.core_value_proposition) {
+          console.log("Metadata extracted:", result.metadata);
+        }
       } else {
         notify("Failed to generate AI landing page.", "error");
       }

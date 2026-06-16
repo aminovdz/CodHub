@@ -69,6 +69,8 @@ create table public.products (
     oto_product_id uuid,
     disable_out_of_stock_purchases boolean default false,
     disable_coupons boolean default false,
+    oto_price numeric,
+    related_product_ids jsonb,
     cost_price numeric,
     weight numeric,
     shipping_cost numeric,

@@ -47,6 +47,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   // Determine OTO product from the purchased product's config
   const otoProductId = primaryProduct?.otoProductId;
   const otoProduct = otoProductId ? products.find(p => p.id === otoProductId) : null;
+  const otoPrice = primaryProduct?.otoPrice ?? otoProduct?.price;
 
   const getFormattedAddress = () => {
     if (!addressData) return '';
@@ -85,7 +86,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
     buyNow({
       id: otoProduct.id,
       name: otoProduct.title,
-      price: otoProduct.price,
+      price: otoPrice || otoProduct.price,
       isUpsell: true,
       imageUrl: otoProduct.image
     });
@@ -96,6 +97,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   // Store products for "You Might Also Like" (excluding already purchased)
   const storeProducts = products
     .filter(p => p.storeId === store?.id && p.active && p.id !== otoProductId && p.id !== primaryCartItem?.id)
+    .filter(p => !primaryProduct?.relatedProductIds || primaryProduct.relatedProductIds.length === 0 || primaryProduct.relatedProductIds.includes(p.id))
     .slice(0, 3);
 
   return (
@@ -180,7 +182,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                   <p className="text-indigo-200 mb-4">{otoProduct.shortDesc}</p>
                 )}
                 <div className="flex items-center gap-4 mb-6">
-                  <span className="text-4xl font-black">{otoProduct.price} <span className="text-xl text-indigo-300">{currency}</span></span>
+                  <span className="text-4xl font-black">{otoPrice} <span className="text-xl text-indigo-300">{currency}</span></span>
                   {otoProduct.compareAtPrice && (
                     <span className="text-xl text-indigo-400 line-through">{otoProduct.compareAtPrice} {currency}</span>
                   )}

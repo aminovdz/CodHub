@@ -322,9 +322,18 @@ export default function AdminOrdersPage() {
                       </td>
                       <td className="p-5">
                         <div className="text-xs font-bold text-slate-900" title={o.product}>
-                          {o.product.split(',').map((p, idx) => (
-                            <div key={idx} className="mb-0.5">{p.trim()}</div>
-                          ))}
+                          {o.product.split(',').map((p, idx) => {
+                            const trimmed = p.trim();
+                            const isAddon = trimmed.includes('[Add-on]');
+                            const cleanName = trimmed.replace('[Add-on]', '').trim();
+                            
+                            return (
+                              <div key={idx} className="mb-0.5 flex items-start gap-1">
+                                {isAddon && <span className="text-[9px] font-black uppercase bg-amber-200 text-amber-700 px-1 py-0.5 rounded shrink-0 mt-0.5">Add-on</span>}
+                                <span>{cleanName}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                         {o.notes && o.notes.length > 0 && (
                           <div className="text-[10px] mt-2 text-amber-700 bg-amber-50 p-2 rounded border border-amber-100 font-bold whitespace-pre-wrap" title={o.notes[0].text}>

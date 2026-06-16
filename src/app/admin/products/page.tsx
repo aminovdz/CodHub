@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical, Loader2 } from 'lucide-react';
+import { Sparkles, Plus, Edit2, Trash2, X, UploadCloud, Image as ImageIcon, PlusSquare, Link as LinkIcon, ExternalLink, LayoutTemplate, Star, AlignLeft, Code, GripVertical, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useAdminStore, Product, MaximizerUpsell, HomepageBlock, ProductVariant, QuantityOffer, OrderBump } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
@@ -21,6 +21,8 @@ export default function AdminProductsPage() {
   const [shortDescMode, setShortDescMode] = useState<'text' | 'html'>('text');
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [relatedSearch, setRelatedSearch] = useState('');
+  const [bumpSearches, setBumpSearches] = useState<Record<string, string>>({});
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string; title: string }>({ isOpen: false, productId: '', title: '' });
 
@@ -41,7 +43,8 @@ export default function AdminProductsPage() {
           shortDesc: details.shortDesc,
           mainDesc: details.mainDesc,
           seoTitle: details.seoTitle,
-          seoDescription: details.seoDescription
+          seoDescription: details.seoDescription,
+          seoSlug: details.seoSlug || prev.seoSlug
         } : prev);
       } else {
         notify("Failed to generate AI details.", "error");
@@ -226,6 +229,17 @@ export default function AdminProductsPage() {
       ...editingProduct,
       orderBumps: editingProduct.orderBumps?.filter(b => b.id !== id)
     });
+  };
+
+  const moveOrderBump = (index: number, direction: 'up' | 'down') => {
+    if (!editingProduct || !editingProduct.orderBumps) return;
+    const bumps = [...editingProduct.orderBumps];
+    if (direction === 'up' && index > 0) {
+      [bumps[index - 1], bumps[index]] = [bumps[index], bumps[index - 1]];
+    } else if (direction === 'down' && index < bumps.length - 1) {
+      [bumps[index], bumps[index + 1]] = [bumps[index + 1], bumps[index]];
+    }
+    setEditingProduct({ ...editingProduct, orderBumps: bumps });
   };
   // ─────────────────────────────────────
 
@@ -543,8 +557,8 @@ export default function AdminProductsPage() {
                       <input type="number" value={editingProduct.reviewsCount || ''} onChange={(e) => setEditingProduct({...editingProduct, reviewsCount: Number(e.target.value)})} min="0" className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium" placeholder="e.g. 124" />
                     </div>
                   </div>
-                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+                  <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-bold text-slate-700 mb-1">Post-Purchase OTO Product</label>
                       <select value={editingProduct.otoProductId || ''} onChange={(e) => setEditingProduct({...editingProduct, otoProductId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white">
                         <option value="">None (Disable OTO)</option>
@@ -552,6 +566,10 @@ export default function AdminProductsPage() {
                           <option key={p.id} value={p.id}>{p.title}</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Custom OTO Price (Optional)</label>
+                      <input type="number" value={editingProduct.otoPrice || ''} onChange={(e) => setEditingProduct({...editingProduct, otoPrice: parseFloat(e.target.value) || undefined})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white" placeholder="Original price if empty" />
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1">Delivery Agency (Fulfillment)</label>
@@ -564,6 +582,7 @@ export default function AdminProductsPage() {
                       </select>
                     </div>
                   </div>
+                  
                   <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
                       <input 
@@ -813,7 +832,13 @@ export default function AdminProductsPage() {
                 <div className="space-y-4">
                   {editingProduct.orderBumps?.map((bump, index) => (
                     <div key={bump.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4 items-start">
-                      <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black flex items-center justify-center shrink-0 text-sm">{index + 1}</div>
+                      <div className="flex flex-col items-center shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-black flex items-center justify-center text-sm mb-2">{index + 1}</div>
+                        <div className="flex flex-col gap-1">
+                          <button type="button" onClick={() => moveOrderBump(index, 'up')} disabled={index === 0} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ChevronUp size={16} /></button>
+                          <button type="button" onClick={() => moveOrderBump(index, 'down')} disabled={index === (editingProduct.orderBumps?.length || 0) - 1} className="p-1 text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ChevronDown size={16} /></button>
+                        </div>
+                      </div>
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="md:col-span-2">
                           <label className="block text-xs font-bold text-slate-500 mb-1">Title</label>
@@ -826,6 +851,48 @@ export default function AdminProductsPage() {
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Price ({activeStore.currency})</label>
                           <input type="number" min={0} value={bump.price} onChange={(e) => updateOrderBump(bump.id, { price: Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-indigo-600 text-sm" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Target Product (Optional)</label>
+                          <div className="bg-white border border-slate-300 rounded-lg p-2">
+                            <input 
+                              type="text" 
+                              placeholder="Search to select product..." 
+                              value={bumpSearches[bump.id] || ''}
+                              onChange={(e) => setBumpSearches({...bumpSearches, [bump.id]: e.target.value})}
+                              className="w-full px-2 py-1.5 rounded bg-slate-50 border border-slate-200 outline-none mb-2 text-xs"
+                            />
+                            <div className="max-h-32 overflow-y-auto pr-1 space-y-1">
+                              <label className={`flex items-center gap-2 p-1.5 border rounded cursor-pointer hover:bg-slate-50 transition-colors ${!bump.targetProductId ? 'border-indigo-600 bg-indigo-50' : 'border-transparent'}`}>
+                                <input 
+                                  type="radio" 
+                                  name={`bump-${bump.id}`}
+                                  checked={!bump.targetProductId} 
+                                  onChange={() => updateOrderBump(bump.id, { targetProductId: '' })}
+                                  className="w-3 h-3 text-indigo-600"
+                                />
+                                <span className="text-xs font-bold text-slate-700">None (Custom Item)</span>
+                              </label>
+                              {filteredProducts
+                                .filter(p => p.id !== editingProduct.id)
+                                .filter(p => p.title.toLowerCase().includes((bumpSearches[bump.id] || '').toLowerCase()))
+                                .map(p => {
+                                  const isSelected = bump.targetProductId === p.id;
+                                  return (
+                                    <label key={p.id} className={`flex items-center gap-2 p-1.5 border rounded cursor-pointer hover:bg-slate-50 transition-colors ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-transparent'}`}>
+                                      <input 
+                                        type="radio" 
+                                        name={`bump-${bump.id}`}
+                                        checked={isSelected} 
+                                        onChange={() => updateOrderBump(bump.id, { targetProductId: p.id })}
+                                        className="w-3 h-3 text-indigo-600"
+                                      />
+                                      <span className="text-xs font-bold text-slate-700 truncate">{p.title}</span>
+                                    </label>
+                                  );
+                              })}
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-bold text-slate-500 mb-1">Image URL (optional)</label>
@@ -892,8 +959,41 @@ export default function AdminProductsPage() {
               {/* Thank You Page Related Products */}
               <div className="border-t border-slate-100 pt-8">
                 <h3 className="text-lg font-black text-slate-900 mb-1">Thank You Page Related Products</h3>
-                <p className="text-sm text-slate-500 mb-4">Suggest these products on the final Thank You page (Passive Upsell).</p>
-                <input type="text" value={editingProduct.relatedProducts || ''} onChange={(e) => setEditingProduct({...editingProduct, relatedProducts: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white" placeholder="Comma separated IDs or exact titles..." />
+                <p className="text-sm text-slate-500 mb-4">Search and select explicit products to show on the final Thank You page.</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <input 
+                    type="text" 
+                    placeholder="Search products..." 
+                    value={relatedSearch}
+                    onChange={(e) => setRelatedSearch(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none mb-3 text-sm"
+                  />
+                  <div className="max-h-48 overflow-y-auto pr-2 space-y-1">
+                    {filteredProducts
+                      .filter(p => p.id !== editingProduct.id)
+                      .filter(p => p.title.toLowerCase().includes(relatedSearch.toLowerCase()))
+                      .map(p => {
+                        const isSelected = editingProduct.relatedProductIds?.includes(p.id);
+                        return (
+                          <label key={p.id} className={`flex items-center gap-3 p-2 border rounded-lg cursor-pointer hover:bg-white transition-colors ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-transparent hover:border-slate-200'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected || false} 
+                              onChange={(e) => {
+                                const current = editingProduct.relatedProductIds || [];
+                                const newIds = e.target.checked 
+                                  ? [...current, p.id] 
+                                  : current.filter(id => id !== p.id);
+                                setEditingProduct({...editingProduct, relatedProductIds: newIds});
+                              }}
+                              className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                            />
+                            <span className="text-sm font-bold text-slate-700 truncate">{p.title}</span>
+                          </label>
+                        );
+                    })}
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-3 pt-6 border-t border-slate-100">

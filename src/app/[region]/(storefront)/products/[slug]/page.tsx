@@ -71,7 +71,8 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   
   const { products, availableStores, _hasHydrated } = useAdminStore();
   const store = resolveStore(availableStores, region);
-  const product = products.find(p => p.seoSlug === slug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === slug) || PRODUCTS.find(p => p.slug === slug);
+  const decodedSlug = decodeURIComponent(slug);
+  const product = products.find(p => p.seoSlug === decodedSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedSlug) || PRODUCTS.find(p => p.slug === decodedSlug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);

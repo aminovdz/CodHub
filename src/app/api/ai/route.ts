@@ -72,11 +72,12 @@ export async function POST(req: Request) {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'anthropic-beta': 'max-tokens-3-5-sonnet-2024-07-15'
         },
         body: JSON.stringify({
           model: 'claude-3-5-sonnet-20241022',
-          max_tokens: 4096,
+          max_tokens: 8192,
           messages: [{ role: 'user', content: contentBlocks }]
         })
       });
@@ -179,7 +180,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           model: model || 'meta/llama-3.1-405b-instruct',
           messages: [{ role: 'user', content: contentBlocks }],
-          max_tokens: 4096,
+          max_tokens: 8192,
           temperature: 0.3
         })
       });
@@ -214,6 +215,25 @@ export async function POST(req: Request) {
         // Try to fix common JSON issues: trailing commas before closing brace
         jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
 
+        // Fix unescaped newlines inside strings
+        let inString = false;
+        let escapedJson = "";
+        for (let i = 0; i < jsonString.length; i++) {
+          const char = jsonString[i];
+          if (char === '"' && (i === 0 || jsonString[i - 1] !== '\\')) {
+            inString = !inString;
+          }
+          if (inString) {
+            if (char === '\n') escapedJson += '\\n';
+            else if (char === '\r') escapedJson += '\\r';
+            else if (char === '\t') escapedJson += '\\t';
+            else escapedJson += char;
+          } else {
+            escapedJson += char;
+          }
+        }
+        jsonString = escapedJson;
+
         const parsed = JSON.parse(jsonString);
         return NextResponse.json({ result: parsed });
       } catch (e) {
@@ -223,13 +243,32 @@ export async function POST(req: Request) {
         if (jsonMatch && jsonMatch[1]) {
            try {
              let fallbackStr = jsonMatch[1].replace(/,(\s*[}\]])/g, '$1');
+             
+             let inFallbackString = false;
+             let escapedFallback = "";
+             for (let i = 0; i < fallbackStr.length; i++) {
+               const char = fallbackStr[i];
+               if (char === '"' && (i === 0 || fallbackStr[i - 1] !== '\\')) {
+                 inFallbackString = !inFallbackString;
+               }
+               if (inFallbackString) {
+                 if (char === '\n') escapedFallback += '\\n';
+                 else if (char === '\r') escapedFallback += '\\r';
+                 else if (char === '\t') escapedFallback += '\\t';
+                 else escapedFallback += char;
+               } else {
+                 escapedFallback += char;
+               }
+             }
+             fallbackStr = escapedFallback;
+
              const fallbackParse = JSON.parse(fallbackStr);
              return NextResponse.json({ result: fallbackParse });
            } catch (fallbackErr) {
              console.error("Fallback JSON parse also failed:", fallbackErr);
            }
         }
-        return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput.slice(0, 200)}...` }, { status: 500 });
+        return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput}` }, { status: 500 });
       }
     }
 

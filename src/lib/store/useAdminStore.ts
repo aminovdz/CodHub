@@ -97,7 +97,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     low_stock_threshold: p.lowStockThreshold,
     variants: p.variants,
     enable_variants: p.enableVariants,
-    related_products: p.relatedProducts,
+
     maximizer_upsells: (p.maximizerUpsells !== undefined || p.orderBumps !== undefined || p.quantityOffers !== undefined) ? [
       ...(p.maximizerUpsells || []).map(u => ({ ...u, _type: 'maximizer' })),
       ...(p.orderBumps || []).map(b => ({ ...b, _type: 'bump' })),
@@ -112,6 +112,8 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     oto_product_id: p.otoProductId || null,
     disable_out_of_stock_purchases: p.disableOutOfStockPurchases,
     disable_coupons: p.disableCoupons,
+    oto_price: p.otoPrice || null,
+    related_products: p.relatedProductIds ? JSON.stringify(p.relatedProductIds) : null,
 
     cost_price: p.costPrice,
     weight: p.weight,
@@ -149,6 +151,11 @@ function rowToProduct(row: any): Product {
     otoProductId: row.oto_product_id,
     disableOutOfStockPurchases: row.disable_out_of_stock_purchases,
     disableCoupons: !!row.disable_coupons,
+    otoPrice: row.oto_price,
+    relatedProductIds: (() => {
+      if (!row.related_products) return undefined;
+      try { return JSON.parse(row.related_products); } catch (e) { return undefined; }
+    })(),
     deliveryAgency: row.delivery_agency || undefined,
     costPrice: row.cost_price || undefined,
     weight: row.weight,
@@ -459,6 +466,8 @@ export interface Product {
   starsRate?: number;
   reviewsCount?: number;
   otoProductId?: string;
+  otoPrice?: number;
+  relatedProductIds?: string[];
   disableOutOfStockPurchases?: boolean;
   disableCoupons?: boolean;
   deliveryAgency?: string;         // specific fulfillment agency assignment
@@ -1186,10 +1195,22 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         if (error) console.error("Failed to delete staff account", error);
       },
 
-      callLogs: [],
-      setCallLogs: (updater) => set((state) => ({
-        callLogs: updater(state.callLogs)
-      })),
+      callLogs: typeof window !== 'undefined'
+        ? (() => {
+            try {
+              return JSON.parse(localStorage.getItem('codadmin-call-logs') || '[]');
+            } catch {
+              return [];
+            }
+          })()
+        : [],
+      setCallLogs: (updater) => set((state) => {
+        const next = updater(state.callLogs);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('codadmin-call-logs', JSON.stringify(next));
+        }
+        return { callLogs: next };
+      }),
 
       activityLogs: typeof window !== 'undefined'
         ? (() => {

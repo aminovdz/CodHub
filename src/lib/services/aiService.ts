@@ -5,6 +5,7 @@ export interface AIProductDetails {
   mainDesc: string;
   seoTitle: string;
   seoDescription: string;
+  seoSlug: string;
 }
 
 export const aiService = {
@@ -43,7 +44,8 @@ export const aiService = {
       "shortDesc": "A 2-sentence punchy hook highlighting the main benefit.",
       "mainDesc": "A detailed 3-paragraph HTML description with <b> tags and <ul> bullet points for features.",
       "seoTitle": "SEO optimized title (max 60 chars)",
-      "seoDescription": "SEO optimized description (max 150 chars)"
+      "seoDescription": "SEO optimized description (max 150 chars)",
+      "seoSlug": "seo-optimized-url-slug-in-english"
     }`;
 
     try {
@@ -65,24 +67,36 @@ export const aiService = {
   },
 
   /**
-   * Generates a mobile-first HTML landing page template in Arabic.
+   * Generates a high-converting Next.js React component for a landing page.
    */
-  async generateLandingPage(title: string, region: string): Promise<string | null> {
-    const prompt = `You are a Conversion Rate Optimization (CRO) expert designing COD (Cash On Delivery) landing pages for ${region === 'dz' ? 'Algeria' : region}.
-    Write the content entirely in ARABIC, but for Algeria specifically, use Algerian Dialect (Derja) for the main hooks, headlines, and call-to-actions to maximize conversion.
+  async generateLandingPage(title: string, region: string): Promise<{ componentCode: string; metadata: any } | null> {
+    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Next.js expert. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
 
-    Create a high-converting, mobile-first HTML landing page for the product: "${title}".
-    Use Tailwind CSS classes for styling.
-    
-    Structure the HTML exactly like this:
-    1. A sticky top banner (e.g. "التوصيل مجاني لجميع الولايات")
-    2. A hero section with a large <h1> headline highlighting the main benefit.
-    3. A pricing section with a clear "السعر السابق" (strikethrough) and "السعر الحالي".
-    4. A PAS (Problem-Agitate-Solution) section with 3 bullet points.
-    5. A strong call to action button: "اطلب الآن والدفع عند الاستلام"
-    
-    Do NOT include <html>, <head>, or <body> tags. Just return the pure HTML content divs. Do NOT wrap in markdown \`\`\`html blocks.
-    Make it look extremely premium, using modern padding, rounded corners (rounded-2xl), and shadow (shadow-lg).`;
+You will receive raw product text/data and a list of direct, external Image URLs. Output a fully functional, single-file Next.js React component. Do not explain the code; output only the final code.
+
+### 1. Content & Asset Strategy
+* Transform the Copy: Never output raw supplier descriptions. Rewrite all text to be benefit-driven and emotionally resonant.
+* Image Mapping: Dynamically map the provided external image URLs into this hierarchy: Hero Image, Detail Shots, and Action Shots.
+
+### 2. Technical Execution (CRITICAL)
+* No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
+* Single-File Output: Consolidate all functional sections (Hero, Gallery, Features, Trust Stack) into one cohesive default function.
+* Tailwind CSS: Use Tailwind for all styling. 
+
+### 3. High-Conversion Page Anatomy
+* Above the Fold: Product Title, dynamic Price comparison, and primary Call to Action (CTA) must be immediately visible on mobile.
+* Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
+* Sticky Footer: Implement a sticky footer CTA bar (\`fixed bottom-0 w-full\`) visible on mobile.
+* Trust Stack: Explicitly highlight "Cash on Delivery" availability, secure checkout icons, and clear return policies.
+* Distraction-Free: Strip away standard global headers or navigation menus.
+
+### 4. Output Structure
+Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
+1. "core_value_proposition"
+2. "top_objection_answered"
+Immediately following this commented block, provide the complete Next.js code.
+
+Create this for the product: "${title}" in the region: "${region}".`;
 
     try {
       const { provider, apiKey, model } = this.getProviderAndKey();
@@ -95,10 +109,37 @@ export const aiService = {
       if (!response.ok) throw new Error('AI API Error');
       
       const data = await response.json();
-      let html = data.result;
+      let rawResult = data.result as string;
+
+      // Extract JSON metadata from the comment block /* ... */
+      let metadata = {};
+      const commentMatch = rawResult.match(/\/\*([\s\S]*?)\*\//);
+      if (commentMatch && commentMatch[1]) {
+        try {
+          metadata = JSON.parse(commentMatch[1].trim());
+        } catch (e) {
+          console.error("Failed to parse AI metadata", e);
+        }
+      }
+
+      // Remove the comment block
+      let componentCode = rawResult.replace(/\/\*[\s\S]*?\*\//, '').trim();
+      
       // Strip markdown wrapping if AI mistakenly added it
-      html = html.replace(/\`\`\`html/g, '').replace(/\`\`\`/g, '');
-      return html;
+      componentCode = componentCode.replace(/^```[a-z]*\n/i, '').replace(/```$/i, '').trim();
+
+      // Extract the JSX inside the return statement since react-jsx-parser expects pure JSX
+      const returnMatch = componentCode.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;/);
+      if (returnMatch && returnMatch[1]) {
+        componentCode = returnMatch[1];
+      } else {
+        const returnMatch2 = componentCode.match(/return\s+([\s\S]*?)\s*;/);
+        if (returnMatch2 && returnMatch2[1]) {
+          componentCode = returnMatch2[1];
+        }
+      }
+
+      return { componentCode, metadata };
     } catch (error) {
       console.error('Failed to generate landing page:', error);
       return null;
@@ -345,8 +386,16 @@ export const aiService = {
       "mainDesc": "<h3>✦ Why Choose This Product</h3>\\n<p>Introducing our <b>premium-quality product</b> designed to elevate your everyday experience. Carefully crafted with the finest materials for lasting durability and maximum comfort.</p>\\n\\n<h3>✦ Key Features</h3>\\n<ul>\\n<li><b>Superior Quality:</b> Premium-grade materials built to last — enjoy years of reliable use</li>\\n<li><b>Ergonomic Design:</b> Engineered for all-day comfort — you won't even notice you're wearing it</li>\\n<li><b>Effortless Setup:</b> Ready to use right out of the box — zero configuration needed</li>\\n</ul>\\n\\n<h3>✦ Specifications</h3>\\n<p>Premium materials with careful attention to every detail. Designed for everyday use in any environment.</p>\\n\\n<h3>✦ Delivery & Guarantee</h3>\\n<p>Order now and enjoy <b>free delivery</b> across all Algeria. Pay only when you receive your order — no upfront payment, no risk! Backed by our satisfaction guarantee.</p>",
       "seoTitle": "SEO-optimized title under 60 chars",
       "seoDescription": "SEO meta description under 155 chars",
+      "seoSlug": "seo-friendly-url-slug-separated-by-hyphens",
       "image": "https://example.com/product-image.jpg",
-      "stock": 50
+      "stock": 50,
+      "blocks": [
+        {
+          "id": "block-1",
+          "type": "html",
+          "content": "<div class=\\"bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center\\">\\n  <h4 class=\\"text-xl font-black text-slate-900 mb-2\\">Premium Quality Guarantee</h4>\\n  <p class=\\"text-slate-600\\">We stand behind our products 100%.</p>\\n</div>"
+        }
+      ]
     }
   }
 
@@ -423,7 +472,8 @@ export const aiService = {
       If the user attached images, analyze them to inform your response. For landing pages, design the HTML to match the product shown in the images.
       
       IMPORTANT: The "message" field MUST be formatted as beautiful, highly readable plain text with emojis and line breaks (unless the specific role instructions ask for HTML snippets like the Copywriter). DO NOT dump raw JSON into the "message" field.
-      
+      CRITICAL: You MUST use proper JSON escaping for line breaks in the "message" field (use \n instead of actual physical line breaks). If you output unescaped physical line breaks inside the JSON string, the parsing will fail.
+
       Return ONLY valid JSON. No markdown wrappers. No extra text before or after.`;
 
       const { provider, apiKey, model } = this.getProviderAndKey();
