@@ -16,7 +16,7 @@ export const config = {
 
 const SUPPORTED_REGIONS = ['dz', 'ro', 'co'];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   
   // --- AUTHENTICATION LAYER ---
