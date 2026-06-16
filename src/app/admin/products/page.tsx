@@ -380,7 +380,8 @@ export default function AdminProductsPage() {
                     <button 
                       onClick={() => {
                         const titleSlug = p.seoSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                        const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                        const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+                        const baseUrl = isCustomDomain ? window.location.origin : (activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`);
                         const url = `${baseUrl}/products/${titleSlug}`;
                         navigator.clipboard.writeText(url);
                         notify('Product Page URL copied!', 'success');
@@ -392,7 +393,8 @@ export default function AdminProductsPage() {
                     </button>
                     <button 
                       onClick={() => {
-                        const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                        const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+                        const baseUrl = isCustomDomain ? window.location.origin : (activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`);
                         const url = `${baseUrl}/checkout?product=${p.id}`;
                         navigator.clipboard.writeText(url);
                         notify('Direct Checkout URL copied!', 'success');

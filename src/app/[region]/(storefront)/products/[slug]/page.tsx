@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2, PackagePlus } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2, PackagePlus, X } from 'lucide-react';
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
@@ -80,6 +80,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
   const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
 
   const { buyNow, addCartItem } = useFunnelStore();
@@ -186,12 +187,15 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
           
           {/* IMAGE GALLERY */}
           <div className="w-full md:w-1/2">
-            <div className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative mb-3">
+            <div 
+              className="aspect-[4/5] bg-slate-100 rounded-3xl overflow-hidden relative mb-3 cursor-zoom-in group"
+              onClick={() => setIsZoomed(true)}
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
                 alt={product.title}
-                className="w-full h-full object-cover object-center transition-opacity duration-300"
+                className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
               />
             </div>
             {productImages.length > 1 && (
@@ -459,6 +463,23 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
         )}
       </div>
       <div className="h-32"></div> {/* Spacer to prevent sticky button overlap */}
+
+      {/* Image Zoom Lightbox */}
+      {isZoomed && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out"
+          onClick={() => setIsZoomed(false)}
+        >
+          <img
+            src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
+            alt={product.title}
+            className="max-w-full max-h-full object-contain pointer-events-none"
+          />
+          <button className="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+            <X size={32} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

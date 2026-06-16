@@ -127,7 +127,8 @@ export default function AdminLegalPage() {
               <button 
                 type="button"
                 onClick={() => {
-                  const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                  const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+                  const baseUrl = isCustomDomain ? window.location.origin : (activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`);
                   const url = `${baseUrl}/legal/${selectedSlug}`;
                   navigator.clipboard.writeText(url);
                   notify('Legal page URL copied!', 'success');
