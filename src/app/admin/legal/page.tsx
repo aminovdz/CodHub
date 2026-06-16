@@ -127,7 +127,8 @@ export default function AdminLegalPage() {
               <button 
                 type="button"
                 onClick={() => {
-                  const url = `${window.location.origin}/${activeStore.region}/legal/${selectedSlug}`;
+                  const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                  const url = `${baseUrl}/legal/${selectedSlug}`;
                   navigator.clipboard.writeText(url);
                   notify('Legal page URL copied!', 'success');
                 }}

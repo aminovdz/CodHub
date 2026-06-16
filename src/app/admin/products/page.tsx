@@ -380,7 +380,8 @@ export default function AdminProductsPage() {
                     <button 
                       onClick={() => {
                         const titleSlug = p.seoSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                        const url = `${window.location.origin}/${activeStore.region}/products/${titleSlug}`;
+                        const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                        const url = `${baseUrl}/products/${titleSlug}`;
                         navigator.clipboard.writeText(url);
                         notify('Product Page URL copied!', 'success');
                       }}
@@ -391,7 +392,8 @@ export default function AdminProductsPage() {
                     </button>
                     <button 
                       onClick={() => {
-                        const url = `${window.location.origin}/${activeStore.region}/checkout?product=${p.id}`;
+                        const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+                        const url = `${baseUrl}/checkout?product=${p.id}`;
                         navigator.clipboard.writeText(url);
                         notify('Direct Checkout URL copied!', 'success');
                       }}

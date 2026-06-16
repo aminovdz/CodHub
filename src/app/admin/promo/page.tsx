@@ -116,7 +116,8 @@ export default function AdminPromoPage() {
   };
 
   const handleCopyUrl = () => {
-    const url = `${window.location.origin}/${activeStore.region}/promo/${slug}`;
+    const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+    const url = `${baseUrl}/promo/${slug}`;
     navigator.clipboard.writeText(url);
     notify('Live URL Copied!', 'success');
   };
