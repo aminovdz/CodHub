@@ -42,8 +42,8 @@ export async function middleware(req: NextRequest) {
     }
 
     try {
-      // In Edge runtime, we use jose to verify the JWT
-      const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
       const key = new TextEncoder().encode(JWT_SECRET);
       const { jwtVerify } = await import('jose');
       await jwtVerify(token, key);
@@ -60,7 +60,8 @@ export async function middleware(req: NextRequest) {
     const token = req.cookies.get('codadmin_token')?.value;
     if (token) {
       try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
         const key = new TextEncoder().encode(JWT_SECRET);
         const { jwtVerify } = await import('jose');
         await jwtVerify(token, key);

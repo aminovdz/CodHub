@@ -2,15 +2,26 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { encrypt } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const ADMIN_PIN = process.env.ADMIN_PIN || '1234';
+const ADMIN_PIN = process.env.ADMIN_PIN;
+if (!ADMIN_PIN) {
+  console.warn('ADMIN_PIN environment variable is not set. Super Admin login may fail.');
+}
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(ip, 5, 60 * 1000); // 5 attempts per minute
+    if (!rateLimit.success) {
+      return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
+    }
+
     const { username, pin, isSuperAdmin } = await req.json();
 
     if (!username || !pin) {
@@ -32,16 +43,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Invalid Super Admin credentials' }, { status: 401 });
       }
     } else {
-      // Query Supabase for staff account
-      // Note: In a production system, passwords/PINs should be hashed.
       const { data: staffAccount, error } = await supabase
         .from('staff_accounts')
         .select('*')
         .ilike('name', usernameClean)
-        .eq('pin', pin)
         .single();
 
       if (error || !staffAccount) {
+        return NextResponse.json({ error: 'Invalid staff username or PIN' }, { status: 401 });
+      }
+
+      let isValidPin = false;
+      if (staffAccount.pin && (staffAccount.pin.startsWith('$2a$') || staffAccount.pin.startsWith('$2b$'))) {
+        isValidPin = await bcrypt.compare(pin, staffAccount.pin);
+      } else {
+        isValidPin = staffAccount.pin === pin;
+      }
+
+      if (!isValidPin) {
         return NextResponse.json({ error: 'Invalid staff username or PIN' }, { status: 401 });
       }
 

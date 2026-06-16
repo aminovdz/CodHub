@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getShortOrderId } from '@/lib/idHelper';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(`notify_${ip}`, 3, 60 * 1000); // Max 3 emails per minute per IP
+    if (!rateLimit.success) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const data = await request.json();
     const { storeName, orderId, total, currency, customer, phone, region, resendApiKey, notifyEmail, type } = data;
 

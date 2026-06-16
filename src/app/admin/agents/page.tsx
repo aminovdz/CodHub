@@ -210,7 +210,7 @@ export default function AgentsHubPage() {
         stock: typeof pd.stock === 'number' ? pd.stock : 999,
         seoTitle: pd.seoTitle || '',
         seoDescription: pd.seoDescription || '',
-        seoSlug: pd.seoSlug || '',
+        seoSlug: pd.seoSlug || (pd.title ? pd.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : ''),
         lowStockThreshold: 5,
         disableOutOfStockPurchases: false,
         disableCoupons: false,

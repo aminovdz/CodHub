@@ -820,7 +820,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                         placeholder="0555 55 55 55"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-400 mt-1">أدخل رقمك يبدأ بـ 0 (مثال 0555 12 34 56)</p>
+                    <p className="text-[11px] text-slate-400 mt-1">{t('checkout.phoneHelper', 'أدخل رقمك يبدأ بـ 0 (مثال 0555 12 34 56)')}</p>
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
                     <div key={field.id}>

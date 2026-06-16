@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 // Knowledge cache per store ID — avoids DB round trips on every message
 const knowledgeCache = new Map<string, { systemPrompt: string; storeName: string; currency: string; botName: string; timestamp: number }>();
@@ -86,6 +87,12 @@ ${customInstructions}`;
 
 export async function POST(req: Request) {
   try {
+    const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+    const rateLimit = checkRateLimit(`chat_${ip}`, 10, 60 * 1000); // 10 messages per minute
+    if (!rateLimit.success) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+    }
+
     const { messages, storeId, region } = await req.json();
 
     if (!storeId && !region) {

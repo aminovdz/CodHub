@@ -1,7 +1,10 @@
 import { SignJWT, jwtVerify } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
-const key = new TextEncoder().encode(JWT_SECRET);
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is not set. Please configure it in .env');
+  return new TextEncoder().encode(secret);
+};
 
 export interface SessionPayload {
   username: string;
@@ -12,14 +15,16 @@ export interface SessionPayload {
 }
 
 export async function encrypt(payload: SessionPayload) {
+  const key = getJwtSecret();
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('24h')
+    .setExpirationTime('2h')
     .sign(key);
 }
 
 export async function decrypt(input: string): Promise<SessionPayload> {
+  const key = getJwtSecret();
   const { payload } = await jwtVerify(input, key, {
     algorithms: ['HS256'],
   });
