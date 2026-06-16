@@ -74,6 +74,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const decodedSlug = decodeURIComponent(slug);
   const product = products.find(p => p.seoSlug === decodedSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedSlug) || PRODUCTS.find(p => p.slug === decodedSlug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
+  const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
@@ -412,7 +413,10 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
       <div className="max-w-6xl mx-auto px-4 mt-16 space-y-12">
         {/* Main Description */}
         {((product as any).mainDesc || (product as any).description) && (
-          <div className="max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
+          <div 
+            className={`max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700 ${isArabic ? 'text-right rtl' : ''}`} 
+            dir={isArabic ? 'rtl' : 'ltr'}
+          >
             <div dangerouslySetInnerHTML={{ __html: (product as any).mainDesc || (product as any).description }} />
           </div>
         )}
