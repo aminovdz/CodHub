@@ -271,8 +271,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {availableStores.length > 0 ? (
                 availableStores
-                  .filter(s => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
-                  .map(s => (
+                  .filter((s: any) => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
+                  .map((s: any) => (
                     <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
                   ))
               ) : (
