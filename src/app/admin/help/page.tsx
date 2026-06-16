@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Globe, Server, CheckCircle2, Copy, ExternalLink, HelpCircle, ArrowRight, ShieldAlert, Check } from 'lucide-react';
+import { Globe, Server, CheckCircle2, Copy, ExternalLink, HelpCircle, ArrowRight, ShieldAlert, Check, Sparkles } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 
 export default function HelpDocsPage() {
@@ -28,7 +28,7 @@ export default function HelpDocsPage() {
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'domain' | 'webhook'>('domain');
+  const [activeTab, setActiveTab] = useState<'domain' | 'webhook' | 'ai'>('domain');
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -109,9 +109,115 @@ function doPost(e) {
         >
           <Server size={14} /> Webhooks & Low-Code
         </button>
+        <button
+          onClick={() => setActiveTab('ai')}
+          className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'ai'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-md'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Sparkles size={14} /> AI Hub Prompts
+        </button>
       </div>
 
-      {activeTab === 'domain' ? (
+      {activeTab === 'ai' ? (
+        <>
+          {/* Header Banner AI */}
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-indigo-950 p-8 md:p-12 text-white border border-slate-800 shadow-2xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.15),transparent_50%)]" />
+            <div className="relative z-10 space-y-4">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase tracking-widest">
+                <Sparkles size={12} className="animate-pulse" /> AI Hub Prompts
+              </span>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-none">
+                Get Maximum Value from <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">AI Agents</span>
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl font-medium">
+                Copy and paste these proven prompts into the AI Hub to automate your marketing, analyze your store data, and generate high-converting copy.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Prompt 1 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500" /> Landing Page Generation
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Use this to instruct the UI generator agent to build a high-converting landing page.</p>
+              <div className="relative group">
+                <button
+                  onClick={() => handleCopy("I need a high-converting, single-page Next.js landing page for my product [PRODUCT NAME]. The target audience is [COUNTRY] and they use Cash on Delivery. Build a hero section with a strong hook, a problem-agitation-solution block, objection handling, and 3 realistic customer reviews. Keep the copy short, punchy, and benefit-driven. Include a sticky 'Order Now - Pay on Delivery' button.", 'prompt1')}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedValue === 'prompt1' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+                <pre className="p-4 bg-slate-900 text-slate-300 rounded-2xl text-xs font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+"I need a high-converting, single-page Next.js landing page for my product [PRODUCT NAME]. The target audience is [COUNTRY] and they use Cash on Delivery. Build a hero section with a strong hook, a problem-agitation-solution block, objection handling, and 3 realistic customer reviews. Keep the copy short, punchy, and benefit-driven. Include a sticky 'Order Now - Pay on Delivery' button."
+                </pre>
+              </div>
+            </div>
+
+            {/* Prompt 2 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Ad Creative Ideas
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Generate viral video ad scripts for TikTok and Facebook.</p>
+              <div className="relative group">
+                <button
+                  onClick={() => handleCopy("Write 3 short video ad scripts (under 30 seconds each) for [PRODUCT NAME] to run on TikTok and Facebook Reels. Use the 'Hook, Retain, Reward' framework. The first 3 seconds must agitate a massive pain point. The CTA should drive them to my store where they can order and pay on delivery.", 'prompt2')}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedValue === 'prompt2' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+                <pre className="p-4 bg-slate-900 text-slate-300 rounded-2xl text-xs font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+"Write 3 short video ad scripts (under 30 seconds each) for [PRODUCT NAME] to run on TikTok and Facebook Reels. Use the 'Hook, Retain, Reward' framework. The first 3 seconds must agitate a massive pain point. The CTA should drive them to my store where they can order and pay on delivery."
+                </pre>
+              </div>
+            </div>
+
+            {/* Prompt 3 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Customer Support / CRM Script
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Get phone scripts for your confirmation agents.</p>
+              <div className="relative group">
+                <button
+                  onClick={() => handleCopy("Write a phone confirmation script for my call center agents. The goal is to call customers who just placed a Cash on Delivery order for [PRODUCT NAME] and confirm their address. It needs to sound friendly, professional, and urgency-driven so the customer is excited to receive the package. Also include rebuttals if the customer says they changed their mind.", 'prompt3')}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedValue === 'prompt3' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+                <pre className="p-4 bg-slate-900 text-slate-300 rounded-2xl text-xs font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+"Write a phone confirmation script for my call center agents. The goal is to call customers who just placed a Cash on Delivery order for [PRODUCT NAME] and confirm their address. It needs to sound friendly, professional, and urgency-driven so the customer is excited to receive the package. Also include rebuttals if the customer says they changed their mind."
+                </pre>
+              </div>
+            </div>
+
+            {/* Prompt 4 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Data Analysis & Strategy
+              </h3>
+              <p className="text-xs text-slate-500 font-medium">Ask the AI to analyze your store performance.</p>
+              <div className="relative group">
+                <button
+                  onClick={() => handleCopy("Act as my Chief of Staff. I will provide you with my raw order data and ad spend from Facebook and TikTok. I need you to analyze the Return on Ad Spend (ROAS), identify which products are generating the highest profit margins, and give me 3 actionable steps to reduce my Return to Origin (RTO) rate.", 'prompt4')}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedValue === 'prompt4' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+                <pre className="p-4 bg-slate-900 text-slate-300 rounded-2xl text-xs font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+"Act as my Chief of Staff. I will provide you with my raw order data and ad spend from Facebook and TikTok. I need you to analyze the Return on Ad Spend (ROAS), identify which products are generating the highest profit margins, and give me 3 actionable steps to reduce my Return to Origin (RTO) rate."
+                </pre>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : activeTab === 'domain' ? (
         <>
           {/* Header Banner */}
           <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-indigo-950 p-8 md:p-12 text-white border border-slate-800 shadow-2xl">
