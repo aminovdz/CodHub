@@ -22,7 +22,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const [isMounted, setIsMounted] = useState(false);
   const [utmSource, setUtmSource] = useState<string>('');  
   const [utmCampaign, setUtmCampaign] = useState<string>('');
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [selectedOfferId, setSelectedOfferId] = useState<string>('default-1');
 
   const { 
     customerName, phone, draftOrderId, cart, getTotalPrice,
@@ -149,16 +149,20 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     
     // We already have a specific quantity chosen from the product page
     const currentQty = mainItem.quantity || 1;
-    setSelectedQuantity(currentQty);
 
     const product = products.find(p => p.id === mainItem.id);
-    if (!product?.quantityOffers || product.quantityOffers.length === 0) return;
+    if (product?.quantityOffers && product.quantityOffers.length > 0) {
+       const matchedOffer = product.quantityOffers.find(o => o.qty === currentQty);
+       if (matchedOffer) setSelectedOfferId(matchedOffer.id);
+       else if (currentQty === 1) setSelectedOfferId('default-1');
+    } else {
+       if (currentQty === 1) setSelectedOfferId('default-1');
+    }
     
-    // The user requested: "dont select any quantity offer"
     // We only set selected quantity if it's already defined via URL or previous step (like in cart),
     // but we won't auto-select a default offer.
     // If the cart doesn't have a quantity or has 1, we still want to keep the radio buttons unselected 
-    // unless they explicitly chose one. By default, selectedQuantity is 1 from the cart.
+    // unless they explicitly chose one. By default, selectedOfferId is matched.
     // We will just let the user explicitly click if they want a bundle.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products.length]);
@@ -637,7 +641,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   }, [mainProduct]);
 
   const handleQuantitySelect = (offer: any) => {
-    setSelectedQuantity(offer.qty);
+    setSelectedOfferId(offer.id);
     if (mainCartItem) {
       // Replace cart item entirely (remove old, add new with correct price)
       const updatedItem = {
@@ -704,7 +708,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
                   </p>
                   <div className="space-y-3">
                     {quantityOffers.map(offer => {
-                      const isSelected = selectedQuantity === offer.qty && offer.qty !== 1; // Don't pre-select the 1x option visually either if they haven't interacted with it as an offer
+                      const isSelected = selectedOfferId === offer.id;
                       const perItem = offer.qty > 1 ? Math.round(offer.price / offer.qty) : null;
                       return (
                         <label key={offer.id} className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all relative ${isSelected ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-white'}`}>

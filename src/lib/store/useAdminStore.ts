@@ -799,7 +799,7 @@ interface AdminStore {
   commissionEntries: CommissionEntry[];
   setCommissionEntries: (updater: (prev: CommissionEntry[]) => CommissionEntry[]) => void;
 
-  fetchInitialData: () => Promise<void>;
+  fetchInitialData: (isAdmin?: boolean) => Promise<void>;
 }
 
 const MOCK_STORES: Store[] = [];
@@ -1412,28 +1412,42 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         commissionEntries: updater(state.commissionEntries)
       })),
 
-      fetchInitialData: async () => {
-        console.log("Fetching initial data from Supabase...");
+      fetchInitialData: async (isAdmin = false) => {
+        console.log(`Fetching initial data from Supabase... (isAdmin: ${isAdmin})`);
         try {
+          // Base data needed for both storefront and admin
+          const basePromises = [
+            supabase.from('stores').select('*'),
+            supabase.from('products').select('*'),
+            supabase.from('shipping_zones').select('*'),
+            supabase.from('checkout_configs').select('*'),
+            supabase.from('landing_pages').select('*')
+          ];
+
+          // Heavy data only needed for admin
+          const adminPromises = isAdmin ? [
+            supabase.from('orders').select('*').order('date', { ascending: false }),
+            supabase.from('staff_accounts').select('*'),
+            supabase.from('call_logs').select('*').order('called_at', { ascending: false })
+          ] : [
+            Promise.resolve({ data: [] }), // dummy orders
+            Promise.resolve({ data: [] }), // dummy staff
+            Promise.resolve({ data: [] })  // dummy logs
+          ];
+
           const [
             { data: stores },
             { data: products },
-            { data: orders },
             { data: zones },
             { data: configs },
             { data: landingPages },
+          ] = await Promise.all(basePromises);
+
+          const [
+            { data: orders },
             { data: staff },
             { data: callLogs }
-          ] = await Promise.all([
-            supabase.from('stores').select('*'),
-            supabase.from('products').select('*'),
-            supabase.from('orders').select('*').order('date', { ascending: false }),
-            supabase.from('shipping_zones').select('*'),
-            supabase.from('checkout_configs').select('*'),
-            supabase.from('landing_pages').select('*'),
-            supabase.from('staff_accounts').select('*'),
-            supabase.from('call_logs').select('*').order('called_at', { ascending: false })
-          ]);
+          ] = await Promise.all(adminPromises);
           
           if (stores && stores.length > 0) {
             const mapped = stores.map(rowToStore);
