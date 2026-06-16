@@ -131,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (accountStoreIds.length > 0) {
           const isCurrentlyAllowed = activeStore && accountStoreIds.includes(activeStore.id);
           if (!isCurrentlyAllowed) {
-            const firstValidStore = availableStores.find(s => accountStoreIds.includes(s.id));
+            const firstValidStore = availableStores.find((s: any) => accountStoreIds.includes(s.id));
             if (firstValidStore) {
               setActiveStore(firstValidStore.id);
             }
