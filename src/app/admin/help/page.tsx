@@ -36,8 +36,8 @@ export default function HelpDocsPage() {
     setTimeout(() => setCopiedValue(null), 2000);
   };
 
-  const cnameTarget = "cname.cod-hub.com";
-  const aRecordIp = "76.76.21.21"; // Vercel / custom server IP template
+  const cnameTarget = "cname.vercel-dns.com";
+  const aRecordIp = "76.76.21.21"; // Vercel IP
 
   const scriptCode = `// Google Sheets Webhook Script for COD-Hub
 function doPost(e) {
@@ -236,53 +236,49 @@ function doPost(e) {
           </div>
 
           {/* Main Instructions Grid */}
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Step 1 */}
-            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xl">
-                  1
-                </div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white">Choose Your Host</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
-                  Login to your domain registrar (GoDaddy, Namecheap, Cloudflare, Hostinger) and navigate to the DNS Zone Editor for your domain.
-                </p>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-lg mb-4">
+                1
               </div>
-              <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                DNS Management <ArrowRight size={14} />
-              </div>
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-2">Vercel Dashboard</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                Go to your Vercel Project &gt; Settings &gt; Domains. Type in your custom domain (e.g. <code>store.com</code>) and click Add. Add the <code>www</code> version too!
+              </p>
             </div>
 
             {/* Step 2 */}
-            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-xl">
-                  2
-                </div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white">Add DNS Records</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
-                  Create a new CNAME or A Record pointing to COD-Hub platform servers. We recommend using a CNAME for subdomains and an A record for root domains.
-                </p>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-lg mb-4">
+                2
               </div>
-              <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-cyan-600 dark:text-cyan-400">
-                Record Insertion <ArrowRight size={14} />
-              </div>
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-2">DNS Provider</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                Log into GoDaddy, Namecheap, etc. Delete old A or CNAME records. Add the records Vercel gives you (A Record: <code>76.76.21.21</code>).
+              </p>
             </div>
 
             {/* Step 3 */}
-            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col justify-between">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xl">
-                  3
-                </div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white">Persist in Settings</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
-                  Head over to your Store Settings panel in COD-Hub, enter your domain name under the Domain section, and save.
-                </p>
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-lg mb-4">
+                3
               </div>
-              <div className="mt-6 flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                Save Store Domain <ArrowRight size={14} />
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-2">Wait & Verify</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                Wait a few minutes. Check Vercel until the red "Invalid Configuration" turns into a blue checkmark indicating SSL is active.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-lg mb-4">
+                4
               </div>
+              <h3 className="text-base font-black text-slate-800 dark:text-white mb-2">Store Settings</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-xs font-medium leading-relaxed">
+                In this COD-Hub Admin, switch to the specific Store you want, go to Settings, and type the domain under <strong>Custom Domain Binding</strong>.
+              </p>
             </div>
           </div>
 
