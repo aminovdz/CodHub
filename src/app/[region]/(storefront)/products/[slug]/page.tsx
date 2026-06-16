@@ -179,7 +179,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const isSoldOut = (product as any).disableOutOfStockPurchases && ((product as any).stock || 0) <= 0;
 
   return (
-    <div className="min-h-screen bg-white font-sans pb-24">
+    <div className="min-h-screen bg-white font-sans pb-24" dir={isArabic ? 'rtl' : 'ltr'}>
       <div className="max-w-6xl mx-auto px-4 pt-8 md:pt-12">
         <div className="flex flex-col md:flex-row gap-10 lg:gap-16">
           
@@ -413,10 +413,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
       <div className="max-w-6xl mx-auto px-4 mt-16 space-y-12">
         {/* Main Description */}
         {((product as any).mainDesc || (product as any).description) && (
-          <div 
-            className={`max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700 ${isArabic ? 'text-right rtl' : ''}`} 
-            dir={isArabic ? 'rtl' : 'ltr'}
-          >
+          <div className="max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
             <div dangerouslySetInnerHTML={{ __html: (product as any).mainDesc || (product as any).description }} />
           </div>
         )}
