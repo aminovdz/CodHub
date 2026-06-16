@@ -93,7 +93,21 @@ export default function OrderDrawer({
       const { error } = await supabase.from('orders').update(p).eq('id', orderId);
       if (error) {
         console.error("Supabase error:", error);
-        alert("Failed to save: " + error.message);
+        alert("Failed to save order: " + error.message);
+      }
+
+      // Save call log to Supabase
+      const { error: callError } = await supabase.from('call_logs').insert([{
+        order_id: orderId,
+        store_id: activeStore.id,
+        agent_name: sessionUser,
+        result: result,
+        note: callNote,
+        called_at: entry.calledAt
+      }]);
+      
+      if (callError) {
+        console.error("Supabase call log error:", callError);
       }
     } catch (err) { console.error(err); }
     

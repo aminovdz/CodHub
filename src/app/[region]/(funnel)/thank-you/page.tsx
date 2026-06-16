@@ -37,6 +37,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [otoClaimed, setOtoClaimed] = useState(false);
   const [selfConfirmed, setSelfConfirmed] = useState(false);
+  const [otoQuantity, setOtoQuantity] = useState(1);
 
   // Find the primary purchased product
   const primaryCartItem = cart[0];
@@ -47,7 +48,10 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
   // Determine OTO product from the purchased product's config
   const otoProductId = primaryProduct?.otoProductId;
   const otoProduct = otoProductId ? products.find(p => p.id === otoProductId) : null;
-  const otoPrice = primaryProduct?.otoPrice ?? otoProduct?.price;
+  const baseOtoPrice = primaryProduct?.otoPrice ?? otoProduct?.price ?? 0;
+  
+  // Apply a small progressive discount if buying more than 1 (optional logic, but standard)
+  const otoPrice = baseOtoPrice * otoQuantity;
 
   const getFormattedAddress = () => {
     if (!addressData) return '';
@@ -85,8 +89,8 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
     if (!otoProduct) return;
     buyNow({
       id: otoProduct.id,
-      name: otoProduct.title,
-      price: otoPrice || otoProduct.price,
+      name: otoQuantity > 1 ? `${otoProduct.title} (x${otoQuantity})` : otoProduct.title,
+      price: otoPrice,
       isUpsell: true,
       imageUrl: otoProduct.image
     });
@@ -184,8 +188,17 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                 <div className="flex items-center gap-4 mb-6">
                   <span className="text-4xl font-black">{otoPrice} <span className="text-xl text-indigo-300">{currency}</span></span>
                   {otoProduct.compareAtPrice && (
-                    <span className="text-xl text-indigo-400 line-through">{otoProduct.compareAtPrice} {currency}</span>
+                    <span className="text-xl text-indigo-400 line-through">{otoProduct.compareAtPrice * otoQuantity} {currency}</span>
                   )}
+                </div>
+                
+                <div className="flex items-center gap-4 mb-6 bg-white/10 p-3 rounded-2xl w-fit">
+                  <span className="text-sm font-bold opacity-80">{t('checkout.qty', 'Quantity')}:</span>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setOtoQuantity(Math.max(1, otoQuantity - 1))} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold hover:bg-white/30 transition-colors">-</button>
+                    <span className="font-black text-xl w-6 text-center">{otoQuantity}</span>
+                    <button onClick={() => setOtoQuantity(otoQuantity + 1)} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold hover:bg-white/30 transition-colors">+</button>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <button

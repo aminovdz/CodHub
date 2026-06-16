@@ -333,7 +333,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           storeId: store.id,
           customer: `${customerName} ${lastName}`.trim(),
           phone: `${prefix}${phone.replace(/^0+/, '')}`,
-          product: cart.map(c => c.name).join(', '),
+          product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '),
           total: finalTotal,
           step: 'Upsell / Shipping',
           date: new Date().toISOString()
@@ -595,7 +595,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           id: localOrderId, storeId: store.id,
           customer: `${customerName} ${lastName}`.trim(),
           phone: `${prefix}${phone.replace(/^0+/, '')}`,
-          product: cart.map(c => c.name).join(', '), total: finalTotal,
+          product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '), total: finalTotal,
           step: 'Address', date: new Date().toISOString()
         }, ...filtered];
       });

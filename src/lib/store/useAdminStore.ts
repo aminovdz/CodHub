@@ -1422,7 +1422,8 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             { data: zones },
             { data: configs },
             { data: landingPages },
-            { data: staff }
+            { data: staff },
+            { data: callLogs }
           ] = await Promise.all([
             supabase.from('stores').select('*'),
             supabase.from('products').select('*'),
@@ -1430,7 +1431,8 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             supabase.from('shipping_zones').select('*'),
             supabase.from('checkout_configs').select('*'),
             supabase.from('landing_pages').select('*'),
-            supabase.from('staff_accounts').select('*')
+            supabase.from('staff_accounts').select('*'),
+            supabase.from('call_logs').select('*').order('called_at', { ascending: false })
           ]);
           
           if (stores && stores.length > 0) {
@@ -1555,6 +1557,19 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             return {};
           });
 
+          if (callLogs) {
+            const mappedLogs = callLogs.map(row => ({
+              id: row.id,
+              orderId: row.order_id,
+              storeId: row.store_id,
+              agentName: row.agent_name,
+              result: row.result as any,
+              note: row.note,
+              calledAt: row.called_at
+            }));
+            set({ callLogs: mappedLogs });
+          }
+          
           set({ _hasHydrated: true });
         } catch (error) {
           console.error("Failed to fetch initial data from Supabase:", error);
