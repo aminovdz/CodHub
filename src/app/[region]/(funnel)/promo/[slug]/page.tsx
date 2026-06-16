@@ -39,6 +39,9 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
   const slug = resolvedParams.slug;
   const { landingPages, availableStores, _hasHydrated } = useAdminStore();
   const store = resolveStore(availableStores, region);
+  const regionLower = region?.toLowerCase() || '';
+  const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(regionLower);
+
   // Case-insensitive slug match so /dz/promo/Flash-Sale works regardless of casing saved in DB
   const page = store
     ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
@@ -71,7 +74,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
   // Simple case: no shortcodes → render as before
   if (!hasShortcodes) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
         <JsxParser
           jsx={page.htmlContent}
           disableKeyGeneration={true}
@@ -83,7 +86,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
 
   // Mixed: render HTML segments interleaved with React checkout forms
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
       {segments.map((seg, i) => {
         if (seg.type === 'form') {
           return (

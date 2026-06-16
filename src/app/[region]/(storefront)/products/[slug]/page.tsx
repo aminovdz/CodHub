@@ -74,7 +74,8 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
   const decodedSlug = decodeURIComponent(slug);
   const product = products.find(p => p.seoSlug === decodedSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedSlug) || PRODUCTS.find(p => p.slug === decodedSlug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
-  const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
+  const regionLower = region?.toLowerCase() || '';
+  const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(regionLower);
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
