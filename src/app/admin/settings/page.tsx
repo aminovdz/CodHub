@@ -137,6 +137,7 @@ export default function AdminSettingsPage() {
 
 
   // Category State
+  const [testLoading, setTestLoading] = useState(false);
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; storeId: string; name: string }>({ isOpen: false, storeId: '', name: '' });
   const [newCategory, setNewCategory] = useState('');
