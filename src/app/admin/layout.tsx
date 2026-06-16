@@ -121,7 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (storeReady && isAuthenticated && username && !isSuperAdminRoute) {
       const usernameClean = username.trim().toLowerCase();
       const account = staffAccounts.find(
-        a => a.name.trim().toLowerCase() === usernameClean
+        (a: any) => a.name.trim().toLowerCase() === usernameClean
       );
       if (account) {
         const accountStoreIds = account.storeIds && account.storeIds.length > 0 
