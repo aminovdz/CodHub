@@ -62,7 +62,11 @@ export default function PromoLandingPage({ params }: { params: Promise<{ region:
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
         <h1 className="text-3xl font-black text-slate-900 mb-4">Promo Page Not Found</h1>
         <p className="text-slate-500 mb-6">This landing page might have expired or does not exist.</p>
-        <Link href={`/${region}`} className="text-indigo-600 font-bold hover:underline">Return to Store</Link>
+        {(() => {
+          const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+          const basePath = isCustomDomain ? '/' : `/${region}`;
+          return <Link href={basePath} className="text-indigo-600 font-bold hover:underline">Return to Store</Link>;
+        })()}
       </div>
     );
   }

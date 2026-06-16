@@ -261,7 +261,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       }
     }
     if (cart.length === 0 && !productId) {
-      router.push(`/${region}`);
+      const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+      router.push(isCustomDomain ? '/' : `/${region}`);
     }
   }, [cart.length, region, router, searchParams, products, addCartItem]);
 
@@ -522,7 +523,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
     // Redirect user instantly for snappy UI
     setStatus('SUCCESS');
-    router.push(`/${region}/thank-you`);
+    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+    router.push(isCustomDomain ? '/thank-you' : `/${region}/thank-you`);
 
     // Fire and forget server action in background
     if (draftOrderId) {

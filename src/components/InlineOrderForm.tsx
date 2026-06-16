@@ -104,7 +104,9 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
     setStatus('SUCCESS');
     setSubmitting(false);
     setDone(true);
-    setTimeout(() => router.push(`/${region}/thank-you`), 1200);
+    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+    const basePath = isCustomDomain ? '' : `/${region}`;
+    setTimeout(() => router.push(`${basePath}/thank-you`), 1200);
   };
 
   if (done) {

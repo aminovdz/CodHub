@@ -18,6 +18,9 @@ export default function StorefrontPage({ params }: { params: Promise<{ region: s
   const homepageConfig = store ? homepages.find(h => h.storeId === store.id) : undefined;
   
   const [isMounted, setIsMounted] = useState(false);
+  
+  const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+  const basePath = isCustomDomain ? '' : `/${region}`;
 
   useEffect(() => {
     setIsMounted(true);
@@ -76,7 +79,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ region: s
                   const priceToDisplay = typeof product.price === 'number' ? product.price : (product.price as any)[region];
                   const slug = (product as any).seoSlug || product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   return (
-                    <Link key={product.id} href={`/${region}/products/${slug}`} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:border-indigo-300 transition-all duration-300 flex flex-col">
+                    <Link key={product.id} href={`${basePath}/products/${slug}`} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:border-indigo-300 transition-all duration-300 flex flex-col">
                       <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 

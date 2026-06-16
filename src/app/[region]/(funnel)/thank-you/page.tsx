@@ -95,7 +95,9 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
       imageUrl: otoProduct.image
     });
     setOtoClaimed(true);
-    setTimeout(() => router.push(`/${region}/checkout`), 800);
+    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+    const basePath = isCustomDomain ? '' : `/${region}`;
+    setTimeout(() => router.push(`${basePath}/checkout`), 800);
   };
 
   // Store products for "You Might Also Like" (excluding already purchased)
@@ -263,15 +265,24 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
           <div className="mt-4">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-black text-slate-900">{t('thankyou.mightAlsoLike', 'You Might Also Like')}</h3>
-              <Link href={`/${region}`} className="text-slate-400 text-sm font-bold uppercase cursor-pointer hover:text-slate-600 transition-colors flex items-center gap-1">
-                {t('thankyou.backToStore', 'Back to Store')} <ExternalLink size={14} />
-              </Link>
+              {(() => {
+                const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+                const basePath = isCustomDomain ? '/' : `/${region}`;
+                return (
+                  <Link href={basePath} className="text-slate-400 text-sm font-bold uppercase cursor-pointer hover:text-slate-600 transition-colors flex items-center gap-1">
+                    {t('thankyou.backToStore', 'Back to Store')} <ExternalLink size={14} />
+                  </Link>
+                );
+              })()}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {storeProducts.map((prod) => (
+              {storeProducts.map((prod) => {
+                const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+                const basePath = isCustomDomain ? '' : `/${region}`;
+                return (
                 <Link
-                  href={`/${region}/products/${prod.seoSlug || prod.id}`}
+                  href={`${basePath}/products/${prod.seoSlug || prod.id}`}
                   key={prod.id}
                   className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-indigo-300 transition-all cursor-pointer group flex flex-col"
                 >
@@ -290,7 +301,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
                     <div className="font-black text-indigo-600 text-lg mt-2">{prod.price} <span className="text-sm">{currency}</span></div>
                   </div>
                 </Link>
-              ))}
+              )})}
             </div>
           </div>
         )}

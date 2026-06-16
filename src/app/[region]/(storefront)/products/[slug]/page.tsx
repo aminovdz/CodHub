@@ -170,7 +170,9 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
     });
     
     // 3. Push to checkout
-    router.push(`/${region}/checkout`);
+    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+    const basePath = isCustomDomain ? '' : `/${region}`;
+    router.push(`${basePath}/checkout`);
   };
 
   const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];

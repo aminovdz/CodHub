@@ -14,6 +14,9 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
   const footerConfig = homepageConfig?.footer;
   const { t } = useTranslation(region);
 
+  const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+  const basePath = isCustomDomain ? '' : `/${region}`;
+
   return (
     <footer className="bg-slate-900 text-slate-300 py-12 px-4 border-t border-slate-800">
       <div className="max-w-6xl mx-auto">
@@ -44,13 +47,13 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
             <ul className="space-y-2 text-sm font-medium">
               {(footerConfig?.storeLinks && footerConfig.storeLinks.length > 0) ? (
                 footerConfig.storeLinks.map((link, i) => (
-                  <li key={i}><Link href={link.url.startsWith('/') ? link.url : `/${region}${link.url.startsWith('/') ? '' : '/'}${link.url}`} className="hover:text-white transition-colors">{link.label}</Link></li>
+                  <li key={i}><Link href={link.url.startsWith('/') ? link.url : `${basePath}${link.url.startsWith('/') ? '' : '/'}${link.url}`} className="hover:text-white transition-colors">{link.label}</Link></li>
                 ))
               ) : (
                 <>
-                  <li><Link href={`/${region}`} className="hover:text-white transition-colors">{t('footer.allProducts', 'All Products')}</Link></li>
-                  <li><Link href={`/${region}`} className="hover:text-white transition-colors">{t('footer.bestSellers', 'Best Sellers')}</Link></li>
-                  <li><Link href={`/${region}`} className="hover:text-white transition-colors">{t('footer.trackOrder', 'Track Order')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.allProducts', 'All Products')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.bestSellers', 'Best Sellers')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.trackOrder', 'Track Order')}</Link></li>
                 </>
               )}
             </ul>
@@ -61,13 +64,13 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
             <ul className="space-y-2 text-sm font-medium">
               {(footerConfig?.legalLinks && footerConfig.legalLinks.length > 0) ? (
                 footerConfig.legalLinks.map((link, i) => (
-                  <li key={i}><Link href={link.url.startsWith('/') ? link.url : `/${region}${link.url.startsWith('/') ? '' : '/'}${link.url}`} className="hover:text-white transition-colors">{link.label}</Link></li>
+                  <li key={i}><Link href={link.url.startsWith('/') ? link.url : `${basePath}${link.url.startsWith('/') ? '' : '/'}${link.url}`} className="hover:text-white transition-colors">{link.label}</Link></li>
                 ))
               ) : (
                 <>
-                  <li><Link href={`/${region}/legal/privacy-policy`} className="hover:text-white transition-colors">{t('footer.privacyPolicy', 'Privacy Policy')}</Link></li>
-                  <li><Link href={`/${region}/legal/terms-of-service`} className="hover:text-white transition-colors">{t('footer.termsOfService', 'Terms of Service')}</Link></li>
-                  <li><Link href={`/${region}/legal/refund-policy`} className="hover:text-white transition-colors">{t('footer.refundPolicy', 'Refund Policy')}</Link></li>
+                  <li><Link href={`${basePath}/legal/privacy-policy`} className="hover:text-white transition-colors">{t('footer.privacyPolicy', 'Privacy Policy')}</Link></li>
+                  <li><Link href={`${basePath}/legal/terms-of-service`} className="hover:text-white transition-colors">{t('footer.termsOfService', 'Terms of Service')}</Link></li>
+                  <li><Link href={`${basePath}/legal/refund-policy`} className="hover:text-white transition-colors">{t('footer.refundPolicy', 'Refund Policy')}</Link></li>
                 </>
               )}
               
