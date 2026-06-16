@@ -1,9 +1,10 @@
-import { ReactNode } from 'react';
+import { ReactNode, Suspense } from 'react';
 import TrackingPixels from '@/components/TrackingPixels';
 import RegionCookieSetter from '@/components/RegionCookieSetter';
 import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import ChatbotWidget from '@/components/ChatbotWidget';
+import { UTMTracker } from '@/components/funnel/UTMTracker';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -46,7 +47,7 @@ export default async function RegionLayout({
   // Query store configurations from Supabase to check chatbot toggle
   const { data: store } = await supabase
     .from('stores')
-    .select('id, region, whatsapp_config')
+    .select('id, region, whatsapp_config, language')
     .ilike('region', region)
     .maybeSingle();
 
@@ -57,7 +58,12 @@ export default async function RegionLayout({
     <>
       <RegionCookieSetter region={region} />
       <TrackingPixels region={region} />
-      {children}
+      <Suspense fallback={null}>
+        <UTMTracker />
+      </Suspense>
+      <div dir={store?.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-full flex flex-col flex-1">
+        {children}
+      </div>
       {isChatbotEnabled && (
         <ChatbotWidget 
           storeId={store.id} 

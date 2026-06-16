@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
-export default function TrackingPixels({ region }: { region: string }) {
+const TrackingPixels = memo(function TrackingPixels({ region }: { region: string }) {
   const pathname = usePathname();
   const { availableStores } = useAdminStore();
   const store = resolveStore(availableStores, region);
@@ -104,4 +104,6 @@ export default function TrackingPixels({ region }: { region: string }) {
   }, [pathname, store?.analytics]);
 
   return null;
-}
+});
+
+export default TrackingPixels;

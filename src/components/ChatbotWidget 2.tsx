@@ -48,6 +48,10 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Insert a placeholder assistant message that will be updated with streamed tokens
+    const assistantIndex = newMessages.length;
+    setMessages([...newMessages, { role: 'assistant', content: '' }]);
+
     try {
       const response = await fetch('/api/chatbot', {
         method: 'POST',
@@ -59,28 +63,62 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
         })
       });
 
-      const data = await response.json();
-      if (response.ok && data.response) {
-        setMessages([...newMessages, { role: 'assistant', content: data.response }]);
-      } else {
-        console.error('Chatbot API error:', data.error || data);
-        setMessages([
-          ...newMessages,
-          {
-            role: 'assistant',
-            content: data.error || `I'm sorry, I encountered a temporary connection issue. Please try again or reach out to our team directly.`
-          }
-        ]);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: 'assistant', content: data.error || 'Sorry, an error occurred.' };
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Stream the NDJSON response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[assistantIndex] = { role: 'assistant', content: 'Failed to read response stream.' };
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const { text } = JSON.parse(line);
+            if (text) {
+              setMessages(prev => {
+                const updated = [...prev];
+                const existing = updated[assistantIndex]?.content || '';
+                updated[assistantIndex] = { role: 'assistant', content: existing + text };
+                return updated;
+              });
+            }
+          } catch { /* skip malformed lines */ }
+        }
       }
     } catch (error) {
       console.error('Chatbot request failed:', error);
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: `I'm sorry, I'm having trouble connecting right now. Please check your internet connection.`
-        }
-      ]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[assistantIndex] = { role: 'assistant', content: "I'm sorry, I'm having trouble connecting right now." };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }

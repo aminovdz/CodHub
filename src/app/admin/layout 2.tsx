@@ -26,12 +26,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const pathname = usePathname();
   const isLoginPage = pathname === '/admin/login' || pathname === '/superadmin/login';
-  const { activeStore, availableStores, setActiveStore, staffAccounts, _hasHydrated } = useAdminStore(
+  const { activeStore, availableStores, setActiveStore, staffAccounts, updateStaffAccount, _hasHydrated } = useAdminStore(
     useShallow((s: any) => ({
       activeStore: s.activeStore,
       availableStores: s.availableStores,
       setActiveStore: s.setActiveStore,
       staffAccounts: s.staffAccounts,
+      updateStaffAccount: s.updateStaffAccount,
       _hasHydrated: s._hasHydrated,
     }))
   );
@@ -40,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const storeReady = _hasHydrated;
 
   const currentStaffAccount = !isSuperAdminRoute && isAuthenticated && username
-    ? staffAccounts.find(a => a.name.trim().toLowerCase() === username.trim().toLowerCase())
+    ? staffAccounts.find((a: any) => a.name.trim().toLowerCase() === username.trim().toLowerCase())
     : null;
   const allowedStoreIds = currentStaffAccount 
     ? (currentStaffAccount.storeIds && currentStaffAccount.storeIds.length > 0 
@@ -121,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (storeReady && isAuthenticated && username && !isSuperAdminRoute) {
       const usernameClean = username.trim().toLowerCase();
       const account = staffAccounts.find(
-        a => a.name.trim().toLowerCase() === usernameClean
+        (a: any) => a.name.trim().toLowerCase() === usernameClean
       );
       if (account) {
         const accountStoreIds = account.storeIds && account.storeIds.length > 0 
@@ -131,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (accountStoreIds.length > 0) {
           const isCurrentlyAllowed = activeStore && accountStoreIds.includes(activeStore.id);
           if (!isCurrentlyAllowed) {
-            const firstValidStore = availableStores.find(s => accountStoreIds.includes(s.id));
+            const firstValidStore = availableStores.find((s: any) => accountStoreIds.includes(s.id));
             if (firstValidStore) {
               setActiveStore(firstValidStore.id);
             }
@@ -176,28 +177,58 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  const navLinks = [
-    { href: basePath,                label: 'Dashboard',       icon: <LayoutDashboard size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
-    { href: `${basePath}/orders`,    label: 'Orders',          icon: <ShoppingCart size={18} />,    roles: ['admin', 'fulfillment', 'confirmation'] },
-    { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />,           roles: ['admin', 'confirmation'] },
-    { href: `${basePath}/analytics`, label: 'Analytics',       icon: <BarChart2 size={18} />,       roles: ['admin'] },
-    { href: `${basePath}/calculator`,label: 'Profit Calculator',icon: <Calculator size={18} />,     roles: ['admin'] },
-    { href: `${basePath}/customers`, label: 'Customers',       icon: <Users size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/stock`,     label: 'Stock',           icon: <Boxes size={18} />,           roles: ['admin', 'fulfillment'] },
-    { href: `${basePath}/products`,  label: 'Products',        icon: <Package size={18} />,         roles: ['admin'] },
-    { href: `${basePath}/coupons`,   label: 'Coupons',         icon: <Tag size={18} />,             roles: ['admin'] },
-    { href: `${basePath}/homepage`,  label: 'Homepage',        icon: <Home size={18} />,            roles: ['admin'] },
-    { href: `${basePath}/checkout`,  label: 'Checkout',        icon: <CreditCard size={18} />,      roles: ['admin'] },
-    { href: `${basePath}/translations`,label: 'Translations',    icon: <Globe size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/legal`,     label: 'Legal Pages',     icon: <FileText size={18} />,        roles: ['admin'] },
-    { href: `${basePath}/promo`,     label: 'Landing Pages',   icon: <MonitorPlay size={18} />,     roles: ['admin'] },
-    { href: `${basePath}/agents`,    label: 'AI Agents Hub',   icon: <Bot size={18} />,             roles: ['admin'] },
-    { href: `${basePath}/ads-mcp`,   label: 'Ads MCP Hub',     icon: <Megaphone size={18} />,       roles: ['admin'] },
-    { href: `${basePath}/staff`,     label: 'Staff Perf.',     icon: <Users size={18} />,           roles: ['admin'] },
-    { href: `${basePath}/activity`,  label: 'Activity Log',    icon: <Activity size={18} />,        roles: ['admin'] },
-    { href: `${basePath}/help`,      label: 'Help & Docs',     icon: <HelpCircle size={18} />,      roles: ['admin'] },
-    { href: `${basePath}/settings`,  label: 'Settings',        icon: <Settings size={18} />,        roles: ['admin'] },
-  ].filter(link => link.roles.includes(activeRole || 'admin'));
+  const navSections = [
+    {
+      title: 'Overview',
+      links: [
+        { href: basePath, label: 'Dashboard', icon: <LayoutDashboard size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
+      ],
+    },
+    {
+      title: 'Orders & Customers',
+      links: [
+        { href: `${basePath}/orders`, label: 'Orders', icon: <ShoppingCart size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
+        { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />, roles: ['admin', 'confirmation'] },
+        { href: `${basePath}/customers`, label: 'Customers', icon: <Users size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Products & Inventory',
+      links: [
+        { href: `${basePath}/products`, label: 'Products', icon: <Package size={18} />, roles: ['admin'] },
+        { href: `${basePath}/stock`, label: 'Stock', icon: <Boxes size={18} />, roles: ['admin', 'fulfillment'] },
+        { href: `${basePath}/coupons`, label: 'Coupons', icon: <Tag size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Storefront',
+      links: [
+        { href: `${basePath}/homepage`, label: 'Homepage', icon: <Home size={18} />, roles: ['admin'] },
+        { href: `${basePath}/checkout`, label: 'Checkout', icon: <CreditCard size={18} />, roles: ['admin'] },
+        { href: `${basePath}/promo`, label: 'Landing Pages', icon: <MonitorPlay size={18} />, roles: ['admin'] },
+        { href: `${basePath}/legal`, label: 'Legal Pages', icon: <FileText size={18} />, roles: ['admin'] },
+        { href: `${basePath}/translations`, label: 'Translations', icon: <Globe size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Growth & Analytics',
+      links: [
+        { href: `${basePath}/analytics`, label: 'Analytics', icon: <BarChart2 size={18} />, roles: ['admin'] },
+        { href: `${basePath}/calculator`, label: 'Profit Calculator', icon: <Calculator size={18} />, roles: ['admin'] },
+        { href: `${basePath}/agents`, label: 'AI Agents Hub', icon: <Bot size={18} />, roles: ['admin'] },
+        { href: `${basePath}/ads-mcp`, label: 'Ads MCP Hub', icon: <Megaphone size={18} />, roles: ['admin'] },
+      ],
+    },
+    {
+      title: 'Administration',
+      links: [
+        { href: `${basePath}/staff`, label: 'Staff Performance', icon: <Users size={18} />, roles: ['admin'] },
+        { href: `${basePath}/activity`, label: 'Activity Log', icon: <Activity size={18} />, roles: ['admin'] },
+        { href: `${basePath}/help`, label: 'Help & Docs', icon: <HelpCircle size={18} />, roles: ['admin'] },
+        { href: `${basePath}/settings`, label: 'Settings', icon: <Settings size={18} />, roles: ['admin'] },
+      ],
+    },
+  ];
 
   return (
     <div className={`min-h-screen flex font-sans relative transition-colors duration-300 ${isDark ? 'dark bg-slate-900' : 'bg-slate-50'}`}>
@@ -234,24 +265,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navLinks.map(link => {
-            const isActive = pathname === link.href;
+        <nav className="flex-1 px-3 py-4 space-y-4 overflow-y-auto">
+          {navSections.map(section => {
+            const visibleLinks = section.links.filter(l => l.roles.includes(activeRole || 'admin'));
+            if (visibleLinks.length === 0) return null;
             return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
-                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                <span className={isActive ? 'text-white' : 'text-slate-500'}>{link.icon}</span>
-                {link.label}
-                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300" />}
-              </Link>
+              <div key={section.title}>
+                <p className="px-3 pb-1 text-[9px] font-black text-slate-600 uppercase tracking-[0.2em]">{section.title}</p>
+                <div className="space-y-0.5">
+                  {visibleLinks.map(link => {
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl font-semibold text-sm transition-all ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
+                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                      >
+                        <span className={isActive ? 'text-white' : 'text-slate-500'}>{link.icon}</span>
+                        {link.label}
+                        {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
             );
           })}
         </nav>
@@ -271,8 +313,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {availableStores.length > 0 ? (
                 availableStores
-                  .filter(s => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
-                  .map(s => (
+                  .filter((s: any) => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
+                  .map((s: any) => (
                     <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
                   ))
               ) : (
@@ -280,6 +322,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               )}
             </select>
           </div>
+
+          {/* Shift Tracking (Online/Offline) */}
+          {currentStaffAccount && (
+            <div className="bg-slate-800/60 rounded-xl p-3">
+              <div className="text-xs text-slate-500 font-bold mb-1.5 uppercase tracking-wider flex items-center justify-between">
+                <span className="flex items-center gap-1.5"><Activity size={10} /> Shift Status</span>
+                <span className={`text-[9px] px-1.5 py-0.5 rounded-full text-white ${currentStaffAccount.isOnline ? 'bg-emerald-500' : 'bg-slate-500'}`}>
+                  {currentStaffAccount.isOnline ? 'ONLINE' : 'OFFLINE'}
+                </span>
+              </div>
+              <button
+                onClick={async () => {
+                  await updateStaffAccount(currentStaffAccount.id, { isOnline: !currentStaffAccount.isOnline });
+                }}
+                className={`w-full py-2 px-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                  currentStaffAccount.isOnline
+                    ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                }`}
+              >
+                <div className={`w-2 h-2 rounded-full ${currentStaffAccount.isOnline ? 'bg-rose-400' : 'bg-emerald-400'} animate-pulse`} />
+                {currentStaffAccount.isOnline ? 'End Shift (Go Offline)' : 'Start Shift (Go Online)'}
+              </button>
+            </div>
+          )}
+
 
           {/* Dark Mode Toggle */}
           <button

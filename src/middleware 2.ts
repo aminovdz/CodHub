@@ -16,6 +16,10 @@ export const config = {
 
 const SUPPORTED_REGIONS = ['dz', 'ro', 'co'];
 
+// Edge global cache for custom domain → region lookups
+const domainCache = new Map<string, { region: string; timestamp: number }>();
+const DOMAIN_CACHE_TTL = 60_000; // 1 minute
+
 export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   
@@ -38,8 +42,8 @@ export async function middleware(req: NextRequest) {
     }
 
     try {
-      // In Edge runtime, we use jose to verify the JWT
-      const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
       const key = new TextEncoder().encode(JWT_SECRET);
       const { jwtVerify } = await import('jose');
       await jwtVerify(token, key);
@@ -56,7 +60,8 @@ export async function middleware(req: NextRequest) {
     const token = req.cookies.get('codadmin_token')?.value;
     if (token) {
       try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) throw new Error('JWT_SECRET environment variable is not set');
         const key = new TextEncoder().encode(JWT_SECRET);
         const { jwtVerify } = await import('jose');
         await jwtVerify(token, key);
@@ -102,9 +107,15 @@ export async function middleware(req: NextRequest) {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (supabaseUrl && supabaseKey && host !== 'localhost' && !host.endsWith('.vercel.app')) {
+    // Check Edge cache first
+    const cached = domainCache.get(host);
+    if (cached && Date.now() - cached.timestamp < DOMAIN_CACHE_TTL) {
+      return NextResponse.rewrite(new URL(`/${cached.region}${url.pathname}`, req.url));
+    }
+
     try {
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/stores?custom_domain=eq.${host}&select=region`,
+        `${supabaseUrl}/rest/v1/stores?custom_domain=in.(${host},www.${host})&select=region`,
         {
           headers: {
             apikey: supabaseKey,
@@ -117,6 +128,7 @@ export async function middleware(req: NextRequest) {
         const stores = await res.json();
         if (stores && stores.length > 0) {
           const region = stores[0].region.toLowerCase();
+          domainCache.set(host, { region, timestamp: Date.now() });
           return NextResponse.rewrite(new URL(`/${region}${url.pathname}`, req.url));
         }
       }

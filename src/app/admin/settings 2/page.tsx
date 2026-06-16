@@ -15,8 +15,7 @@ export default function AdminSettingsPage() {
     categories, setCategories, checkoutConfigs, saveCheckoutConfig, 
     globalApiKey, setGlobalApiKey, claudeApiKey, setClaudeApiKey, 
     openAiApiKey, setOpenAiApiKey, openRouterApiKey, setOpenRouterApiKey, 
-    openRouterModel, setOpenRouterModel, nvidiaApiKey, setNvidiaApiKey,
-    nvidiaModel, setNvidiaModel, aiProvider, setAiProvider,
+    openRouterModel, setOpenRouterModel, aiProvider, setAiProvider,
     addActivityLog
   } = useAdminStore();
 
@@ -28,7 +27,6 @@ export default function AdminSettingsPage() {
   // Layout & SEO Settings
   const [isRtl, setIsRtl] = useState(true);
   const [announcementText, setAnnouncementText] = useState('⚡ Flash Sale: 50% OFF All Items');
-  const [localStoreName, setLocalStoreName] = useState(activeStore.name || 'CODHUB');
   const [seoTitle, setSeoTitle] = useState('CODHUB | The Premium Shopping Experience');
   const [seoDesc, setSeoDesc] = useState('Shop premium products with fast cash on delivery.');
   const [localApiKey, setLocalApiKey] = useState(globalApiKey || '');
@@ -36,19 +34,13 @@ export default function AdminSettingsPage() {
   const [localOpenAiKey, setLocalOpenAiKey] = useState(openAiApiKey || '');
   const [localOpenRouterKey, setLocalOpenRouterKey] = useState(openRouterApiKey || '');
   const [localOpenRouterModel, setLocalOpenRouterModel] = useState(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
-  const [localNvidiaKey, setLocalNvidiaKey] = useState(nvidiaApiKey || '');
-  const [localNvidiaModel, setLocalNvidiaModel] = useState(nvidiaModel || 'meta/llama-3.1-405b-instruct');
-  const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
+  const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
-  const [stickyBuyEnabled, setStickyBuyEnabled] = useState(activeStore.stickyBuyButton?.enabled ?? false);
-  const [stickyBuyText, setStickyBuyText] = useState(activeStore.stickyBuyButton?.text || 'Order Now');
-  const [stickyBuyCss, setStickyBuyCss] = useState(activeStore.stickyBuyButton?.customCss || '');
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
   const [isWebhookGuideOpen, setIsWebhookGuideOpen] = useState(false);
-  const [isWhatsappGuideOpen, setIsWhatsappGuideOpen] = useState(false);
 
   // New Store State
   const [newStoreName, setNewStoreName] = useState('');
@@ -86,9 +78,7 @@ export default function AdminSettingsPage() {
     yalidine: { apiKey: '', apiToken: '' },
     zrexpress: { apiKey: '', apiToken: '', branchId: '' },
     mayestro: { apiKey: '' },
-    dhd: { apiKey: '', apiToken: '' },
-    autoRoutingEnabled: false,
-    trackConfirmationTime: false
+    dhd: { apiKey: '', apiToken: '' }
   });
 
   // Checkout & Upsell State
@@ -110,14 +100,11 @@ export default function AdminSettingsPage() {
     thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
     thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
     thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
-    metaEnabled: activeStore.whatsappConfig?.metaEnabled ?? false,
-    metaPhoneNumberId: activeStore.whatsappConfig?.metaPhoneNumberId || '',
-    metaAccessToken: activeStore.whatsappConfig?.metaAccessToken || '',
-    metaTemplateName: activeStore.whatsappConfig?.metaTemplateName || '',
-    metaLanguageCode: activeStore.whatsappConfig?.metaLanguageCode || 'en_US',
-    metaTemplateParams: activeStore.whatsappConfig?.metaTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
-    metaIgnoreSelfConfirmed: activeStore.whatsappConfig?.metaIgnoreSelfConfirmed ?? true,
-    metaAbandonedCartTemplateName: activeStore.whatsappConfig?.metaAbandonedCartTemplateName || '',
+    aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
+    aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
+    aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
+    aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+    aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
     chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
     chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
     chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
@@ -134,13 +121,24 @@ export default function AdminSettingsPage() {
     highValueThreshold: 15000
   });
 
+  // Staff Accounts State
+  const { staffAccounts, addStaffAccount, updateStaffAccount, deleteStaffAccount } = useAdminStore();
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
+  const [newStaffPin, setNewStaffPin] = useState('');
+  const [newStaffStoreIds, setNewStaffStoreIds] = useState<string[]>([]);
 
+  // Editing Staff State
+  const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
+  const [editStaffName, setEditStaffName] = useState('');
+  const [editStaffRole, setEditStaffRole] = useState<'admin' | 'fulfillment' | 'confirmation'>('fulfillment');
+  const [editStaffPin, setEditStaffPin] = useState('');
+  const [editStaffStoreIds, setEditStaffStoreIds] = useState<string[]>([]);
 
   // Category State
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; storeId: string; name: string }>({ isOpen: false, storeId: '', name: '' });
   const [newCategory, setNewCategory] = useState('');
-  const [categoryError, setCategoryError] = useState('');
 
   useEffect(() => {
     setTranslations(activeStore.translations || {});
@@ -162,9 +160,7 @@ export default function AdminSettingsPage() {
       yalidine: { apiKey: '', apiToken: '' },
       zrexpress: { apiKey: '', apiToken: '', branchId: '' },
       mayestro: { apiKey: '' },
-      dhd: { apiKey: '', apiToken: '' },
-      autoRoutingEnabled: false,
-      trackConfirmationTime: false
+      dhd: { apiKey: '', apiToken: '' }
     });
 
     setCheckoutConfig({
@@ -184,14 +180,11 @@ export default function AdminSettingsPage() {
       thankYouEnabled: activeStore.whatsappConfig?.thankYouEnabled ?? false,
       thankYouNumber: activeStore.whatsappConfig?.thankYouNumber || '',
       thankYouMessage: activeStore.whatsappConfig?.thankYouMessage || 'Hello, I want to confirm my order: [ORDER_ID]',
-      metaEnabled: activeStore.whatsappConfig?.metaEnabled ?? false,
-      metaPhoneNumberId: activeStore.whatsappConfig?.metaPhoneNumberId || '',
-      metaAccessToken: activeStore.whatsappConfig?.metaAccessToken || '',
-      metaTemplateName: activeStore.whatsappConfig?.metaTemplateName || '',
-      metaLanguageCode: activeStore.whatsappConfig?.metaLanguageCode || 'en_US',
-      metaTemplateParams: activeStore.whatsappConfig?.metaTemplateParams || '[NAME],[PRODUCT],[PRODUCT_URL],[ADDRESS],[ORDER_ID],[STORE_NAME]',
-      metaIgnoreSelfConfirmed: activeStore.whatsappConfig?.metaIgnoreSelfConfirmed ?? true,
-      metaAbandonedCartTemplateName: activeStore.whatsappConfig?.metaAbandonedCartTemplateName || '',
+      aisensyEnabled: activeStore.whatsappConfig?.aisensyEnabled ?? false,
+      aisensyApiKey: activeStore.whatsappConfig?.aisensyApiKey || '',
+      aisensyCampaignName: activeStore.whatsappConfig?.aisensyCampaignName || '',
+      aisensyTemplateParams: activeStore.whatsappConfig?.aisensyTemplateParams || '[NAME],[PRODUCT],[ADDRESS],[ORDER_ID]',
+      aisensyIgnoreSelfConfirmed: activeStore.whatsappConfig?.aisensyIgnoreSelfConfirmed ?? true,
       chatbotEnabled: activeStore.whatsappConfig?.chatbotEnabled ?? false,
       chatbotName: activeStore.whatsappConfig?.chatbotName || 'Fatima',
       chatbotInstructions: activeStore.whatsappConfig?.chatbotInstructions || 'We offer free delivery for orders above 10,000 DZD. Return policy: 7 days free returns on defective items.',
@@ -208,17 +201,15 @@ export default function AdminSettingsPage() {
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
     setCustomDomain(activeStore.customDomain || '');
-  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain, activeStore.name]);
+  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain]);
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
     await updateStore(activeStore.id, { 
-      name: localStoreName,
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
-      customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
-      stickyBuyButton: { enabled: stickyBuyEnabled, text: stickyBuyText, customCss: stickyBuyCss }
+      customDomain: customDomain.trim() || undefined
     });
 
     setGlobalApiKey(localApiKey);
@@ -226,37 +217,11 @@ export default function AdminSettingsPage() {
     setOpenAiApiKey(localOpenAiKey);
     setOpenRouterApiKey(localOpenRouterKey);
     setOpenRouterModel(localOpenRouterModel);
-    setNvidiaApiKey(localNvidiaKey);
-    setNvidiaModel(localNvidiaModel);
     setAiProvider(localProvider);
 
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
     setIsSaving(false);
     notify('Settings saved successfully!', 'success');
-  };
-
-  const handleTestConnection = async (provider: string) => {
-    setTestLoading(true);
-    try {
-      const credentials = provider === 'yalidine' ? dzFulfillment.yalidine : dzFulfillment.zrexpress;
-      
-      const res = await fetch('/api/fulfillment/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, credentials })
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        notify(data.message, 'success');
-      } else {
-        notify(data.error || 'Connection failed', 'error');
-      }
-    } catch (err: any) {
-      notify(err.message || 'Error testing connection', 'error');
-    } finally {
-      setTestLoading(false);
-    }
   };
 
   const handleCreateStore = async (e: React.FormEvent) => {
@@ -270,7 +235,7 @@ export default function AdminSettingsPage() {
       phonePrefix: newStorePrefix,
       currency: newStoreCurrency.toUpperCase(),
       language: newStoreLanguage.toLowerCase(),
-      customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || undefined,
+      customDomain: newStoreCustomDomain.trim() || undefined,
       translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
     });
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
@@ -437,7 +402,6 @@ export default function AdminSettingsPage() {
               <option value="claude">Anthropic Claude (Best Quality, Paid)</option>
               <option value="openai">OpenAI ChatGPT (Industry Standard)</option>
               <option value="openrouter">OpenRouter (Free / Open Source Models)</option>
-              <option value="nvidia">Nvidia NIM (Nvidia NIM API)</option>
             </select>
           </div>
 
@@ -491,26 +455,6 @@ export default function AdminSettingsPage() {
               onChange={(e) => setLocalOpenRouterModel(e.target.value)} 
               className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
               placeholder="e.g. meta-llama/llama-3.3-70b-instruct:free" 
-            />
-          </div>
-
-          <div className={localProvider !== 'nvidia' ? 'opacity-50' : ''}>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Nvidia API Key</label>
-            <input 
-              type="password" 
-              value={localNvidiaKey} 
-              onChange={(e) => setLocalNvidiaKey(e.target.value)} 
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium mb-4" 
-              placeholder="nvapi-..." 
-            />
-            
-            <label className="block text-sm font-bold text-slate-700 mb-2">Nvidia Model</label>
-            <input 
-              type="text" 
-              value={localNvidiaModel} 
-              onChange={(e) => setLocalNvidiaModel(e.target.value)} 
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
-              placeholder="e.g. meta/llama-3.1-405b-instruct" 
             />
           </div>
         </div>
@@ -575,29 +519,234 @@ export default function AdminSettingsPage() {
         </div>
         <form onSubmit={(e) => {
           e.preventDefault();
-          setCategoryError('');
           if (newCategory) {
-            if (categories.some(c => c.toLowerCase().trim() === newCategory.toLowerCase().trim())) {
-              setCategoryError(`Category "${newCategory}" already exists`);
-              return;
-            }
-            setCategories(prev => [...prev, newCategory.trim()]);
+            setCategories(prev => [...prev, newCategory]);
             addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Category Added', detail: `Added category ${newCategory}` });
             setNewCategory('');
           }
         }} className="flex items-end gap-4">
           <div className="flex-1">
             <label className="block text-xs font-bold text-slate-500 mb-1">New Category Name</label>
-            <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} onFocus={() => setCategoryError('')} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. Beauty & Care" />
+            <input type="text" value={newCategory} onChange={e => setNewCategory(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="e.g. Beauty & Care" />
           </div>
           <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px]">
             <Plus size={16} /> Add
           </button>
         </form>
-        {categoryError && <p className="text-rose-600 text-xs font-bold mt-2">{categoryError}</p>}
       </div>
 
+      {/* STAFF ACCOUNTS */}
+      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
+          <Users className="text-indigo-600" /> Staff Accounts
+        </h2>
+        <div className="space-y-3 mb-6">
+          {staffAccounts.map(acc => {
+            if (editingStaffId === acc.id) {
+              return (
+                <form key={acc.id} onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (editStaffName && editStaffPin.length >= 4) {
+                    await updateStaffAccount(acc.id, {
+                      name: editStaffName,
+                      role: editStaffRole,
+                      pin: editStaffPin,
+                      storeId: editStaffStoreIds.length === 1 ? editStaffStoreIds[0] : undefined,
+                      storeIds: editStaffStoreIds
+                    });
+                    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Updated', detail: `Updated staff account ${editStaffName} (${editStaffRole})` });
+                    setEditingStaffId(null);
+                    notify('Staff account updated successfully!', 'success');
+                  } else {
+                    notify('PIN must be at least 4 digits', 'error');
+                  }
+                }} className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-indigo-100">
+                    <div className="font-bold text-indigo-900">Edit Staff Account</div>
+                    <button type="button" onClick={() => setEditingStaffId(null)} className="text-slate-400 hover:text-slate-600">
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+                      <input type="text" value={editStaffName} onChange={e => setEditStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="Agent Name" />
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+                      <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+                        <option value="fulfillment">Fulfillment Agent</option>
+                        <option value="confirmation">Confirmation Agent</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">PIN / Password</label>
+                      <input type="text" value={editStaffPin} onChange={e => setEditStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="e.g. 1234" />
+                    </div>
+                  </div>
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
+                    <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
+                      <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={editStaffStoreIds.length === 0}
+                          onChange={() => setEditStaffStoreIds([])}
+                          className="accent-indigo-600"
+                        />
+                        All Stores (Global)
+                      </label>
+                      {availableStores.map(s => {
+                        const isSelected = editStaffStoreIds.includes(s.id);
+                        return (
+                          <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected}
+                              onChange={() => {
+                                if (isSelected) {
+                                  setEditStaffStoreIds(editStaffStoreIds.filter(id => id !== s.id));
+                                } else {
+                                  setEditStaffStoreIds([...editStaffStoreIds, s.id]);
+                                }
+                              }}
+                              className="accent-indigo-600"
+                            />
+                            {s.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button type="button" onClick={() => setEditingStaffId(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" className="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              );
+            }
 
+            return (
+              <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                <div>
+                  <div className="font-bold text-slate-900">{acc.name}</div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                      {acc.storeIds && acc.storeIds.length > 0
+                        ? acc.storeIds.map(sid => availableStores.find(s => s.id === sid)?.name || 'Store').join(', ')
+                        : acc.storeId ? availableStores.find(s => s.id === acc.storeId)?.name || 'Restricted Store' : 'All Stores (Global)'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setEditingStaffId(acc.id);
+                      setEditStaffName(acc.name);
+                      setEditStaffRole(acc.role);
+                      setEditStaffPin(acc.pin || '');
+                      setEditStaffStoreIds(acc.storeIds || (acc.storeId ? [acc.storeId] : []));
+                    }}
+                    className="p-2 text-slate-500 hover:bg-slate-200/60 rounded-lg transition-colors"
+                    title="Edit Staff Account"
+                  >
+                    <Edit2 size={18} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      deleteStaffAccount(acc.id);
+                      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Deleted', detail: `Deleted staff account ${acc.name} (${acc.role})` });
+                    }}
+                    className="p-2 text-rose-500 hover:bg-rose-100 rounded-lg transition-colors"
+                    disabled={acc.role === 'admin' && staffAccounts.filter(a => a.role === 'admin').length === 1}
+                    title="Delete Staff Account"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          if (newStaffName && newStaffPin.length >= 4) {
+            await addStaffAccount({ 
+              name: newStaffName, 
+              role: newStaffRole, 
+              pin: newStaffPin,
+              storeId: newStaffStoreIds.length === 1 ? newStaffStoreIds[0] : undefined,
+              storeIds: newStaffStoreIds
+            });
+            addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Created', detail: `Created staff account ${newStaffName} (${newStaffRole})` });
+            setNewStaffName('');
+            setNewStaffPin('');
+            setNewStaffStoreIds([]);
+          }
+        }} className="flex flex-wrap items-end gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
+            <input type="text" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="Agent Name" />
+          </div>
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
+            <select value={newStaffRole} onChange={e => setNewStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
+              <option value="fulfillment">Fulfillment Agent</option>
+              <option value="confirmation">Confirmation Agent</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div className="w-full">
+            <label className="block text-xs font-bold text-slate-500 mb-1">Store Assignment(s)</label>
+            <div className="flex flex-wrap gap-2 p-2 bg-white rounded-lg border border-slate-300">
+              <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold text-slate-700 cursor-pointer transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={newStaffStoreIds.length === 0}
+                  onChange={() => setNewStaffStoreIds([])}
+                  className="accent-indigo-600"
+                />
+                All Stores (Global)
+              </label>
+              {availableStores.map(s => {
+                const isSelected = newStaffStoreIds.includes(s.id);
+                return (
+                  <label key={s.id} className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      onChange={() => {
+                        if (isSelected) {
+                          setNewStaffStoreIds(newStaffStoreIds.filter(id => id !== s.id));
+                        } else {
+                          setNewStaffStoreIds([...newStaffStoreIds, s.id]);
+                        }
+                      }}
+                      className="accent-indigo-600"
+                    />
+                    {s.name} ({s.region.toUpperCase()})
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex-1 min-w-[100px]">
+            <label className="block text-xs font-bold text-slate-500 mb-1">PIN (Login)</label>
+            <input type="password" value={newStaffPin} onChange={e => setNewStaffPin(e.target.value)} required minLength={4} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="4+ digits" />
+          </div>
+          <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 text-sm h-[42px] min-w-[120px] justify-center">
+            <Plus size={16} /> Add Staff
+          </button>
+        </form>
+      </div>
 
       {/* SEO & LAYOUT */}
       <form onSubmit={handleSaveSEO} className="space-y-8">
@@ -646,11 +795,6 @@ export default function AdminSettingsPage() {
                   <label className="block text-sm font-bold text-slate-500 mb-2">Meta Title</label>
                   <input type="text" value={seoTitle} onChange={(e) => setSeoTitle(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700" />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Store Display Name</label>
-                  <p className="text-xs text-slate-500 mb-2">This is the name shown in the storefront header.</p>
-                  <input type="text" value={localStoreName} onChange={(e) => setLocalStoreName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700" />
-                </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-500 mb-2">Meta Description</label>
                   <textarea value={seoDesc} onChange={(e) => setSeoDesc(e.target.value)} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-700 resize-none" />
@@ -682,7 +826,7 @@ export default function AdminSettingsPage() {
             {/* Fulfillment Setup */}
             <div className="pb-6 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 mb-4">Fulfillment Provider</h3>
-              {activeStore?.region?.toLowerCase() === 'dz' ? (
+              {activeStore.region === 'dz' ? (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-bold text-amber-900 mb-1">Default Provider</label>
@@ -698,87 +842,33 @@ export default function AdminSettingsPage() {
                     </select>
                   </div>
 
-                  <div className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl mt-4">
-                    <div>
-                      <h4 className="text-xs font-bold text-amber-950">Auto-Routing (Round-Robin)</h4>
-                      <p className="text-[10px] text-amber-800/80">Automatically assign new incoming PENDING orders to online confirmation staff</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={!!dzFulfillment.autoRoutingEnabled} 
-                        onChange={(e) => setDzFulfillment({...dzFulfillment, autoRoutingEnabled: e.target.checked})}
-                        className="sr-only peer" 
-                        id="setting-auto-routing"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl mt-4">
-                    <div>
-                      <h4 className="text-xs font-bold text-amber-950">Track Confirmation Time</h4>
-                      <p className="text-[10px] text-amber-800/80">Track and store elapsed time between order creation and agent confirmation</p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={!!dzFulfillment.trackConfirmationTime} 
-                        onChange={(e) => setDzFulfillment({...dzFulfillment, trackConfirmationTime: e.target.checked})}
-                        className="sr-only peer" 
-                        id="setting-track-confirmation-time"
-                      />
-                      <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
-                    </label>
-                  </div>
-
                   {dzFulfillment.defaultProvider === 'yalidine' && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">Yalidine API Key</label>
-                          <input type="password" value={dzFulfillment.yalidine?.apiKey || ''} onChange={e => setDzFulfillment({...dzFulfillment, yalidine: { apiKey: e.target.value, apiToken: dzFulfillment.yalidine?.apiToken || '' }})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">Yalidine API Token</label>
-                          <input type="password" value={dzFulfillment.yalidine?.apiToken || ''} onChange={e => setDzFulfillment({...dzFulfillment, yalidine: { apiKey: dzFulfillment.yalidine?.apiKey || '', apiToken: e.target.value }})} placeholder="API Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Yalidine API Key</label>
+                        <input type="password" value={dzFulfillment.yalidine?.apiKey || ''} onChange={e => setDzFulfillment({...dzFulfillment, yalidine: { apiKey: e.target.value, apiToken: dzFulfillment.yalidine?.apiToken || '' }})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => handleTestConnection('yalidine')} 
-                        disabled={testLoading}
-                        className="px-4 py-2 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 disabled:opacity-50"
-                      >
-                        {testLoading ? 'Testing...' : 'Test Connection'}
-                      </button>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Yalidine API Token</label>
+                        <input type="password" value={dzFulfillment.yalidine?.apiToken || ''} onChange={e => setDzFulfillment({...dzFulfillment, yalidine: { apiKey: dzFulfillment.yalidine?.apiKey || '', apiToken: e.target.value }})} placeholder="API Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
+                      </div>
                     </div>
                   )}
 
                   {dzFulfillment.defaultProvider === 'zrexpress' && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">ZR API Key</label>
-                          <input type="password" value={dzFulfillment.zrexpress?.apiKey} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, apiKey: e.target.value } as any})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">ZR API Token</label>
-                          <input type="password" value={dzFulfillment.zrexpress?.apiToken} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, apiToken: e.target.value } as any})} placeholder="API Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">Branch ID</label>
-                          <input type="text" value={dzFulfillment.zrexpress?.branchId} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, branchId: e.target.value } as any})} placeholder="Branch ID" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">ZR API Key</label>
+                        <input type="password" value={dzFulfillment.zrexpress?.apiKey} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, apiKey: e.target.value } as any})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => handleTestConnection('zrexpress')} 
-                        disabled={testLoading}
-                        className="px-4 py-2 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 disabled:opacity-50"
-                      >
-                        {testLoading ? 'Testing...' : 'Test Connection'}
-                      </button>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">ZR API Token</label>
+                        <input type="password" value={dzFulfillment.zrexpress?.apiToken} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, apiToken: e.target.value } as any})} placeholder="API Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">Branch ID</label>
+                        <input type="text" value={dzFulfillment.zrexpress?.branchId} onChange={e => setDzFulfillment({...dzFulfillment, zrexpress: { ...dzFulfillment.zrexpress, branchId: e.target.value } as any})} placeholder="Branch ID" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
+                      </div>
                     </div>
                   )}
 
@@ -788,47 +878,26 @@ export default function AdminSettingsPage() {
                         <label className="block text-xs font-bold text-amber-900 mb-1">Mayestro API Key</label>
                         <input type="password" value={dzFulfillment.mayestro?.apiKey} onChange={e => setDzFulfillment({...dzFulfillment, mayestro: { apiKey: e.target.value }})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => handleTestConnection('mayestro')} 
-                        disabled={testLoading}
-                        className="px-4 py-2 mt-4 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 disabled:opacity-50"
-                      >
-                        {testLoading ? 'Testing...' : 'Test Connection'}
-                      </button>
                     </div>
                   )}
 
                   {dzFulfillment.defaultProvider === 'dhd' && (
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">DHD API Key / Username</label>
-                          <input type="password" value={dzFulfillment.dhd?.apiKey} onChange={e => setDzFulfillment({...dzFulfillment, dhd: { ...dzFulfillment.dhd, apiKey: e.target.value } as any})} placeholder="Username/Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold text-amber-900 mb-1">DHD Password / Token</label>
-                          <input type="password" value={dzFulfillment.dhd?.apiToken} onChange={e => setDzFulfillment({...dzFulfillment, dhd: { ...dzFulfillment.dhd, apiToken: e.target.value } as any})} placeholder="Password/Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50 border border-amber-200 p-4 rounded-xl">
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">DHD API Key</label>
+                        <input type="password" value={dzFulfillment.dhd?.apiKey} onChange={e => setDzFulfillment({...dzFulfillment, dhd: { ...dzFulfillment.dhd, apiKey: e.target.value } as any})} placeholder="API Key" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => handleTestConnection('dhd')} 
-                        disabled={testLoading}
-                        className="px-4 py-2 mt-4 bg-amber-500 text-white font-bold text-sm rounded-xl hover:bg-amber-600 disabled:opacity-50"
-                      >
-                        {testLoading ? 'Testing...' : 'Test Connection'}
-                      </button>
+                      <div>
+                        <label className="block text-xs font-bold text-amber-900 mb-1">DHD API Token</label>
+                        <input type="password" value={dzFulfillment.dhd?.apiToken} onChange={e => setDzFulfillment({...dzFulfillment, dhd: { ...dzFulfillment.dhd, apiToken: e.target.value } as any})} placeholder="API Token" className="w-full p-3 rounded-xl border border-amber-300 outline-none focus:ring-2 focus:ring-amber-500 bg-white text-slate-900 font-bold" />
+                      </div>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                  <div className="pt-6 border-t border-slate-100">
-                    <h4 className="text-sm font-bold text-slate-900 mb-1">n8n / 3PL Webhook URL</h4>
-                    <p className="text-xs text-slate-500 mb-3">Send new confirmed orders automatically to n8n, Make, or any 3PL service.</p>
-                    <input type="text" value={genericWebhookUrl} onChange={e => setGenericWebhookUrl(e.target.value)} placeholder="https://hook.n8n.cloud/webhook/..." className="w-full p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 bg-white text-slate-900 font-bold" />
-                  </div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Google Sheets / Generic Webhook URL</label>
+                  <input type="text" value={genericWebhookUrl} onChange={e => setGenericWebhookUrl(e.target.value)} placeholder="https://script.google.com/macros/s/..." className="w-full p-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 bg-white text-slate-900 font-bold" />
                   <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <p className="text-xs text-slate-500">When you click "Send to Webhook" on an order, we will POST the order data to this URL.</p>
                     <button
@@ -896,7 +965,7 @@ export default function AdminSettingsPage() {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Abandoned Cart Message Script</label>
                   <textarea value={whatsappConfig.abandonedCartScript} onChange={(e) => setWhatsappConfig({...whatsappConfig, abandonedCartScript: e.target.value})} rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white resize-none" />
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Available variables: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[PRODUCT_URL]</strong>, <strong>[CART_TOTAL]</strong>, <strong>[ORDER_ID]</strong>.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Available variables: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[CART_TOTAL]</strong>.</p>
                 </div>
               </div>
             )}
@@ -934,54 +1003,34 @@ export default function AdminSettingsPage() {
               )}
             </div>
 
-
-            {/* Meta WhatsApp API Settings */}
+            {/* AiSensy Settings */}
             <div className="pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
               <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 mb-4">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="text-green-600">📱</span> Meta WhatsApp Business API
-                    <button type="button" onClick={() => setIsWhatsappGuideOpen(true)} className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full hover:bg-indigo-200 ml-2">Setup Guide</button>
-                  </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Send automated WhatsApp messages directly via the official Meta Graph API — no third-party BSP required.</div>
+                  <div className="font-bold text-slate-900 dark:text-white">AiSensy Automated WhatsApp Campaigns</div>
+                  <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Automatically send template confirmation messages via AiSensy.</div>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={whatsappConfig.metaEnabled ?? false} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaEnabled: e.target.checked})} className="sr-only peer" />
+                  <input type="checkbox" checked={whatsappConfig.aisensyEnabled} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyEnabled: e.target.checked})} className="sr-only peer" />
                   <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                 </label>
               </div>
-              {whatsappConfig.metaEnabled && (
+              {whatsappConfig.aisensyEnabled && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Phone Number ID</label>
-                      <input type="text" value={whatsappConfig.metaPhoneNumberId || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaPhoneNumberId: e.target.value})} placeholder="e.g. 123456789012345" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                      <p className="text-[11px] text-slate-400 mt-1">Found in Meta Business Dashboard → WhatsApp → Phone Numbers</p>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy API Key</label>
+                      <input type="password" value={whatsappConfig.aisensyApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyApiKey: e.target.value})} placeholder="Enter AiSensy campaign API Key" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Permanent Access Token</label>
-                      <input type="password" value={whatsappConfig.metaAccessToken || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaAccessToken: e.target.value})} placeholder="EAAxxxx..." className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                      <p className="text-[11px] text-slate-400 mt-1">Generate a System User token in Meta Business Manager for production use</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Order Confirmation Template Name</label>
-                      <input type="text" value={whatsappConfig.metaTemplateName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaTemplateName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Abandoned Cart Template Name</label>
-                      <input type="text" value={whatsappConfig.metaAbandonedCartTemplateName || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaAbandonedCartTemplateName: e.target.value})} placeholder="e.g. abandoned_cart_recovery" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Language Code</label>
-                      <input type="text" value={whatsappConfig.metaLanguageCode || 'en_US'} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaLanguageCode: e.target.value})} placeholder="e.g. ar, en_US, fr" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">AiSensy Campaign Name</label>
+                      <input type="text" value={whatsappConfig.aisensyCampaignName} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyCampaignName: e.target.value})} placeholder="e.g. order_confirmation" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Body Parameters (comma-separated, in order)</label>
-                    <input type="text" value={whatsappConfig.metaTemplateParams || ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
-                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[PRODUCT_URL]</strong>, <strong>[ADDRESS]</strong>, <strong>[ORDER_ID]</strong>, <strong>[STORE_NAME]</strong>, <strong>[ORDER_TOTAL]</strong></p>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Shortcodes / Params (comma-separated, in order)</label>
+                    <input type="text" value={whatsappConfig.aisensyTemplateParams} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyTemplateParams: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                    <p className="text-[11px] text-slate-400 mt-1">Available placeholders: [NAME], [PRODUCT], [ADDRESS], [ORDER_ID]</p>
                   </div>
                   <div className="flex items-center justify-between p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
                     <div>
@@ -989,24 +1038,9 @@ export default function AdminSettingsPage() {
                       <p className="text-[10px] text-indigo-700 dark:text-indigo-400">Ignore orders where clients click WhatsApp thank-you link manually.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" checked={whatsappConfig.metaIgnoreSelfConfirmed ?? true} onChange={(e) => setWhatsappConfig({...whatsappConfig, metaIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
+                      <input type="checkbox" checked={whatsappConfig.aisensyIgnoreSelfConfirmed} onChange={(e) => setWhatsappConfig({...whatsappConfig, aisensyIgnoreSelfConfirmed: e.target.checked})} className="sr-only peer" />
                       <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                     </label>
-                  </div>
-                  <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mb-2">📡 Webhook for Delivery Status Tracking</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-2">
-                      Configure this URL in your <strong>Meta App Dashboard → WhatsApp → Configuration → Webhook</strong> to receive delivery status updates (delivered, read, failed):
-                    </p>
-                    <code className="bg-slate-200 dark:bg-slate-950 px-2 py-1 rounded text-xs text-slate-800 dark:text-slate-200 break-all block">{typeof window !== 'undefined' ? window.location.origin : ''}/api/meta/webhook</code>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
-                      Webhook Verify Token: <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs">Set <strong>META_WEBHOOK_VERIFY_TOKEN</strong> in your .env file</code>
-                    </p>
-                    <h4 className="font-bold text-xs text-slate-700 dark:text-slate-300 mt-4 mb-2">⏱ Abandoned Cart Cron Setup</h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                      Set up a cron job at <strong>cron-job.org</strong> to hit this URL every 5 minutes:<br />
-                      <code className="bg-slate-200 dark:bg-slate-950 px-2 py-0.5 rounded text-xs text-slate-800 dark:text-slate-200 break-all">{typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/abandoned-carts</code>
-                    </p>
                   </div>
                 </div>
               )}
@@ -1085,60 +1119,6 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-500 mt-2">This color will be used for main call-to-action buttons.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Sticky Buy Button Panel */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <ShoppingCart className="w-6 h-6 text-indigo-600" /> Sticky Buy Button
-          </h2>
-          
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <div>
-                <label className="font-bold text-sm text-slate-700 dark:text-slate-300">Enable Sticky Buy Button</label>
-                <p className="text-xs text-slate-500 mt-1">Shows a fixed bottom bar with buy button when users scroll past the main CTA.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setStickyBuyEnabled(!stickyBuyEnabled)}
-                className={`relative w-12 h-7 rounded-full transition-colors ${stickyBuyEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${stickyBuyEnabled ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Button Text</label>
-              <input
-                type="text"
-                value={stickyBuyText}
-                onChange={e => setStickyBuyText(e.target.value)}
-                placeholder="Order Now"
-                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
-              />
-              <p className="text-xs text-slate-500 mt-2">Text displayed on the sticky buy button.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Custom CSS</label>
-              <textarea
-                value={stickyBuyCss}
-                onChange={e => setStickyBuyCss(e.target.value)}
-                placeholder=".sh-sticky-bar { background: #000; }&#10;.sh-sticky-bar-price { color: #fff; }&#10;.sh-sticky-bar-button { background: #ff6600; }"
-                rows={6}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-900 text-emerald-400 font-mono text-sm focus:ring-2 focus:ring-indigo-600 outline-none resize-none"
-                spellCheck={false}
-              />
-              <p className="text-xs text-slate-500 mt-2">
-                Available classes: <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar</code> (outer bar), 
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-inner</code> (inner row),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-price</code> (price text),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-compare</code> (compare price),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-button</code> (buy button).
-              </p>
             </div>
           </div>
         </div>
@@ -1352,74 +1332,6 @@ function doPost(e) {
                 className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-black rounded-xl text-xs transition-all"
               >
                 Close Guide
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* WhatsApp Guide Modal */}
-      {isWhatsappGuideOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <MessageCircle className="text-green-500" /> Meta WhatsApp Business API Setup
-              </h3>
-              <button onClick={() => setIsWhatsappGuideOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={20} className="text-slate-500" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-8 text-slate-700">
-              <section>
-                <h4 className="font-bold text-slate-900 mb-2">1. Create a Meta Developer App</h4>
-                <ol className="list-decimal pl-5 space-y-2 text-sm">
-                  <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-indigo-600 font-bold hover:underline">Meta for Developers</a> and create an account.</li>
-                  <li>Click <strong>Create App</strong> and select <strong>Other</strong> &rarr; <strong>Next</strong> &rarr; <strong>Business</strong>.</li>
-                  <li>Enter an App name (e.g. "CODHUB WhatsApp") and select your Business Manager account, then click <strong>Create app</strong>.</li>
-                </ol>
-              </section>
-
-              <section>
-                <h4 className="font-bold text-slate-900 mb-2">2. Add the WhatsApp Product</h4>
-                <ol className="list-decimal pl-5 space-y-2 text-sm">
-                  <li>On your app dashboard, scroll down to <strong>WhatsApp</strong> and click <strong>Set up</strong>.</li>
-                  <li>Follow the onboarding steps to link or create a new WhatsApp Business Account.</li>
-                  <li>Go to <strong>WhatsApp &gt; API Setup</strong> in the left menu.</li>
-                  <li>Here you will find your <strong>Phone Number ID</strong> and a <strong>Temporary Access Token</strong>. Paste them into the fields in the CODHUB settings.</li>
-                </ol>
-                <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-200 text-sm">
-                  <strong>Note:</strong> To get a <strong>Permanent Access Token</strong> (so it doesn't expire in 24h), go to <strong>Business settings &gt; System Users</strong> in Meta Business Manager, create a System User, give it admin access to the WhatsApp app, and generate a token with `whatsapp_business_messaging` and `whatsapp_business_management` permissions.
-                </div>
-              </section>
-
-              <section>
-                <h4 className="font-bold text-slate-900 mb-2">3. Setup Webhook (Optional but Recommended)</h4>
-                <p className="text-sm mb-2">Webhooks allow CODHUB to know if your message was Delivered or Read.</p>
-                <ol className="list-decimal pl-5 space-y-2 text-sm">
-                  <li>Go to <strong>WhatsApp &gt; Configuration</strong> in the left menu.</li>
-                  <li>Under Webhooks, click <strong>Edit</strong>.</li>
-                  <li>Paste your Callback URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">https://your-domain.com/api/webhooks/whatsapp</code></li>
-                  <li>Paste the Verify Token: <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">codhub_meta_webhook_token</code></li>
-                  <li>Click Verify and Save.</li>
-                  <li>Click <strong>Manage</strong> below Webhook fields and subscribe to the <code>messages</code> field.</li>
-                </ol>
-              </section>
-
-              <section>
-                <h4 className="font-bold text-slate-900 mb-2">4. Add Templates</h4>
-                <ol className="list-decimal pl-5 space-y-2 text-sm">
-                  <li>In Meta WhatsApp Manager, go to <strong>Message Templates</strong>.</li>
-                  <li>Create a new template for "Order Confirmation" and "Abandoned Cart".</li>
-                  <li>Approve the templates and put their exact names in the CODHUB settings fields.</li>
-                </ol>
-              </section>
-            </div>
-            
-            <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl flex justify-end">
-              <button onClick={() => setIsWhatsappGuideOpen(false)} className="px-6 py-2 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-md">
-                Got it
               </button>
             </div>
           </div>
