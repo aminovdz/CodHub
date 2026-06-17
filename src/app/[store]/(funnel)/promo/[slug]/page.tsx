@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
 import { Loader2 } from 'lucide-react';
-import JsxParser from 'react-jsx-parser';
 
 // Split HTML/JSX content on [CHECKOUT_FORM:productId] shortcodes
 // Returns an array of segments: { type: 'html' | 'form', content: string, productId?: string }
@@ -80,13 +79,11 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   // Simple case: no shortcodes → render as before
   if (!hasShortcodes) {
     return (
-      <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
-        <JsxParser
-          jsx={page.htmlContent}
-          disableKeyGeneration={true}
-          components={{ InlineOrderForm: InlineOrderForm as any }}
-        />
-      </div>
+      <div 
+        className="min-h-screen bg-white" 
+        dir={isArabic ? 'rtl' : 'ltr'}
+        dangerouslySetInnerHTML={{ __html: page.htmlContent }}
+      />
     );
   }
 
@@ -102,11 +99,9 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
           );
         }
         return (
-          <JsxParser
-            key={i}
-            jsx={seg.content}
-            disableKeyGeneration={true}
-            components={{ InlineOrderForm: InlineOrderForm as any }}
+          <div 
+            key={i} 
+            dangerouslySetInnerHTML={{ __html: seg.content }} 
           />
         );
       })}

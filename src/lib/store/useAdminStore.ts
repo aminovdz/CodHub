@@ -789,6 +789,15 @@ interface AdminStore {
   nvidiaModel: string;
   setNvidiaModel: (model: string) => void;
 
+  geminiModel: string;
+  setGeminiModel: (model: string) => void;
+
+  claudeModel: string;
+  setClaudeModel: (model: string) => void;
+
+  openAiModel: string;
+  setOpenAiModel: (model: string) => void;
+
   aiProvider: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia';
   setAiProvider: (provider: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia') => void;
 
@@ -1137,17 +1146,19 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const finalAccount = { ...account, id: newId, storeIds: account.storeIds || (account.storeId ? [account.storeId] : []) };
         set((state) => ({ staffAccounts: [...state.staffAccounts, finalAccount] }));
 
-        // Persist multi-store assignments and permissions to activeStore.translations
+        // Persist multi-store assignments, permissions, and email to activeStore.translations
         const state = get();
-        if (finalAccount.storeIds && finalAccount.storeIds.length > 0 || finalAccount.permissions) {
+        if (finalAccount.storeIds && finalAccount.storeIds.length > 0 || finalAccount.permissions || finalAccount.email) {
           const activeStore = state.activeStore || state.availableStores[0];
           if (activeStore) {
             const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
             const currentPermissions = (activeStore.translations as any)?.staffPermissions || {};
+            const currentEmails = (activeStore.translations as any)?.staffEmails || {};
             const updatedTranslations = {
               ...(activeStore.translations as any || {}),
               staffAssignments: { ...currentAssignments, [newId]: finalAccount.storeIds || [] },
-              staffPermissions: { ...currentPermissions, [newId]: finalAccount.permissions || { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true } }
+              staffPermissions: { ...currentPermissions, [newId]: finalAccount.permissions || { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true } },
+              staffEmails: { ...currentEmails, [newId]: finalAccount.email || '' }
             };
             supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
             set(st => ({
@@ -1171,13 +1182,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           }
         }
 
-        if (data.storeIds !== undefined || data.permissions !== undefined || data.isOnline !== undefined) {
+        if (data.storeIds !== undefined || data.permissions !== undefined || data.isOnline !== undefined || data.email !== undefined) {
           const state = get();
           const activeStore = state.activeStore || state.availableStores[0];
           if (activeStore) {
             const currentAssignments = (activeStore.translations as any)?.staffAssignments || {};
             const currentPermissions = (activeStore.translations as any)?.staffPermissions || {};
             const currentStatuses = (activeStore.translations as any)?.staffStatus || {};
+            const currentEmails = (activeStore.translations as any)?.staffEmails || {};
             
             const updatedTranslations: any = { ...(activeStore.translations as any || {}) };
             
@@ -1186,6 +1198,9 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             }
             if (data.permissions !== undefined) {
               updatedTranslations.staffPermissions = { ...currentPermissions, [id]: data.permissions };
+            }
+            if (data.email !== undefined) {
+              updatedTranslations.staffEmails = { ...currentEmails, [id]: data.email };
             }
             if (data.isOnline !== undefined || data.lastActive !== undefined) {
               updatedTranslations.staffStatus = { 
@@ -1409,6 +1424,24 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         set({ nvidiaModel: model });
       },
 
+      geminiModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-gemini-model') || 'gemini-2.5-flash' : 'gemini-2.5-flash',
+      setGeminiModel: (model) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-gemini-model', model);
+        set({ geminiModel: model });
+      },
+
+      claudeModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-claude-model') || 'claude-3-5-sonnet-20241022' : 'claude-3-5-sonnet-20241022',
+      setClaudeModel: (model) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-claude-model', model);
+        set({ claudeModel: model });
+      },
+
+      openAiModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-openai-model') || 'gpt-4o-mini' : 'gpt-4o-mini',
+      setOpenAiModel: (model) => {
+        if (typeof window !== 'undefined') localStorage.setItem('codadmin-openai-model', model);
+        set({ openAiModel: model });
+      },
+
       aiProvider: typeof window !== 'undefined' ? (localStorage.getItem('codadmin-ai-provider') as any) || 'gemini' : 'gemini',
       setAiProvider: (provider) => {
         if (typeof window !== 'undefined') localStorage.setItem('codadmin-ai-provider', provider);
@@ -1508,6 +1541,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
                 let perms = { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true };
                 let isOnline = false;
                 let lastActive;
+                let email = undefined;
                 
                 if (stores) {
                   for (const store of stores) {
@@ -1519,11 +1553,17 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
                       isOnline = storeStatus[baseStaff.id].isOnline;
                       lastActive = storeStatus[baseStaff.id].lastActive;
                     }
+
+                    const storeEmails = (store.translations as any)?.staffEmails || {};
+                    if (storeEmails[baseStaff.id]) {
+                      email = storeEmails[baseStaff.id];
+                    }
                   }
                 }
 
                 return {
                   ...baseStaff,
+                  email,
                   storeIds: assigned,
                   permissions: perms,
                   isOnline,

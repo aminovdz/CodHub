@@ -205,6 +205,10 @@ export default function AdminStaffPage() {
                             <input type="text" value={editStaffName} onChange={e => setEditStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="Agent Name" />
                           </div>
                           <div className="flex-1 min-w-[150px]">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Email</label>
+                            <input type="email" value={editStaffEmail} onChange={e => setEditStaffEmail(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="agent@example.com" />
+                          </div>
+                          <div className="flex-1 min-w-[150px]">
                             <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>
                             <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white">
                               <option value="fulfillment">Fulfillment Agent</option>
@@ -259,6 +263,7 @@ export default function AdminStaffPage() {
                     <div key={acc.id} className="flex justify-between items-center p-4 bg-slate-50 border border-slate-200 rounded-xl">
                       <div>
                         <div className="font-bold text-slate-900">{acc.name}</div>
+                        {acc.email && <div className="text-xs text-slate-500 font-medium mb-0.5">{acc.email}</div>}
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest bg-slate-200/70 px-1.5 py-0.5 rounded font-bold">{acc.role}</span>
                         </div>
@@ -320,6 +325,7 @@ export default function AdminStaffPage() {
                 if (newStaffName && newStaffPin.length >= 4) {
                   await addStaffAccount({ 
                     name: newStaffName,
+                    email: newStaffEmail || undefined,
                     role: newStaffRole, 
                     pin: newStaffPin,
                     storeIds: newStaffStoreIds,
@@ -327,6 +333,7 @@ export default function AdminStaffPage() {
                   });
                   addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Staff Created', detail: `Created staff account ${newStaffName}` });
                   setNewStaffName('');
+                  setNewStaffEmail('');
                   setNewStaffPin('');
                   setNewStaffStoreIds([]);
                   setNewStaffPermissions({ canExport: true, canEditTotals: false, canDeleteNotes: false, canAssignOrders: false });
@@ -336,6 +343,10 @@ export default function AdminStaffPage() {
                   <div className="flex-1 min-w-[150px]">
                     <label className="block text-xs font-bold text-slate-500 mb-1">Name</label>
                     <input type="text" value={newStaffName} onChange={e => setNewStaffName(e.target.value)} required className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold" placeholder="Agent Name" />
+                  </div>
+                  <div className="flex-1 min-w-[150px]">
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Email</label>
+                    <input type="email" value={newStaffEmail} onChange={e => setNewStaffEmail(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold bg-white" placeholder="agent@example.com" />
                   </div>
                   <div className="flex-1 min-w-[150px]">
                     <label className="block text-xs font-bold text-slate-500 mb-1">Role</label>

@@ -17,6 +17,8 @@ export default function AdminSettingsPage() {
     openAiApiKey, setOpenAiApiKey, openRouterApiKey, setOpenRouterApiKey, 
     openRouterModel, setOpenRouterModel, nvidiaApiKey, setNvidiaApiKey,
     nvidiaModel, setNvidiaModel, aiProvider, setAiProvider,
+    geminiModel, setGeminiModel, claudeModel, setClaudeModel, 
+    openAiModel, setOpenAiModel,
     addActivityLog
   } = useAdminStore();
 
@@ -38,6 +40,9 @@ export default function AdminSettingsPage() {
   const [localOpenRouterModel, setLocalOpenRouterModel] = useState(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
   const [localNvidiaKey, setLocalNvidiaKey] = useState(nvidiaApiKey || '');
   const [localNvidiaModel, setLocalNvidiaModel] = useState(nvidiaModel || 'meta/llama-3.1-405b-instruct');
+  const [localGeminiModel, setLocalGeminiModel] = useState(geminiModel || 'gemini-2.5-flash');
+  const [localClaudeModel, setLocalClaudeModel] = useState(claudeModel || 'claude-3-5-sonnet-20241022');
+  const [localOpenAiModel, setLocalOpenAiModel] = useState(openAiModel || 'gpt-4o-mini');
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
@@ -209,7 +214,10 @@ export default function AdminSettingsPage() {
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
     setCustomDomain(activeStore.customDomain || '');
-  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain, activeStore.name]);
+    setLocalGeminiModel(geminiModel || 'gemini-2.5-flash');
+    setLocalClaudeModel(claudeModel || 'claude-3-5-sonnet-20241022');
+    setLocalOpenAiModel(openAiModel || 'gpt-4o-mini');
+  }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain, activeStore.name, geminiModel, claudeModel, openAiModel]);
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,6 +238,9 @@ export default function AdminSettingsPage() {
     setNvidiaApiKey(localNvidiaKey);
     setNvidiaModel(localNvidiaModel);
     setAiProvider(localProvider);
+    setGeminiModel(localGeminiModel);
+    setClaudeModel(localClaudeModel);
+    setOpenAiModel(localOpenAiModel);
 
     addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
     setIsSaving(false);
@@ -448,36 +459,72 @@ export default function AdminSettingsPage() {
           </div>
 
           <div className={localProvider !== 'gemini' ? 'opacity-50' : ''}>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Gemini API Key</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Gemini API Key</label>
             <input 
               type="password" 
               value={localApiKey} 
               onChange={(e) => setLocalApiKey(e.target.value)} 
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
+              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white" 
               placeholder="AIzaSy..." 
             />
+            
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Gemini Model</label>
+              <select 
+                value={localGeminiModel} 
+                onChange={(e) => setLocalGeminiModel(e.target.value)} 
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white"
+              >
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash (Default - Fast & Cost-effective)</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro (High Intelligence)</option>
+              </select>
+            </div>
           </div>
 
           <div className={localProvider !== 'claude' ? 'opacity-50' : ''}>
-            <label className="block text-sm font-bold text-slate-700 mb-2">Claude API Key (Anthropic)</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Claude API Key (Anthropic)</label>
             <input 
               type="password" 
               value={localClaudeKey} 
               onChange={(e) => setLocalClaudeKey(e.target.value)} 
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
+              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white" 
               placeholder="sk-ant-api03-..." 
             />
+            
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Claude Model</label>
+              <select 
+                value={localClaudeModel} 
+                onChange={(e) => setLocalClaudeModel(e.target.value)} 
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white"
+              >
+                <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Default - Industry Best)</option>
+                <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fast & Balanced)</option>
+              </select>
+            </div>
           </div>
 
           <div className={localProvider !== 'openai' ? 'opacity-50' : ''}>
-            <label className="block text-sm font-bold text-slate-700 mb-2">OpenAI API Key</label>
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">OpenAI API Key</label>
             <input 
               type="password" 
               value={localOpenAiKey} 
               onChange={(e) => setLocalOpenAiKey(e.target.value)} 
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium" 
+              className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white" 
               placeholder="sk-proj-..." 
             />
+            
+            <div className="mt-4">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">OpenAI Model</label>
+              <select 
+                value={localOpenAiModel} 
+                onChange={(e) => setLocalOpenAiModel(e.target.value)} 
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white"
+              >
+                <option value="gpt-4o-mini">GPT-4o Mini (Default - High Speed)</option>
+                <option value="gpt-4o">GPT-4o (Premium Performance)</option>
+              </select>
+            </div>
           </div>
 
           <div className={localProvider !== 'openrouter' ? 'opacity-50' : ''}>
@@ -1145,6 +1192,27 @@ export default function AdminSettingsPage() {
                 <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-compare</code> (compare price),
                 <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-button</code> (buy button).
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Fraud & Security Rules Panel */}
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+            <ShieldAlert className="w-6 h-6 text-indigo-600" /> Fraud & Security Rules
+          </h2>
+          <div className="space-y-6">
+            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">IP Order Limit Timeframe (Minutes)</label>
+              <input 
+                type="number" 
+                min={1} 
+                value={translations?.ipOrderLimitTimeframe || ''} 
+                onChange={e => setTranslations(prev => ({ ...(prev || {}), ipOrderLimitTimeframe: e.target.value }))}
+                placeholder="e.g. 60 (leave empty to disable limit)" 
+                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Prevent multiple orders coming from the same IP address within this timeframe.</p>
             </div>
           </div>
         </div>

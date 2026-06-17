@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     let textOutput = '';
 
     if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.5-flash'}:generateContent?key=${encodeURIComponent(apiKey)}`;
       
       const parts: any[] = [{ text: prompt }];
       if (images && images.length > 0) {
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
           'anthropic-beta': 'max-tokens-3-5-sonnet-2024-07-15'
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20241022',
+          model: model || 'claude-3-5-sonnet-20241022',
           max_tokens: 8192,
           messages: [{ role: 'user', content: contentBlocks }]
         })
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: model || 'gpt-4o-mini',
           messages: [{ role: 'user', content: contentBlocks }]
         })
       });

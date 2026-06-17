@@ -14,8 +14,17 @@ export const aiService = {
     const provider = state.aiProvider || 'gemini';
     let apiKey = state.globalApiKey;
     let model = undefined;
-    if (provider === 'claude') apiKey = state.claudeApiKey;
-    if (provider === 'openai') apiKey = state.openAiApiKey;
+    if (provider === 'gemini') {
+      model = state.geminiModel || 'gemini-2.5-flash';
+    }
+    if (provider === 'claude') {
+      apiKey = state.claudeApiKey;
+      model = state.claudeModel || 'claude-3-5-sonnet-20241022';
+    }
+    if (provider === 'openai') {
+      apiKey = state.openAiApiKey;
+      model = state.openAiModel || 'gpt-4o-mini';
+    }
     if (provider === 'openrouter') {
       apiKey = state.openRouterApiKey;
       model = state.openRouterModel;

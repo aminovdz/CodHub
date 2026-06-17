@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { slugify } from '../utils';
+import { headers } from 'next/headers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -125,6 +126,9 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
   storeId?: string
 }) {
   try {
+    const reqHeaders = await headers();
+    const ipAddress = reqHeaders.get('x-forwarded-for')?.split(',')[0].trim() || reqHeaders.get('x-real-ip') || '127.0.0.1';
+
     const totalPrice = payload.cart.reduce((acc, curr) => acc + curr.price, 0);
     const upsellTotal = payload.cart.filter(i => i.isUpsell).reduce((acc, curr) => acc + curr.price, 0);
     const productNames = payload.cart.map(i => i.isUpsell ? `[Add-on] ${i.name}` : i.name).join(', ');
@@ -145,6 +149,29 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
         });
       }
     }
+
+    if (store) {
+      const translations = store.translations as any || {};
+      const limitMinutes = Number(translations.ipOrderLimitTimeframe) || 0;
+      if (limitMinutes > 0 && ipAddress !== '127.0.0.1') {
+        const cutoffTime = new Date(Date.now() - limitMinutes * 60 * 1000).toISOString();
+        const { data: recentOrders, error: recentError } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('store_id', store.id)
+          .eq('ip_address', ipAddress)
+          .neq('status', 'DRAFT')
+          .gt('date', cutoffTime);
+
+        if (recentError) {
+          console.error('[submitOrder] Failed to query recent orders for IP limit:', recentError);
+        } else if (recentOrders && recentOrders.length > 0) {
+          console.warn(`[submitOrder] Blocked duplicate order from IP ${ipAddress} for store ${store.id}. Configured limit: ${limitMinutes} min.`);
+          return { error: 'You have already placed an order recently. Please wait before submitting again.' };
+        }
+      }
+    }
+
     let webhookUrl = store?.generic_webhook_url;
     const dzFulfillment = store?.dz_fulfillment as any;
 
@@ -152,6 +179,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       store_id: store?.id,
       customer: payload.customerName,
       phone: payload.phone,
+      ip_address: ipAddress,
       address: payload.address?.landmark || payload.address?.address || (typeof payload.address === 'string' ? payload.address : ''),
       wilaya: payload.address?.wilaya,
       commune: payload.address?.commune,
