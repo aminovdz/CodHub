@@ -14,14 +14,27 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 /**
  * Saves or updates a DRAFT order with Name and Phone from Step 1.
  */
-export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, step?: string, source?: string, utmCampaign?: string }) {
+export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, storeId?: string, step?: string, source?: string, utmCampaign?: string }) {
   try {
-    // Find the store for this region
-    const { data: store, error: storeError } = await supabase
-      .from('stores')
-      .select('id, generic_webhook_url')
-      .ilike('region', data.region)
-      .single();
+    let store;
+    let storeError;
+
+    if (data.storeId) {
+      const result = await supabase.from('stores').select('id, generic_webhook_url').eq('id', data.storeId).single();
+      store = result.data;
+      storeError = result.error;
+    } else {
+      const { data: allStores, error: allStoresError } = await supabase.from('stores').select('id, name, region, generic_webhook_url');
+      storeError = allStoresError;
+      if (allStores) {
+        store = allStores.find((s: any) => {
+          const lowerRegion = data.region.toLowerCase();
+          // slugify the store name logic
+          const slugifiedName = s.name ? s.name.toLowerCase().trim().replace(/[\\s\\W-]+/g, '-') : '';
+          return s.region.toLowerCase() === lowerRegion || slugifiedName === lowerRegion;
+        });
+      }
+    }
     
     if (storeError || !store) {
       console.error(`[saveDraftOrder] Store not found for region: "${data.region}"`, storeError);
@@ -108,7 +121,8 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
   couponCode?: string,
   customFields?: any,
   source?: string,
-  utmCampaign?: string
+  utmCampaign?: string,
+  storeId?: string
 }) {
   try {
     const totalPrice = payload.cart.reduce((acc, curr) => acc + curr.price, 0);
@@ -117,8 +131,20 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 
     const finalTotal = payload.total !== undefined ? payload.total : totalPrice;
 
-    // Fetch the store to get the webhook URL, API keys, dz_fulfillment, and translations
-    const { data: store } = await supabase.from('stores').select('id, generic_webhook_url, resend_api_key, notify_email, dz_fulfillment, translations').ilike('region', regionCode).single();
+    let store;
+    if (payload.storeId) {
+      const result = await supabase.from('stores').select('id, generic_webhook_url, resend_api_key, notify_email, dz_fulfillment, translations').eq('id', payload.storeId).single();
+      store = result.data;
+    } else {
+      const { data: allStores } = await supabase.from('stores').select('id, name, region, generic_webhook_url, resend_api_key, notify_email, dz_fulfillment, translations');
+      if (allStores) {
+        store = allStores.find((s: any) => {
+          const lowerRegion = regionCode.toLowerCase();
+          const slugifiedName = s.name ? s.name.toLowerCase().trim().replace(/[\\s\\W-]+/g, '-') : '';
+          return s.region.toLowerCase() === lowerRegion || slugifiedName === lowerRegion;
+        });
+      }
+    }
     let webhookUrl = store?.generic_webhook_url;
     const dzFulfillment = store?.dz_fulfillment as any;
 

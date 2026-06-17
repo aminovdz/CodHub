@@ -10,10 +10,9 @@ import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
 
-export default function CheckoutPage({ params }: { params: Promise<{ region: string }> }) {
+export default function CheckoutPage({ params }: { params: Promise<{ store: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region;
-  const { t } = useTranslation(region);
+  const storeSlug = resolvedParams.store;
   
   const [step, setStep] = useState(1);
   const [isAnimatingPrice, setIsAnimatingPrice] = useState(false);
@@ -35,7 +34,9 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
   const totalPrice = getTotalPrice();
 
   const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  const { t } = useTranslation(region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
@@ -357,6 +358,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
         name: customerName,
         phone: `${prefix}${phone.replace(/^0+/, '')}`,
         region: region,
+        storeId: store?.id,
         source: utmSource || undefined,
         utmCampaign: utmCampaign || undefined,
       });
@@ -524,7 +526,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
     // Redirect user instantly for snappy UI
     setStatus('SUCCESS');
     const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    router.push(isCustomDomain ? '/thank-you' : `/${region}/thank-you`);
+    router.push(isCustomDomain ? '/thank-you' : `/${storeSlug}/thank-you`);
 
     // Fire and forget server action in background
     if (draftOrderId) {
@@ -540,6 +542,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
           deliveryRate: deliveryRate,
           couponCode: appliedCoupon ? appliedCoupon.code : '',
           customFields: customFieldsData,
+          storeId: store?.id,
           source: utmSource || undefined,
           utmCampaign: utmCampaign || undefined,
         });
@@ -613,7 +616,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
       const res = await saveDraftOrder({
         id: localOrderId, name: customerName,
         phone: `${prefix}${phone.replace(/^0+/, '')}`,
-        region, source: utmSource || undefined, utmCampaign: utmCampaign || undefined,
+        region, storeId: store?.id, source: utmSource || undefined, utmCampaign: utmCampaign || undefined,
       });
       if (res?.success && res.orderId && res.orderId !== localOrderId) setDraftOrderId(res.orderId);
     } catch (err) {
@@ -878,7 +881,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ region: str
 
                 <button
                   onClick={handleProceedToAddress}
-                  disabled={!customerName || phone.length < 8 || !isCustomFieldsValid}
+                  disabled={!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid}
                   style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
                   className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
                 >

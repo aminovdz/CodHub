@@ -7,16 +7,16 @@ export default async function StorefrontLayout({
   params
 }: { 
   children: ReactNode,
-  params: Promise<{ region: string }>
+  params: Promise<{ store: string }>
 }) {
   const resolvedParams = await params;
-  const region = resolvedParams.region;
+  const storeSlug = resolvedParams.store;
 
   return (
     <>
-      <GlobalHeader region={region} />
+      <GlobalHeader region={storeSlug} />
       {children}
-      <GlobalFooter region={region} />
+      <GlobalFooter region={storeSlug} />
     </>
   );
 }

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { slugify } from '../utils';
 
 import { DEFAULT_TRANSLATIONS } from '../translations';
 import { supabase } from '../supabase';
@@ -22,13 +23,16 @@ export const COUNTRY_DATA: Record<string, { name: string, states: string[] }> = 
   "RO": { name: "Romania", states: ROMANIA_COUNTIES }
 };
 
-export function resolveStore(availableStores: Store[], region: string): Store | undefined {
+export function resolveStore(availableStores: Store[], storeSlugOrRegion: string): Store | undefined {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname.replace('www.', '').split(':')[0];
     const found = availableStores.find(s => s.customDomain && s.customDomain.replace('www.', '').toLowerCase() === host.toLowerCase());
     if (found) return found;
   }
-  return availableStores.find(s => s.region.toLowerCase() === region.toLowerCase());
+  
+  if (!storeSlugOrRegion) return undefined;
+  const lowerQuery = storeSlugOrRegion.toLowerCase();
+  return availableStores.find(s => slugify(s.name) === lowerQuery || s.region.toLowerCase() === lowerQuery);
 }
 
 // --- Mappers: camelCase Store ↔ snake_case Supabase row ---
@@ -827,6 +831,12 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         }));
       },
       addStore: async (store) => {
+        const proposedSlug = slugify(store.name);
+        const exists = get().availableStores.some(s => slugify(s.name) === proposedSlug);
+        if (exists) {
+           useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
+           return;
+        }
         const lang = store.language || 'en';
         const defaultTrans = DEFAULT_TRANSLATIONS[lang] || DEFAULT_TRANSLATIONS['en'];
         const storeWithTrans = {
@@ -884,6 +894,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         }));
       },
       updateStore: async (storeId, data) => {
+        if (data.name) {
+          const proposedSlug = slugify(data.name);
+          const exists = get().availableStores.some(s => s.id !== storeId && slugify(s.name) === proposedSlug);
+          if (exists) {
+             useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
+             return;
+          }
+        }
         set((state) => {
           const oldStore = state.availableStores.find(s => s.id === storeId);
           const nextTranslations = data.translations && oldStore

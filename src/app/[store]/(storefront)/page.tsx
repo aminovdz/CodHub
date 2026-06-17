@@ -6,21 +6,22 @@ import { ChevronRight, Star, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
-export default function StorefrontPage({ params }: { params: Promise<{ region: string }> }) {
+export default function StorefrontPage({ params }: { params: Promise<{ store: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region;
-  const { t } = useTranslation(region);
+  const storeSlug = resolvedParams.store;
   // Currency will be initialized after store is fetched
   
   const { availableStores, homepages, products, categories } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  const { t } = useTranslation(region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const homepageConfig = store ? homepages.find(h => h.storeId === store.id) : undefined;
   
   const [isMounted, setIsMounted] = useState(false);
   
   const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-  const basePath = isCustomDomain ? '' : `/${region}`;
+  const basePath = isCustomDomain ? '' : `/${storeSlug}`;
 
   useEffect(() => {
     setIsMounted(true);

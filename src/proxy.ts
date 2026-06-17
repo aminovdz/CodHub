@@ -16,6 +16,20 @@ export const config = {
 
 const SUPPORTED_REGIONS = ['dz', 'ro', 'co'];
 
+function slugify(text: string): string {
+  if (!text) return '';
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
+}
+
+
 export async function proxy(req: NextRequest) {
   const url = req.nextUrl;
   
@@ -104,7 +118,7 @@ export async function proxy(req: NextRequest) {
   if (supabaseUrl && supabaseKey && host !== 'localhost' && !host.endsWith('.vercel.app')) {
     try {
       const res = await fetch(
-        `${supabaseUrl}/rest/v1/stores?custom_domain=eq.${host}&select=region`,
+        `${supabaseUrl}/rest/v1/stores?custom_domain=eq.${host}&select=name,region`,
         {
           headers: {
             apikey: supabaseKey,
@@ -116,8 +130,8 @@ export async function proxy(req: NextRequest) {
       if (res.ok) {
         const stores = await res.json();
         if (stores && stores.length > 0) {
-          const region = stores[0].region.toLowerCase();
-          return NextResponse.rewrite(new URL(`/${region}${url.pathname}`, req.url));
+          const storeSlug = slugify(stores[0].name) || stores[0].region.toLowerCase();
+          return NextResponse.rewrite(new URL(`/${storeSlug}${url.pathname}`, req.url));
         }
       }
     } catch (e) {

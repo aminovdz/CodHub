@@ -28,7 +28,7 @@ export default function HelpDocsPage() {
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'domain' | 'webhook' | 'ai'>('domain');
+  const [activeTab, setActiveTab] = useState<'domain' | 'webhook' | 'ai' | 'pixels'>('domain');
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -118,6 +118,16 @@ function doPost(e) {
           }`}
         >
           <Sparkles size={14} /> AI Hub Prompts
+        </button>
+        <button
+          onClick={() => setActiveTab('pixels')}
+          className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'pixels'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-md'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <Sparkles size={14} /> Tracking Pixels
         </button>
       </div>
 
@@ -378,6 +388,62 @@ function doPost(e) {
               <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-medium">
                 If your domain is managed by Cloudflare, make sure to set the <strong>Proxy Status</strong> to <span className="text-amber-600 font-bold">DNS Only</span> (grey cloud) rather than Proxied (orange cloud) during initial setup. This allows COD-Hub to provision automatic SSL certificates for your custom checkout funnels instantly.
               </p>
+            </div>
+          </div>
+        </>
+      ) : activeTab === 'pixels' ? (
+        <>
+          {/* Header Banner Pixels */}
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-indigo-950 p-8 md:p-12 text-white border border-slate-800 shadow-2xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.15),transparent_50%)]" />
+            <div className="relative z-10 space-y-4">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 uppercase tracking-widest">
+                <Sparkles size={12} className="animate-pulse" /> Testing Tracking Pixels
+              </span>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-none">
+                How to verify <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-300">Pixels & Analytics</span>
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl font-medium">
+                A quick guide to ensure your Facebook, TikTok, Google Analytics, and Google Tag Manager pixels are firing correctly on your store.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Facebook Pixel */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600" /> Facebook (Meta) Pixel
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                To test the Facebook pixel, install the <strong>Meta Pixel Helper</strong> Chrome Extension. Go to your storefront and click the extension. You should see <code>PageView</code> and <code>ViewContent</code> firing. When you complete an order, you should see the <code>Purchase</code> event with the purchase value. You can also use the <strong>Events Manager &rarr; Test Events</strong> tool in Facebook Business Manager.
+              </p>
+            </div>
+
+            {/* TikTok Pixel */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white" /> TikTok Pixel
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                To test the TikTok pixel, install the <strong>TikTok Pixel Helper</strong> Chrome Extension. Browse your store to verify <code>ViewContent</code> fires. Make a test purchase to ensure the <code>CompletePayment</code> event fires with the correct order value.
+              </p>
+            </div>
+
+            {/* Google Analytics & Tags */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm md:col-span-2 space-y-4">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Google Analytics (GA4) & Google Tag Manager (GTM)
+              </h3>
+              <p className="text-sm text-slate-500 font-medium">
+                To test Google Analytics and Google Tag Manager:
+              </p>
+              <ol className="list-decimal pl-5 space-y-2 text-sm font-semibold leading-relaxed text-slate-500 dark:text-slate-400">
+                <li>Install the <strong>Google Tag Assistant</strong> Chrome Extension or use the <strong>Tag Assistant Preview Mode</strong> from the GTM dashboard.</li>
+                <li>In GA4, go to <strong>Admin &rarr; DebugView</strong>. This will show a live timeline of all events firing on your device.</li>
+                <li>Browse your products to trigger the <code>view_item</code> event.</li>
+                <li>Complete a test checkout to trigger the <code>purchase</code> event. Verify that the revenue value and currency are passed correctly in the event parameters.</li>
+              </ol>
             </div>
           </div>
         </>

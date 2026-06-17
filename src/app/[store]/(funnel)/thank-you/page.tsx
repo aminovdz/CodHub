@@ -11,15 +11,16 @@ import { getShortOrderId } from '@/lib/idHelper';
 import { markOrderSelfConfirmed } from '@/lib/actions/funnelActions';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
 
-export default function ThankYouPage({ params }: { params: Promise<{ region: string }> }) {
+export default function ThankYouPage({ params }: { params: Promise<{ store: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region;
-  const { t } = useTranslation(region);
+  const storeSlug = resolvedParams.store;
   const router = useRouter();
 
   const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addressData, addCartItem, buyNow } = useFunnelStore();
   const { availableStores, checkoutConfigs, products } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  const { t } = useTranslation(region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const whatsappConfig = store?.whatsappConfig;
   const checkoutConfig = checkoutConfigs.find(c => c.storeId === store?.id);
@@ -96,7 +97,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
     });
     setOtoClaimed(true);
     const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    const basePath = isCustomDomain ? '' : `/${region}`;
+    const basePath = isCustomDomain ? '' : `/${storeSlug}`;
     setTimeout(() => router.push(`${basePath}/checkout`), 800);
   };
 
@@ -279,7 +280,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ region: str
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {storeProducts.map((prod) => {
                 const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-                const basePath = isCustomDomain ? '' : `/${region}`;
+                const basePath = isCustomDomain ? '' : `/${storeSlug}`;
                 return (
                 <Link
                   href={`${basePath}/products/${prod.seoSlug || prod.id}`}

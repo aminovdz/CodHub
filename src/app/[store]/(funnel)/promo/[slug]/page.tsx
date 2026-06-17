@@ -33,12 +33,14 @@ function parseShortcodes(html: string) {
   return segments.length > 0 ? segments : [{ type: 'html' as const, content: html }];
 }
 
-export default function PromoLandingPage({ params }: { params: Promise<{ region: string, slug: string }> }) {
+export default function PromoLandingPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region as 'dz' | 'ro' | 'co';
+  const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
-  const { landingPages, availableStores, _hasHydrated } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const { availableStores, landingPages, products, _hasHydrated } = useAdminStore();
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  
   const regionLower = region?.toLowerCase() || '';
   const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(regionLower);
 

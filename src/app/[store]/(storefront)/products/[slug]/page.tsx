@@ -61,16 +61,15 @@ const PRODUCTS = [
   }
 ];
 
-export default function ProductPage({ params }: { params: Promise<{ region: string, slug: string }> }) {
+export default function ProductPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region;
+  const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
   const router = useRouter();
-  const { t } = useTranslation(region);
-  // Currency will be initialized after store is fetched
-  
   const { products, availableStores, _hasHydrated } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  const { t } = useTranslation(region);
   const decodedSlug = decodeURIComponent(slug);
   const product = products.find(p => p.seoSlug === decodedSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedSlug) || PRODUCTS.find(p => p.slug === decodedSlug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
@@ -171,7 +170,7 @@ export default function ProductPage({ params }: { params: Promise<{ region: stri
     
     // 3. Push to checkout
     const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    const basePath = isCustomDomain ? '' : `/${region}`;
+    const basePath = isCustomDomain ? '' : `/${storeSlug}`;
     router.push(`${basePath}/checkout`);
   };
 

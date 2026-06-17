@@ -6,9 +6,9 @@ import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 
 // Mocks removed
 
-export default function LegalPage({ params }: { params: Promise<{ region: string, policy: string }> }) {
+export default function LegalPage({ params }: { params: Promise<{ store: string, policy: string }> }) {
   const resolvedParams = use(params);
-  const region = resolvedParams.region as 'dz' | 'ro' | 'co';
+  const storeSlug = resolvedParams.store;
   const policySlug = resolvedParams.policy;
 
   const { legalPages, availableStores } = useAdminStore();
@@ -18,7 +18,9 @@ export default function LegalPage({ params }: { params: Promise<{ region: string
     setIsMounted(true);
   }, []);
 
-  const store = resolveStore(availableStores, region);
+  const store = resolveStore(availableStores, storeSlug);
+  const region = store?.region || storeSlug;
+  
   const currentPolicy = store ? legalPages.find(p => p.storeId === store.id && p.slug.trim().toLowerCase() === policySlug.trim().toLowerCase()) : undefined;
 
   if (!isMounted) return null;
