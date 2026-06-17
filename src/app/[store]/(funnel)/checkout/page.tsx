@@ -523,15 +523,10 @@ export default function CheckoutPage({ params }: { params: Promise<{ store: stri
       if ((window as any).gtag) (window as any).gtag('event', 'purchase', { value: val, currency: curr, transaction_id: finalOrderId });
     }
 
-    // Redirect user instantly for snappy UI
-    setStatus('SUCCESS');
-    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    router.push(isCustomDomain ? '/thank-you' : `/${storeSlug}/thank-you`);
-
-    // Fire and forget server action in background
-    if (draftOrderId) {
+    // Await the server action BEFORE navigation so it doesn't get cancelled by the browser
+    if (finalOrderId) {
       try {
-        await submitOrder(draftOrderId, region, {
+        await submitOrder(finalOrderId, region, {
           customerName,
           phone: `${prefix}${phone.replace(/^0+/, '')}`,
           address: finalAddress,
@@ -550,6 +545,11 @@ export default function CheckoutPage({ params }: { params: Promise<{ store: stri
         console.warn("Server submitOrder failed or is not configured, using local fallback", err);
       }
     }
+
+    // Redirect user after submission
+    setStatus('SUCCESS');
+    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+    router.push(isCustomDomain ? '/thank-you' : `/${storeSlug}/thank-you`);
   };
 
   const dynamicUpsells = useMemo(() => {

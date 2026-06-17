@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { slugify } from '../utils';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,8 +30,7 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
       if (allStores) {
         store = allStores.find((s: any) => {
           const lowerRegion = data.region.toLowerCase();
-          // slugify the store name logic
-          const slugifiedName = s.name ? s.name.toLowerCase().trim().replace(/[\\s\\W-]+/g, '-') : '';
+          const slugifiedName = slugify(s.name);
           return s.region.toLowerCase() === lowerRegion || slugifiedName === lowerRegion;
         });
       }
@@ -140,7 +140,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       if (allStores) {
         store = allStores.find((s: any) => {
           const lowerRegion = regionCode.toLowerCase();
-          const slugifiedName = s.name ? s.name.toLowerCase().trim().replace(/[\\s\\W-]+/g, '-') : '';
+          const slugifiedName = slugify(s.name);
           return s.region.toLowerCase() === lowerRegion || slugifiedName === lowerRegion;
         });
       }

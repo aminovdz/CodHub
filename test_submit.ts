@@ -1,40 +1,21 @@
+import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-dotenv.config({ path: '.env' });
 dotenv.config({ path: '.env.local' });
-
-import { saveDraftOrder, submitOrder } from './src/lib/actions/funnelActions';
+import { submitOrder } from './src/lib/actions/funnelActions';
 
 async function run() {
   try {
-    const draftId = await saveDraftOrder({
-      id: null,
-      name: 'Test Customer',
-      phone: '0555555555',
-      region: 'dz',
-      step: 'Checkout'
+    const res = await submitOrder('ORD-TEST-123', 'TEST', {
+      customerName: 'Test',
+      phone: '1234567890',
+      address: 'Test Addr',
+      instructions: '',
+      cart: [{ id: '1', name: 'Test Prod', price: 100, isUpsell: false }],
+      storeId: 'f0c0ee3e-e6ec-4581-9b6d-a1c62f277a11' // Try to see what happens
     });
-    console.log("Draft Result:", draftId);
-    
-    if (draftId.orderId) {
-      await submitOrder(draftId.orderId, 'dz', {
-        customerName: 'Test Customer',
-        phone: '0555555555',
-        address: { wilaya: 'Alger', commune: 'Alger Centre', address: 'Rue Didouche Mourad' },
-        instructions: 'Call before delivery',
-        cart: [{ id: 'test', name: 'Test Product', price: 5000, isUpsell: false }],
-        total: 5000,
-        discountAmount: 0,
-        deliveryRate: 0,
-        couponCode: '',
-        customFields: {},
-        source: 'direct',
-        utmCampaign: 'test'
-      });
-      console.log("Order Submitted successfully");
-    }
+    console.log(res);
   } catch (e) {
-    console.error("Failed:", e);
+    console.error(e);
   }
 }
-
 run();
