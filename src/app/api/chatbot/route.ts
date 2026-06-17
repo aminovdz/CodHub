@@ -235,6 +235,15 @@ export async function POST(req: Request) {
           temperature: 0.4,
           stream: true,
         };
+      } else if (provider_ === 'nvidia') {
+        endpoint = 'https://integrate.api.nvidia.com/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        body = {
+          model: knowledge.config.chatbotModel || 'meta/llama-3.1-405b-instruct',
+          messages: formattedMessages,
+          temperature: 0.4,
+          stream: true,
+        };
       } else {
         endpoint = 'https://openrouter.ai/api/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;

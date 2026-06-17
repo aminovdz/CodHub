@@ -361,6 +361,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ store: stri
         storeId: store?.id,
         source: utmSource || undefined,
         utmCampaign: utmCampaign || undefined,
+        product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '),
       });
       if (res?.error) {
         console.error("saveDraftOrder returned error:", res.error);
@@ -617,6 +618,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ store: stri
         id: localOrderId, name: customerName,
         phone: `${prefix}${phone.replace(/^0+/, '')}`,
         region, storeId: store?.id, source: utmSource || undefined, utmCampaign: utmCampaign || undefined,
+        product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '),
       });
       if (res?.success && res.orderId && res.orderId !== localOrderId) setDraftOrderId(res.orderId);
     } catch (err) {

@@ -111,7 +111,7 @@ Design the layout mapped to the following sections:
    - Include a strong Risk Reversal statement (e.g., "Check the product before you pay").
 
 ### 3. Technical Execution (CRITICAL)
-${isArabic ? '- RTL Formatting: Since the language is Arabic, you MUST wrap the main container or relevant text blocks with `dir="rtl"` so the text correctly starts from the right to the left.' : ''}
+${isArabic ? '- RTL Formatting (CRITICAL): The language is Arabic. You MUST include `dir="rtl"` in your top-level `<div>` (e.g., `<div dir="rtl" className="...">`). This is absolutely mandatory.' : ''}
 - No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
 - Raw JSX/HTML Output: Output ONLY the JSX/HTML content inside a single top-level <div> tag. No imports, no React component wrapping, no helper functions, and no 'export default'.
 - Tailwind CSS: Use Tailwind for all styling. 
@@ -154,27 +154,27 @@ Create this for the product: "${title}" in the region: "${region}".`;
       // Remove the comment block
       let componentCode = rawResult.replace(/\/\*[\s\S]*?\*\//, '').trim();
       
-      // Strip markdown wrapping if AI mistakenly added it
-      componentCode = componentCode.replace(/^```[a-z]*\n/i, '').replace(/```$/i, '').trim();
+      // Strip markdown wrapping if AI mistakenly added it (multiple backticks)
+      componentCode = componentCode.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
 
-      // Extract the JSX inside the return statement since react-jsx-parser expects pure JSX
-      if (componentCode.includes('return')) {
-        const returnMatch = componentCode.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?/);
-        if (returnMatch && returnMatch[1]) {
-          componentCode = returnMatch[1];
-        } else {
-          const returnMatch2 = componentCode.match(/return\s+([\s\S]*?)\s*;?/);
-          if (returnMatch2 && returnMatch2[1]) {
-            componentCode = returnMatch2[1];
-          }
+      // Attempt to extract from return statement
+      const returnParenthesesMatch = componentCode.match(/return\s*\(\s*(<[\s\S]+?)\s*\)\s*;/);
+      if (returnParenthesesMatch && returnParenthesesMatch[1]) {
+        componentCode = returnParenthesesMatch[1];
+      } else {
+        const returnNoParenthesesMatch = componentCode.match(/return\s*(<[\s\S]+?)\s*;/);
+        if (returnNoParenthesesMatch && returnNoParenthesesMatch[1]) {
+          componentCode = returnNoParenthesesMatch[1];
         }
       }
 
-      // If the code still contains React boilerplate (e.g. export default, function, class), extract the main <div> block
-      if (componentCode.includes('export default') || componentCode.includes('function') || componentCode.includes('import')) {
-        const divMatch = componentCode.match(/(<div[\s\S]*<\/div>)/);
-        if (divMatch && divMatch[1]) {
-          componentCode = divMatch[1];
+      // Fallback: If it's a full file with imports/exports, just grab the first HTML-like tag to the last closing tag.
+      // This is a naive but effective heuristic if the AI wraps it in a component.
+      if (componentCode.includes('import ') || componentCode.includes('export default') || componentCode.includes('const ')) {
+        const firstTagIndex = componentCode.indexOf('<');
+        const lastTagIndex = componentCode.lastIndexOf('>');
+        if (firstTagIndex !== -1 && lastTagIndex !== -1 && lastTagIndex > firstTagIndex) {
+          componentCode = componentCode.substring(firstTagIndex, lastTagIndex + 1);
         }
       }
 

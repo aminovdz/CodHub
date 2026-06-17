@@ -16,7 +16,7 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 /**
  * Saves or updates a DRAFT order with Name and Phone from Step 1.
  */
-export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, storeId?: string, step?: string, source?: string, utmCampaign?: string }) {
+export async function saveDraftOrder(data: { id?: string | null, name: string, phone: string, region: string, storeId?: string, step?: string, source?: string, utmCampaign?: string, product?: string }) {
   try {
     let store;
     let storeError;
@@ -46,6 +46,7 @@ export async function saveDraftOrder(data: { id?: string | null, name: string, p
       customer: data.name,
       phone: data.phone,
       store_id: store.id,
+      product: data.product || null,
       status: 'DRAFT',
       custom_fields: { step: data.step || 'Checkout', utm_campaign: data.utmCampaign || '', source: data.source || '' }
     };
@@ -167,6 +168,12 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
           console.error('[submitOrder] Failed to query recent orders for IP limit:', recentError);
         } else if (recentOrders && recentOrders.length > 0) {
           console.warn(`[submitOrder] Blocked duplicate order from IP ${ipAddress} for store ${store.id}. Configured limit: ${limitMinutes} min.`);
+          
+          // Increment preventedOrdersCount
+          const newPreventedCount = (Number(translations.preventedOrdersCount) || 0) + 1;
+          const updatedTranslations = { ...translations, preventedOrdersCount: newPreventedCount };
+          await supabase.from('stores').update({ translations: updatedTranslations }).eq('id', store.id);
+
           return { error: 'You have already placed an order recently. Please wait before submitting again.' };
         }
       }
@@ -271,16 +278,26 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 
     // ── Email Notification to Confirmation Staff ──
     try {
-      // Find staff in this store with 'confirmation' role
-      const { data: storeStaff } = await supabase
-        .from('staff_accounts')
-        .select('name, email, role')
-        .eq('store_id', payloadObj.store_id)
-        .eq('role', 'confirmation');
+      if (store?.resend_api_key) {
+        // Fetch all confirmation staff
+        const { data: allStaff } = await supabase
+          .from('staff_accounts')
+          .select('id, name, email, role, store_id, store_ids')
+          .eq('role', 'confirmation');
+
+        const staffAssignments = store.translations?.staffAssignments || {};
         
-      if (storeStaff && storeStaff.length > 0) {
-        const staffEmails = storeStaff.map(s => s.email).filter(Boolean);
-        if (staffEmails.length > 0 && store?.resend_api_key) {
+        // Filter staff eligible for this store
+        const eligibleStaffForEmail = (allStaff || []).filter(staff => {
+          if (staff.store_id === store.id) return true;
+          if (Array.isArray(staff.store_ids) && staff.store_ids.includes(store.id)) return true;
+          const assignedStoreIds = staffAssignments[staff.id];
+          return Array.isArray(assignedStoreIds) && assignedStoreIds.includes(store.id);
+        });
+
+        const staffEmails = eligibleStaffForEmail.map(s => s.email).filter(Boolean);
+        
+        if (staffEmails.length > 0) {
           try {
             const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -303,8 +320,6 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
           } catch (err) {
             console.error('[Email] Resend API failed:', err);
           }
-        } else if (staffEmails.length > 0) {
-          console.log(`[Email] Simulating New Order Email (No API Key):`, staffEmails);
         }
       }
     } catch (e) {
