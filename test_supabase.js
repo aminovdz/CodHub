@@ -1,25 +1,27 @@
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env' });
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
 async function test() {
-  const { data: orders } = await supabase.from('orders').select('id, status, notes').limit(1);
-  if (!orders || orders.length === 0) {
-    console.log("No orders found");
-    return;
+  console.log("Fetching stores...");
+  const { data: stores, error: storesError } = await supabase.from('stores').select('id, name, region, generic_webhook_url');
+  if (storesError) {
+    console.error("Error fetching stores:", storesError);
+  } else {
+    console.log("Stores:", JSON.stringify(stores, null, 2));
   }
-  const orderId = orders[0].id;
-  console.log("Testing with order:", orderId);
-  
-  const { data, error } = await supabase.from('orders').update({ status: 'TEST' }).eq('id', orderId);
-  console.log("Update status error:", error);
-  
-  const { data: data2, error: error2 } = await supabase.from('orders').update({ notes: [] }).eq('id', orderId);
-  console.log("Update notes error:", error2);
+
+  console.log("\nFetching recent orders...");
+  const { data: orders, error: ordersError } = await supabase.from('orders').select('id, store_id, customer, phone, status, total, product, date').order('date', { ascending: false }).limit(10);
+  if (ordersError) {
+    console.error("Error fetching orders:", ordersError);
+  } else {
+    console.log("Recent Orders:", JSON.stringify(orders, null, 2));
+  }
 }
 
 test();

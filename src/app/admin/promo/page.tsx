@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, ShoppingCart, AlignLeft, Copy, X, Plus, Trash2, Sparkles, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
 import { uploadImageToSupabase } from '@/lib/storage';
 
 export default function AdminPromoPage() {
@@ -30,7 +30,6 @@ export default function AdminPromoPage() {
 </div>`);
 
   const [previewMode, setPreviewMode] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { notify } = useNotificationStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -45,42 +44,16 @@ export default function AdminPromoPage() {
       const block = `\n<!-- Custom Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${url}" alt="Campaign Image" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
       setHtmlContent(prev => prev + block);
       notify('Image uploaded and injected successfully!', 'success');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      notify(error.message || 'Failed to upload image', 'error');
+      const errMsg = error instanceof Error ? error.message : 'Failed to upload image';
+      notify(errMsg, 'error');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleAIGenerate = async () => {
-    if (!selectedProduct) {
-      notify("Please select a product from the dropdown first to generate a landing page for it.", "warning");
-      return;
-    }
-    const prod = storeProducts.find(p => p.id === selectedProduct);
-    if (!prod) return;
-    
-    setIsGenerating(true);
-    try {
-      const { aiService } = await import('@/lib/services/aiService');
-      const result = await aiService.generateLandingPage(prod.title, activeStore.region);
-      if (result) {
-        setHtmlContent(result.componentCode);
-        setTitle(`Promo: ${prod.title}`);
-        if (result.metadata?.core_value_proposition) {
-          console.log("Metadata extracted:", result.metadata);
-        }
-      } else {
-        notify("Failed to generate AI landing page.", "error");
-      }
-    } catch (e) {
-      console.error(e);
-      notify("Error calling AI.", "error");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+
 
   // Use originalSlug so we can still find the page even if the user edits the slug field
   const existingPage = landingPages.find(p => p.storeId === activeStore.id && p.slug === originalSlug);
@@ -256,9 +229,6 @@ export default function AdminPromoPage() {
             <div className="flex items-center justify-between mb-4">
               <label className="block text-sm font-bold text-slate-700">Raw HTML Content</label>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={handleAIGenerate} disabled={isGenerating} className="text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors disabled:opacity-50">
-                  <Sparkles size={14} className={isGenerating ? "animate-pulse" : ""} /> {isGenerating ? 'AI is building page...' : '✨ Auto-Generate Page'}
-                </button>
                 <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1.5 rounded-lg flex items-center gap-1">
                   <LayoutTemplate size={14} /> Tailwind CSS Supported
                 </span>

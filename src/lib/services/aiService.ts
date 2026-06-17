@@ -75,7 +75,7 @@ export const aiService = {
     
     const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Next.js expert. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
 
-You will receive raw product text/data and a list of direct, external Image URLs. Output a fully functional, single-file Next.js React component. Do not explain the code; output only the final code.
+You will receive raw product text/data and a list of direct, external Image URLs. Output ONLY a pure, valid JSX/HTML structure wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not explain the code; output only the final JSX/HTML structure starting with a <div> wrapper.
 
 ### 1. Copywriting Requirements (CRITICAL)
 - Language: Write ALL copy in **${languageStr}**.
@@ -104,7 +104,7 @@ Design the layout mapped to the following sections:
 ### 3. Technical Execution (CRITICAL)
 ${isArabic ? '- RTL Formatting: Since the language is Arabic, you MUST wrap the main container or relevant text blocks with `dir="rtl"` so the text correctly starts from the right to the left.' : ''}
 - No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
-- Single-File Output: Consolidate all functional sections into one cohesive default export function.
+- Raw JSX/HTML Output: Output ONLY the JSX/HTML content inside a single top-level <div> tag. No imports, no React component wrapping, no helper functions, and no 'export default'.
 - Tailwind CSS: Use Tailwind for all styling. 
 - Above the Fold: Product Title, dynamic Price, and primary CTA must be immediately visible on mobile.
 - Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
@@ -114,7 +114,7 @@ ${isArabic ? '- RTL Formatting: Since the language is Arabic, you MUST wrap the 
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
 1. "core_value_proposition"
 2. "top_objection_answered"
-Immediately following this commented block, provide the complete Next.js code.
+Immediately following this commented block, provide the complete raw JSX/HTML code starting with <div>.
 
 Create this for the product: "${title}" in the region: "${region}".`;
 
@@ -129,7 +129,7 @@ Create this for the product: "${title}" in the region: "${region}".`;
       if (!response.ok) throw new Error('AI API Error');
       
       const data = await response.json();
-      let rawResult = data.result as string;
+      const rawResult = data.result as string;
 
       // Extract JSON metadata from the comment block /* ... */
       let metadata = {};
@@ -149,13 +149,23 @@ Create this for the product: "${title}" in the region: "${region}".`;
       componentCode = componentCode.replace(/^```[a-z]*\n/i, '').replace(/```$/i, '').trim();
 
       // Extract the JSX inside the return statement since react-jsx-parser expects pure JSX
-      const returnMatch = componentCode.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;/);
-      if (returnMatch && returnMatch[1]) {
-        componentCode = returnMatch[1];
-      } else {
-        const returnMatch2 = componentCode.match(/return\s+([\s\S]*?)\s*;/);
-        if (returnMatch2 && returnMatch2[1]) {
-          componentCode = returnMatch2[1];
+      if (componentCode.includes('return')) {
+        const returnMatch = componentCode.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?/);
+        if (returnMatch && returnMatch[1]) {
+          componentCode = returnMatch[1];
+        } else {
+          const returnMatch2 = componentCode.match(/return\s+([\s\S]*?)\s*;?/);
+          if (returnMatch2 && returnMatch2[1]) {
+            componentCode = returnMatch2[1];
+          }
+        }
+      }
+
+      // If the code still contains React boilerplate (e.g. export default, function, class), extract the main <div> block
+      if (componentCode.includes('export default') || componentCode.includes('function') || componentCode.includes('import')) {
+        const divMatch = componentCode.match(/(<div[\s\S]*<\/div>)/);
+        if (divMatch && divMatch[1]) {
+          componentCode = divMatch[1];
         }
       }
 
@@ -282,7 +292,6 @@ Create this for the product: "${title}" in the region: "${region}".`;
       }
 
       const isCopywriter = (agentType || '').toLowerCase().includes('copywriter');
-      const isSocial = (agentType || '').toLowerCase().includes('ads strategist');
       const isCro = (agentType || '').toLowerCase().includes('cro');
       const isMarket = (agentType || '').toLowerCase().includes('market research');
 
@@ -449,7 +458,7 @@ Create this for the product: "${title}" in the region: "${region}".`;
       let stringifiedContext = '{}';
       try {
         stringifiedContext = JSON.stringify(storeContext);
-      } catch(e) {
+      } catch {
         console.warn("Could not stringify store context");
       }
 
@@ -460,7 +469,7 @@ Create this for the product: "${title}" in the region: "${region}".`;
           chatHistoryText = "Recent conversation history:\n" + recentHistory.map(msg => 
             `[${msg.sender === 'user' ? 'User' : 'Agent'}]: ${typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.text)}`
           ).join('\n');
-        } catch (e) {
+        } catch {
           console.warn("Could not format chat history");
         }
       }
@@ -509,7 +518,30 @@ Create this for the product: "${title}" in the region: "${region}".`;
       }
       
       const data = await response.json();
-      return data.result;
+      const result = data.result;
+      if (result?.proposedAction?.type === 'CREATE_LANDING_PAGE' && result.proposedAction.previewData?.htmlContent) {
+        let content = result.proposedAction.previewData.htmlContent;
+        content = content.replace(/^```[a-z]*\n/i, '').replace(/```$/i, '').trim();
+        if (content.includes('return')) {
+          const returnMatch = content.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?/);
+          if (returnMatch && returnMatch[1]) {
+            content = returnMatch[1];
+          } else {
+            const returnMatch2 = content.match(/return\s+([\s\S]*?)\s*;?/);
+            if (returnMatch2 && returnMatch2[1]) {
+              content = returnMatch2[1];
+            }
+          }
+        }
+        if (content.includes('export default') || content.includes('function') || content.includes('import')) {
+          const divMatch = content.match(/(<div[\s\S]*<\/div>)/);
+          if (divMatch && divMatch[1]) {
+            content = divMatch[1];
+          }
+        }
+        result.proposedAction.previewData.htmlContent = content;
+      }
+      return result;
     } catch (error) {
       console.error('Failed to chat with agent:', error);
       return null;
