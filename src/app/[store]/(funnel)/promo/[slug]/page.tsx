@@ -16,16 +16,44 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
 
-  const page = store
-    ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
-    : undefined;
+  const variants = store
+    ? landingPages.filter(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase() && p.published)
+    : [];
 
-  const cleanHtml = page ? page.htmlContent.replace(/className=/g, 'class=') : '';
+  const [activeVariant, setActiveVariant] = useState<any>(null);
+
+  useEffect(() => {
+    if (variants.length > 0 && !activeVariant) {
+      // Check for saved variant in localStorage
+      const storageKey = `ab_variant_${slug}`;
+      const savedVariantId = localStorage.getItem(storageKey);
+      
+      let selected = variants.find(v => v.id === savedVariantId);
+      
+      // If no saved variant or saved variant was deleted, pick a random one
+      if (!selected) {
+        const randomIndex = Math.floor(Math.random() * variants.length);
+        selected = variants[randomIndex];
+        localStorage.setItem(storageKey, selected.id);
+      }
+      
+      setActiveVariant(selected);
+
+      // Fire tracking event for view
+      fetch('/api/tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'Landing Page View', variantId: selected.id, storeId: store!.id })
+      }).catch(console.error);
+    }
+  }, [variants.length, activeVariant, slug, store]);
+
+  const cleanHtml = activeVariant ? activeVariant.htmlContent.replace(/className=/g, 'class=') : '';
   const hasShortcodes = /\[CHECKOUT_FORM/.test(cleanHtml);
   
   const processedHtml = cleanHtml.replace(
     /\[CHECKOUT_FORM(?::([^\]]+))?\]/g, 
-    (match, productId, offset) => `<div id="checkout-mount-${offset}" class="checkout-mount-point w-full my-8" data-product-id="${productId || ''}"></div>`
+    (match: string, productId: string, offset: number) => `<div id="checkout-mount-${offset}" class="checkout-mount-point w-full my-8" data-product-id="${productId || ''}"></div>`
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -42,7 +70,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     }
 
     // 2. Map mount nodes for checkout form portals
-    if (page && containerRef.current && hasShortcodes) {
+    if (activeVariant && containerRef.current && hasShortcodes) {
       const nodes = Array.from(containerRef.current.querySelectorAll('.checkout-mount-point')).map(el => ({
         id: el.id,
         node: el as HTMLElement,
@@ -58,10 +86,10 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
       const style = document.getElementById('tailwind-style');
       if (style) style.remove();
     };
-  }, [processedHtml, hasShortcodes, page]);
+  }, [processedHtml, hasShortcodes, activeVariant]);
 
   // Show spinner while data is still loading from Supabase
-  if (!_hasHydrated) {
+  if (!_hasHydrated || (variants.length > 0 && !activeVariant)) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 text-slate-400">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
@@ -70,7 +98,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     );
   }
 
-  if (!page || !page.published) {
+  if (variants.length === 0 || !activeVariant) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
         <h1 className="text-3xl font-black text-slate-900 mb-4">Promo Page Not Found</h1>

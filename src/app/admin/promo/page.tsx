@@ -4,8 +4,11 @@ import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
+import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon, Edit3, BarChart3, SplitSquareHorizontal } from 'lucide-react';
 import { uploadImageToSupabase } from '@/lib/storage';
+import dynamic from 'next/dynamic';
+
+const GrapesEditor = dynamic(() => import('@/components/admin/GrapesEditor'), { ssr: false });
 
 export default function AdminPromoPage() {
   const { activeStore, landingPages, setLandingPages, products, addActivityLog } = useAdminStore();
@@ -30,9 +33,42 @@ export default function AdminPromoPage() {
 </div>`);
 
   const [previewMode, setPreviewMode] = useState(false);
+  const [visualEditorOpen, setVisualEditorOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { notify } = useNotificationStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Group pages by slug to manage variants
+  const storePages = landingPages.filter(p => p.storeId === activeStore.id);
+  const groupedPages = storePages.reduce((acc, page) => {
+    if (!acc[page.slug]) acc[page.slug] = [];
+    acc[page.slug].push(page);
+    return acc;
+  }, {} as Record<string, typeof landingPages>);
+
+  const uniqueSlugs = Object.keys(groupedPages);
+  const currentVariants = groupedPages[originalSlug] || [];
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+
+  // Analytics tracking state
+  const [analytics, setAnalytics] = useState<Record<string, { views: number, conversions: number }>>({});
+  
+  // Fetch analytics for variants
+  import('react').then(({ useEffect }) => {
+    useEffect(() => {
+      if (currentVariants.length > 0) {
+        const variantIds = currentVariants.map(v => v.id).join(',');
+        fetch(`/api/tracking?storeId=${activeStore.id}&variantIds=${variantIds}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              setAnalytics(data.stats);
+            }
+          })
+          .catch(console.error);
+      }
+    }, [currentVariants.length, activeStore.id]); // re-fetch if variant count changes
+  });
 
   const handlePromoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,8 +91,10 @@ export default function AdminPromoPage() {
 
 
 
-  // Use originalSlug so we can still find the page even if the user edits the slug field
-  const existingPage = landingPages.find(p => p.storeId === activeStore.id && p.slug === originalSlug);
+  // The page currently being edited (can be null if it's a completely new unsaved page)
+  const existingPage = selectedVariantId 
+    ? landingPages.find(p => p.id === selectedVariantId) 
+    : landingPages.find(p => p.storeId === activeStore.id && p.slug === originalSlug);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,22 +139,40 @@ export default function AdminPromoPage() {
   };
 
   const loadExisting = (existingSlug: string) => {
-    const page = landingPages.find(p => p.storeId === activeStore.id && p.slug === existingSlug);
-    if (page) {
-      setTitle(page.title || '');
-      setSlug(page.slug);
-      setOriginalSlug(page.slug); // Track original so edits don't create duplicate pages
-      setHtmlContent(page.htmlContent);
+    const variants = groupedPages[existingSlug];
+    if (variants && variants.length > 0) {
+      const firstVariant = variants[0];
+      setTitle(firstVariant.title || '');
+      setSlug(firstVariant.slug);
+      setOriginalSlug(firstVariant.slug); 
+      setHtmlContent(firstVariant.htmlContent);
+      setSelectedVariantId(firstVariant.id);
     }
+  };
+
+  const loadVariant = (variant: any) => {
+    setTitle(variant.title || '');
+    setSlug(variant.slug);
+    setHtmlContent(variant.htmlContent);
+    setSelectedVariantId(variant.id);
+  };
+
+  const handleCreateVariant = () => {
+    const nextVariantLetter = String.fromCharCode(65 + currentVariants.length);
+    setTitle(`Variant ${nextVariantLetter}`);
+    // slug remains the same to group them together
+    setHtmlContent(`<!-- Variant ${nextVariantLetter} -->\n${htmlContent}`);
+    setSelectedVariantId(null); // this forces a new save
   };
 
   const handleCreateNew = () => {
     const newSlug = `new-promo-${Date.now().toString().slice(-4)}`;
     const newContent = `<!-- Start fresh -->\n<div class="max-w-4xl mx-auto p-8 text-center">\n  <h1 class="text-4xl font-black">Your New Campaign</h1>\n</div>`;
-    setTitle('New Campaign');
+    setTitle('Variant A');
     setSlug(newSlug);
     setOriginalSlug(newSlug); // Reset original slug for a new page
     setHtmlContent(newContent);
+    setSelectedVariantId(null);
   };
 
   const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout' | 'image') => {
@@ -153,17 +209,29 @@ export default function AdminPromoPage() {
       <div className="w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-3xl p-4 shadow-sm md:sticky md:top-6">
         <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">Saved Pages</h3>
         <div className="space-y-2">
-          {landingPages.filter(p => p.storeId === activeStore.id).map(page => (
-            <button 
-              key={page.id} 
-              onClick={() => loadExisting(page.slug)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-colors ${slug === page.slug ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
-            >
-              <div className="truncate">{page.title || `/${page.slug}`}</div>
-              {page.title && <div className="text-xs text-slate-400 font-normal truncate">/{page.slug}</div>}
-            </button>
-          ))}
-          {landingPages.filter(p => p.storeId === activeStore.id).length === 0 && (
+          {uniqueSlugs.map(groupSlug => {
+            const group = groupedPages[groupSlug];
+            const primaryPage = group[0];
+            const variantCount = group.length;
+            const title = primaryPage.title ? primaryPage.title.replace(/Variant \w - /, '') : `/${groupSlug}`;
+            
+            return (
+              <button 
+                key={groupSlug} 
+                onClick={() => loadExisting(groupSlug)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-colors ${slug === groupSlug ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+              >
+                <div className="truncate">{title}</div>
+                <div className="text-xs text-slate-400 font-normal truncate flex justify-between">
+                  <span>/{groupSlug}</span>
+                  {variantCount > 1 && (
+                    <span className="bg-indigo-100 text-indigo-700 px-1.5 rounded font-bold text-[10px]">A/B TEST</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+          {uniqueSlugs.length === 0 && (
             <div className="text-xs text-slate-400 font-medium px-2">No pages saved yet.</div>
           )}
         </div>
@@ -190,6 +258,43 @@ export default function AdminPromoPage() {
 
         <form onSubmit={handleSave} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
           
+          {currentVariants.length > 0 && (
+            <div className="flex items-center gap-2 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
+              <div className="flex items-center text-slate-500 mr-2 shrink-0">
+                <SplitSquareHorizontal size={18} className="mr-1.5" /> 
+                <span className="font-bold text-sm uppercase tracking-wider">A/B Test Variants</span>
+              </div>
+              {currentVariants.map((variant, index) => {
+                const isSelected = selectedVariantId === variant.id;
+                const stats = analytics[variant.id] || { views: 0, conversions: 0 };
+                const conversionRate = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) : '0';
+                
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    onClick={() => loadVariant(variant)}
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold transition-all shrink-0 ${isSelected ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <span>{variant.title?.replace(/Variant \w - /, '') || `Variant ${String.fromCharCode(65 + index)}`}</span>
+                    <div className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded-full ${isSelected ? 'bg-indigo-500/50 text-indigo-50' : 'bg-white text-slate-500'}`}>
+                      <span title="Views"><Eye size={10} className="inline mr-0.5"/>{stats.views}</span>
+                      <span title="Conversions"><BarChart3 size={10} className="inline mr-0.5"/>{stats.conversions}</span>
+                      <span className="font-black">({conversionRate}%)</span>
+                    </div>
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={handleCreateVariant}
+                className="flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 rounded-xl font-bold transition-colors shrink-0"
+              >
+                <Plus size={16} /> Add Variant
+              </button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Page Title</label>
@@ -227,11 +332,15 @@ export default function AdminPromoPage() {
 
           <div>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-slate-700">Raw HTML Content</label>
+              <label className="block text-sm font-bold text-slate-700">Page Content</label>
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1.5 rounded-lg flex items-center gap-1">
-                  <LayoutTemplate size={14} /> Tailwind CSS Supported
-                </span>
+                <button 
+                  type="button" 
+                  onClick={() => setVisualEditorOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-md transition-all active:scale-95"
+                >
+                  <LayoutTemplate size={16} /> Open Visual Builder
+                </button>
               </div>
             </div>
 
@@ -347,6 +456,19 @@ export default function AdminPromoPage() {
             />
           </div>
         </div>
+      )}
+
+      {/* Visual Editor Modal */}
+      {visualEditorOpen && (
+        <GrapesEditor 
+          initialHtml={htmlContent}
+          onSave={(html) => {
+            setHtmlContent(html);
+            setVisualEditorOpen(false);
+            notify('Visual changes saved to raw content!', 'success');
+          }}
+          onClose={() => setVisualEditorOpen(false)}
+        />
       )}
     </div>
 

@@ -101,6 +101,28 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
       source: 'landing-page',
     }, ...prev]);
 
+    // Track conversion for A/B testing
+    try {
+      if (typeof window !== 'undefined') {
+        // Extract the slug from the URL: e.g. /my-store/promo/my-slug
+        const pathParts = window.location.pathname.split('/');
+        const promoIndex = pathParts.indexOf('promo');
+        if (promoIndex !== -1 && pathParts.length > promoIndex + 1) {
+          const slug = pathParts[promoIndex + 1];
+          const variantId = localStorage.getItem(`ab_variant_${slug}`);
+          if (variantId && store) {
+            fetch('/api/tracking', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'Landing Page Conversion', variantId, storeId: store.id })
+            }).catch(console.error);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Tracking conversion failed', e);
+    }
+
     setStatus('SUCCESS');
     setSubmitting(false);
     setDone(true);
