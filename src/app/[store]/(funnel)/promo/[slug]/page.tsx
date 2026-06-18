@@ -21,12 +21,31 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const regionLower = region?.toLowerCase() || '';
   const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(regionLower);
 
+  const [mountNodes, setMountNodes] = useState<Array<{ id: string, node: HTMLElement, productId: string }>>([]);
+
   // Case-insensitive slug match so /dz/promo/Flash-Sale works regardless of casing saved in DB
   const page = store
     ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
     : undefined;
 
   const cleanHtml = page ? page.htmlContent.replace(/className=/g, 'class=') : '';
+  const hasShortcodes = /\[CHECKOUT_FORM/.test(cleanHtml);
+  
+  const processedHtml = cleanHtml.replace(
+    /\[CHECKOUT_FORM(?::([^\]]+))?\]/g, 
+    (match, productId, offset) => `<div id="checkout-mount-${offset}" class="checkout-mount-point" data-product-id="${productId || ''}"></div>`
+  );
+
+  useEffect(() => {
+    if (hasShortcodes && page) {
+      const nodes = Array.from(document.querySelectorAll('.checkout-mount-point')).map(el => ({
+        id: el.id,
+        node: el as HTMLElement,
+        productId: el.getAttribute('data-product-id') || ''
+      }));
+      setMountNodes(nodes);
+    }
+  }, [processedHtml, hasShortcodes, page]);
 
   // Show spinner while data is still loading from Supabase
   if (!_hasHydrated) {
@@ -52,27 +71,6 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     );
   }
 
-
-  const hasShortcodes = /\[CHECKOUT_FORM/.test(cleanHtml);
-  
-  // Replace shortcodes with mount points
-  const processedHtml = cleanHtml.replace(
-    /\[CHECKOUT_FORM(?::([^\]]+))?\]/g, 
-    (match, productId, offset) => `<div id="checkout-mount-${offset}" class="checkout-mount-point" data-product-id="${productId || ''}"></div>`
-  );
-
-  const [mountNodes, setMountNodes] = useState<Array<{ id: string, node: HTMLElement, productId: string }>>([]);
-
-  useEffect(() => {
-    if (hasShortcodes) {
-      const nodes = Array.from(document.querySelectorAll('.checkout-mount-point')).map(el => ({
-        id: el.id,
-        node: el as HTMLElement,
-        productId: el.getAttribute('data-product-id') || ''
-      }));
-      setMountNodes(nodes);
-    }
-  }, [processedHtml, hasShortcodes]);
 
   return (
     <>
