@@ -38,7 +38,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
 
   const iframeSrcDoc = `
     <!DOCTYPE html>
-    <html dir="${isArabic ? 'rtl' : 'ltr'}">
+    <html>
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -58,6 +58,8 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   useEffect(() => {
     if (!page) return;
 
+    let intervalId: NodeJS.Timeout;
+
     const handleLoad = () => {
       const doc = iframeRef.current?.contentDocument;
       if (!doc) return;
@@ -74,18 +76,23 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
       
       // Auto-resize iframe to fit content
       const resizeIframe = () => {
-        if (iframeRef.current && iframeRef.current.contentWindow) {
-          const body = iframeRef.current.contentWindow.document.body;
-          const html = iframeRef.current.contentWindow.document.documentElement;
-          const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
-          iframeRef.current.style.height = height + 'px';
+        try {
+          if (iframeRef.current && iframeRef.current.contentWindow) {
+            const body = iframeRef.current.contentWindow.document.body;
+            const html = iframeRef.current.contentWindow.document.documentElement;
+            if (body && html) {
+              const height = Math.max(body.scrollHeight, body.offsetHeight, html.clientHeight, html.scrollHeight, html.offsetHeight);
+              iframeRef.current.style.height = height + 'px';
+            }
+          }
+        } catch (e) {
+          // Ignore cross-origin or detached errors
         }
       };
       
       resizeIframe();
-      const interval = setInterval(resizeIframe, 500); // Check periodically for dynamic content height changes
-      
-      return () => clearInterval(interval);
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(resizeIframe, 500); // Check periodically for dynamic content height changes
     };
 
     const iframe = iframeRef.current;
@@ -99,6 +106,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     
     return () => {
       if (iframe) iframe.removeEventListener('load', handleLoad);
+      if (intervalId) clearInterval(intervalId);
     };
   }, [processedHtml, hasShortcodes, page]);
 
