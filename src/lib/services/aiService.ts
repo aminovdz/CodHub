@@ -485,9 +485,9 @@ Create this for the product: "${title}" in the region: "${region}".`;
       let chatHistoryText = '';
       if (chatHistory && chatHistory.length > 0) {
         try {
-          const recentHistory = chatHistory.slice(-5);
+          const recentHistory = chatHistory.slice(-10);
           chatHistoryText = "Recent conversation history:\n" + recentHistory.map(msg => 
-            `[${msg.sender === 'user' ? 'User' : 'Agent'}]: ${typeof msg.text === 'string' ? msg.text : JSON.stringify(msg.text)}`
+            `[${msg.role === 'user' ? 'User' : 'Agent'}]: ${typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}`
           ).join('\n');
         } catch {
           console.warn("Could not format chat history");
@@ -520,8 +520,11 @@ Create this for the product: "${title}" in the region: "${region}".`;
       
       If the user attached images, analyze them to inform your response. For landing pages, design the HTML to match the product shown in the images.
       
+      MISSING INFORMATION RULE:
+      If the user asks you to perform a task (e.g. create a landing page, write product copy, run an analysis) but does not provide enough details (like the product name, features, or context), DO NOT hallucinate or guess. Instead, set the proposedAction to "NONE" and ask the user clarifying questions in the "message" field. Only proceed with the action once you have the required information.
+      
       IMPORTANT: The "message" field MUST be formatted as beautiful, highly readable plain text with emojis and line breaks (unless the specific role instructions ask for HTML snippets like the Copywriter). DO NOT dump raw JSON into the "message" field.
-      CRITICAL: You MUST use proper JSON escaping for line breaks in the "message" field (use \n instead of actual physical line breaks). If you output unescaped physical line breaks inside the JSON string, the parsing will fail.
+      CRITICAL: You MUST use proper JSON escaping for line breaks in the "message" field (use \\n instead of actual physical line breaks). If you output unescaped physical line breaks inside the JSON string, the parsing will fail.
 
       Return ONLY valid JSON. No markdown wrappers. No extra text before or after.`;
 
