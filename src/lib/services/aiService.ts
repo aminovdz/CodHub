@@ -82,49 +82,57 @@ export const aiService = {
     const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
     const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
     
-    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
+    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.
 
 You will receive raw product text/data and a list of direct, external Image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
 
-### 1. Copywriting Requirements (CRITICAL)
+### 1. Copywriting Requirements
 - Language: Write ALL copy in **${languageStr}**.
-- No Cheap Tricks: Absolutely no fake urgency, fake scarcity, or exaggerated fluff (e.g., "revolutionary," "magical").
-- COD Optimization: The store uses Cash on Delivery. The copy must build supreme confidence so the buyer physically accepts the package. Emphasize "Pay Only When You Receive It."
-- Feature-to-Benefit Translation: Never list a technical feature without immediately explaining the real-world payoff. (e.g., Do not just say "stainless steel blades"; say "stainless steel blades that prevent razor burn and never require sharpening").
-- Readability: Use short sentences, active voice, and high-impact formatting (bullet points, bold text).
+- Framework: Use the AIDA framework (Attention, Interest, Desire, Action) layered over the PAS (Problem-Agitate-Solution) formula.
+- COD Optimization: The store uses Cash on Delivery. Emphasize "Pay Only When You Receive It," "Free Delivery," and "100% Satisfaction Guarantee."
+- Feature-to-Benefit Translation: Never list a technical feature without its real-world payoff.
+- Formatting: Use short, punchy sentences, active voice, and rich formatting (bold text, bullet points with emojis).
 
-### 2. Page Structure Requirements
-Design the layout mapped to the following sections:
-1. **The Hero Section (The Hook):**
-   - Primary Headline: Focus entirely on the ultimate desired result or the biggest pain point solved. Keep it under 8 words.
-   - Sub-headline: Explain how the product achieves the headline's promise.
-   - Call to Action (CTA): Action-oriented, friction-free (e.g., "Order Now - Pay on Delivery"). Include a dynamic price comparison.
-2. **The Problem/Agitation/Solution (PAS) Block:**
-   - Identify the specific frustration the user currently experiences without this product.
-   - Agitate that problem briefly, then introduce the product as the definitive solution.
-3. **Objection Handling & Benefits (The Logic):**
-   - Extract the top 3-4 features from the raw data.
-   - Format them as: [Clear Benefit]: [Brief explanation of the feature that makes it possible].
-   - Pre-emptively answer the biggest doubt a buyer would have (e.g., "Is this difficult to install?" or "Will this break in a month?").
-4. **Social Proof & Trust (The Validation):**
-   - Synthesize 3 realistic customer reviews based on the provided data. Highlight specific use-cases, not just "Great product!"
-   - Include a strong Risk Reversal statement (e.g., "Check the product before you pay").
+### 2. Premium UI/UX Design Aesthetics (CRITICAL)
+- **Visual Excellence**: The design MUST NOT be basic. Use rich, modern tailwind styling. Incorporate vibrant but professional color palettes, sleek dark modes (if appropriate), or clean, highly polished light modes.
+- **Micro-aesthetics**: Use soft drop shadows (\`shadow-xl\`, \`shadow-2xl\`), rounded corners (\`rounded-2xl\`, \`rounded-3xl\`), and subtle background gradients (\`bg-gradient-to-br from-gray-50 to-gray-100\`) to create depth.
+- **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. Use tight tracking for large headlines (\`tracking-tight\`) and relaxed leading for body text (\`leading-relaxed\`).
+- **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile. Alternate section backgrounds (e.g., white -> very light gray -> brand color) to create visual rhythm.
 
-### 3. Technical Execution (CRITICAL)
-${isArabic ? '- RTL Formatting (CRITICAL): The language is Arabic. You MUST include `dir="rtl"` in your top-level `<div>` (e.g., `<div dir="rtl" class="...">`). This is absolutely mandatory.' : ''}
-- IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`). The output is standard HTML, not React JSX.
-- No Next.js Image Component: The image URLs are external. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
-- Raw HTML Output: Output ONLY the HTML content inside a single top-level <div> tag. No imports, no React component wrapping, no helper functions, and no 'export default'.
-- Tailwind CSS: Use Tailwind for all styling via the \`class\` attribute. 
-- Above the Fold: Product Title, dynamic Price, and primary CTA must be immediately visible on mobile.
-- Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
-- Sticky Footer: Implement a sticky footer CTA bar (\`fixed bottom-0 w-full z-50\`) visible on mobile.
+### 3. Page Structure Requirements
+1. **The Hero Section (The Hook)**
+   - Striking, full-width or split layout with a prominent product image.
+   - Primary Headline: Focus on the ultimate desired result (< 8 words).
+   - Sub-headline: Explain how the product achieves the promise.
+   - Trust Badges: A row of icons/text beneath the CTA (e.g., "🚚 Free Shipping | 💰 Pay on Delivery | ⭐ 4.9/5 Rating").
+   - Action: Include a compelling CTA button that anchors to the checkout form.
+2. **The Problem & Solution (PAS) Block**
+   - Identify the user's frustration and introduce the product as the definitive solution. Use contrasting colors (e.g., a dark section) to make this stand out.
+3. **Feature & Benefit Grid**
+   - Extract 3-4 top features and display them in a visually appealing grid (e.g., using cards with icons or emojis).
+4. **Social Proof & Validation**
+   - Synthesize 3 realistic customer reviews formatted as beautiful testimonial cards with star ratings (⭐⭐⭐⭐⭐).
+5. **Interactive Checkout Placement (MANDATORY)**
+   - You MUST include the exact string \`[CHECKOUT_FORM]\` where the order form should be rendered. Place it prominently, ideally near the bottom or in a dedicated sticky/floating container on desktop.
+6. **FAQ Section**
+   - Add a beautifully styled FAQ accordion or list addressing the top 3 objections.
 
-### 4. Output Structure
+### 4. Technical Execution
+${isArabic ? '- **RTL Support**: The language is Arabic. You MUST rely entirely on `text-right` and logical flex reversals (or `rtl:` tailwind prefixes) manually to ensure the page flows correctly from right to left.' : ''}
+- IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
+- No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
+- Mobile-First: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
+
+### 5. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
-1. "core_value_proposition"
-2. "top_objection_answered"
-Immediately following this commented block, provide the complete raw JSX/HTML code starting with <div>.
+{
+  "core_value_proposition": "A single sentence explaining the main benefit",
+  "top_objection_answered": "How you addressed the main buyer hesitation",
+  "scarcity_element": "What scarcity/urgency was used",
+  "seoTitle": "Optimized meta title",
+  "seoDescription": "Optimized meta description"
+}
+Immediately following this commented block, provide the complete raw HTML code starting with a \`<div>\`.
 
 Create this for the product: "${title}" in the region: "${region}".`;
 
