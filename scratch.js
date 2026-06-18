@@ -6,11 +6,15 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 async function main() {
   const { data, error } = await supabase
     .from('landing_pages')
-    .select('id, slug, title, created_at')
+    .select('id, slug, html_content')
     .order('created_at', { ascending: false })
-    .limit(5);
+    .limit(1);
     
   if (error) console.error(error);
-  else console.log(data);
+  else {
+    const html = data[0].html_content;
+    console.log(`Length: ${html.length}`);
+    console.log(`Ends with: ${html.slice(-100)}`);
+  }
 }
 main();
