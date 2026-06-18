@@ -311,7 +311,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;background:#ffffff">
   <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 24px;border-radius:12px 12px 0 0">
     <h2 style="margin:0;color:#fff;font-size:18px">🛒 New Order</h2>
-    <p style="margin:4px 0 0;color:rgba(255,255,255,.8);font-size:13px">#${actualOrderId.slice(0, 8)}</p>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.8);font-size:13px">#${actualOrderId.split('-')[0].toUpperCase()}</p>
   </div>
   <div style="padding:20px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px">
     <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
@@ -331,10 +331,8 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 </div>`;
 
           try {
-            // Resend requires verified domain for 'from'. Use onboarding@resend.dev as fallback.
-            const fromEmail = store.notify_email && !store.notify_email.includes('resend.dev') 
-              ? store.notify_email 
-              : 'CodHub Orders <onboarding@resend.dev>';
+            // Resend requires verified domain for 'from'. Safest is to use onboarding@resend.dev
+            const fromEmail = 'CodHub Orders <onboarding@resend.dev>';
 
             const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
@@ -345,7 +343,7 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
               body: JSON.stringify({
                 from: fromEmail,
                 to: staffEmails,
-                subject: `🛒 New Order #${actualOrderId.slice(0, 8)} — ${payload.cart.map(i => i.name).join(', ')}`,
+                subject: `🛒 New Order #${actualOrderId.split('-')[0].toUpperCase()} — ${payload.cart.map(i => i.name).join(', ')}`,
                 html: emailHtml
               })
             });

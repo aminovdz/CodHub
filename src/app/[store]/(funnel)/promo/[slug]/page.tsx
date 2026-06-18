@@ -1,7 +1,8 @@
 'use client';
 
-import { use, useEffect } from 'react';
+import { use } from 'react';
 import Link from 'next/link';
+import Script from 'next/script';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
 import { Loader2 } from 'lucide-react';
@@ -48,24 +49,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
     : undefined;
 
-  // Inject Tailwind CDN for AI-generated content that uses Tailwind utility classes.
-  // The build-time Tailwind scan can't see dynamically injected HTML, so the CDN runtime is needed.
-  useEffect(() => {
-    if (!page?.htmlContent) return;
-    
-    // Skip if already loaded
-    if (document.getElementById('tailwind-cdn-promo')) return;
-
-    const script = document.createElement('script');
-    script.id = 'tailwind-cdn-promo';
-    script.src = 'https://cdn.tailwindcss.com';
-    document.head.appendChild(script);
-
-    return () => {
-      const el = document.getElementById('tailwind-cdn-promo');
-      if (el) el.remove();
-    };
-  }, [page?.htmlContent]);
+  const cleanHtml = page ? page.htmlContent.replace(/className=/g, 'class=') : '';
 
   // Show spinner while data is still loading from Supabase
   if (!_hasHydrated) {
@@ -92,23 +76,28 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   }
 
 
-  const segments = parseShortcodes(page.htmlContent);
+  const segments = parseShortcodes(cleanHtml);
   const hasShortcodes = segments.some(s => s.type === 'form');
 
   // Simple case: no shortcodes → render as before
   if (!hasShortcodes) {
     return (
-      <div 
-        className="min-h-screen bg-white" 
-        dir={isArabic ? 'rtl' : 'ltr'}
-        dangerouslySetInnerHTML={{ __html: page.htmlContent }}
-      />
+      <>
+        <Script src="https://cdn.tailwindcss.com" strategy="lazyOnload" />
+        <div 
+          className="min-h-screen bg-white" 
+          dir={isArabic ? 'rtl' : 'ltr'}
+          dangerouslySetInnerHTML={{ __html: cleanHtml }}
+        />
+      </>
     );
   }
 
   // Mixed: render HTML segments interleaved with React checkout forms
   return (
-    <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
+    <>
+      <Script src="https://cdn.tailwindcss.com" strategy="lazyOnload" />
+      <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
       {segments.map((seg, i) => {
         if (seg.type === 'form') {
           return (
@@ -125,5 +114,6 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
         );
       })}
     </div>
+    </>
   );
 }
