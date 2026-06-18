@@ -288,17 +288,54 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
         const staffAssignments = store.translations?.staffAssignments || {};
         
         // Filter staff eligible for this store
-        const eligibleStaffForEmail = (allStaff || []).filter(staff => {
+        const eligibleStaffForEmail = (allStaff || []).filter((staff: any) => {
           if (staff.store_id === store.id) return true;
           if (Array.isArray(staff.store_ids) && staff.store_ids.includes(store.id)) return true;
           const assignedStoreIds = staffAssignments[staff.id];
           return Array.isArray(assignedStoreIds) && assignedStoreIds.includes(store.id);
         });
 
-        const staffEmails = eligibleStaffForEmail.map(s => s.email).filter(Boolean);
+        const staffEmails = eligibleStaffForEmail.map((s: any) => s.email).filter(Boolean);
         
         if (staffEmails.length > 0) {
+          // Build concise product list
+          const productList = payload.cart.map(i => 
+            `<tr><td style="padding:6px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;color:#334155">${i.isUpsell ? '↳ ' : ''}${i.name}</td><td style="padding:6px 12px;border-bottom:1px solid #f1f5f9;font-size:14px;color:#334155;text-align:right;font-weight:600">${i.price}</td></tr>`
+          ).join('');
+
+          const addressStr = payloadObj.wilaya 
+            ? `${payloadObj.wilaya}${payloadObj.commune ? ', ' + payloadObj.commune : ''}` 
+            : (payloadObj.city ? `${payloadObj.city}${payloadObj.province ? ', ' + payloadObj.province : ''}` : payloadObj.address || '—');
+
+          const emailHtml = `
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;background:#ffffff">
+  <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:20px 24px;border-radius:12px 12px 0 0">
+    <h2 style="margin:0;color:#fff;font-size:18px">🛒 New Order</h2>
+    <p style="margin:4px 0 0;color:rgba(255,255,255,.8);font-size:13px">#${actualOrderId.slice(0, 8)}</p>
+  </div>
+  <div style="padding:20px 24px;border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+      <tr><td style="padding:4px 0;font-size:13px;color:#94a3b8">Customer</td><td style="padding:4px 0;font-size:14px;color:#1e293b;font-weight:600;text-align:right">${payload.customerName}</td></tr>
+      <tr><td style="padding:4px 0;font-size:13px;color:#94a3b8">Phone</td><td style="padding:4px 0;font-size:14px;color:#1e293b;text-align:right">${payload.phone}</td></tr>
+      <tr><td style="padding:4px 0;font-size:13px;color:#94a3b8">Location</td><td style="padding:4px 0;font-size:14px;color:#1e293b;text-align:right">${addressStr}</td></tr>
+    </table>
+    <table style="width:100%;border-collapse:collapse;background:#f8fafc;border-radius:8px;overflow:hidden;margin-bottom:16px">
+      <tr style="background:#f1f5f9"><th style="padding:8px 12px;text-align:left;font-size:12px;color:#64748b;font-weight:600">Product</th><th style="padding:8px 12px;text-align:right;font-size:12px;color:#64748b;font-weight:600">Price</th></tr>
+      ${productList}
+    </table>
+    <div style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:8px;padding:12px 16px;text-align:center">
+      <span style="color:rgba(255,255,255,.7);font-size:12px">Total</span>
+      <p style="margin:2px 0 0;color:#fff;font-size:22px;font-weight:800">${finalTotal}</p>
+    </div>
+  </div>
+</div>`;
+
           try {
+            // Resend requires verified domain for 'from'. Use onboarding@resend.dev as fallback.
+            const fromEmail = store.notify_email && !store.notify_email.includes('resend.dev') 
+              ? store.notify_email 
+              : 'CodHub Orders <onboarding@resend.dev>';
+
             const res = await fetch('https://api.resend.com/emails', {
               method: 'POST',
               headers: {
@@ -306,13 +343,10 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
                 'Authorization': `Bearer ${store.resend_api_key}`
               },
               body: JSON.stringify({
-                from: store.notify_email || 'orders@resend.dev',
+                from: fromEmail,
                 to: staffEmails,
-                subject: `New Order #${actualOrderId.slice(0, 8)} - ${payload.cart.map(i => i.name).join(', ')}`,
-                html: `<p>A new order has been placed for <strong>${payload.cart.map(i => i.name).join(', ')}</strong> by ${payload.customerName}.</p>
-                       <p>Phone: ${payload.phone}</p>
-                       <p>Value: ${finalTotal}</p>
-                       <p><a href="https://your-domain.com/admin">Log in to Admin Panel</a> to claim and confirm.</p>`
+                subject: `🛒 New Order #${actualOrderId.slice(0, 8)} — ${payload.cart.map(i => i.name).join(', ')}`,
+                html: emailHtml
               })
             });
             const resData = await res.json();

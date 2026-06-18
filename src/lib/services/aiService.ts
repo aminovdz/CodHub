@@ -82,9 +82,9 @@ export const aiService = {
     const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
     const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
     
-    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Next.js expert. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
+    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect. Your core directive is to generate high-converting product pages that turn cold traffic into buyers.
 
-You will receive raw product text/data and a list of direct, external Image URLs. Output ONLY a pure, valid JSX/HTML structure wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not explain the code; output only the final JSX/HTML structure starting with a <div> wrapper.
+You will receive raw product text/data and a list of direct, external Image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
 
 ### 1. Copywriting Requirements (CRITICAL)
 - Language: Write ALL copy in **${languageStr}**.
@@ -111,10 +111,11 @@ Design the layout mapped to the following sections:
    - Include a strong Risk Reversal statement (e.g., "Check the product before you pay").
 
 ### 3. Technical Execution (CRITICAL)
-${isArabic ? '- RTL Formatting (CRITICAL): The language is Arabic. You MUST include `dir="rtl"` in your top-level `<div>` (e.g., `<div dir="rtl" className="...">`). This is absolutely mandatory.' : ''}
-- No Next.js Image Component: The image URLs are external. You MUST NOT use \`next/image\`. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
-- Raw JSX/HTML Output: Output ONLY the JSX/HTML content inside a single top-level <div> tag. No imports, no React component wrapping, no helper functions, and no 'export default'.
-- Tailwind CSS: Use Tailwind for all styling. 
+${isArabic ? '- RTL Formatting (CRITICAL): The language is Arabic. You MUST include `dir="rtl"` in your top-level `<div>` (e.g., `<div dir="rtl" class="...">`). This is absolutely mandatory.' : ''}
+- IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`). The output is standard HTML, not React JSX.
+- No Next.js Image Component: The image URLs are external. Use standard HTML \`<img>\` tags with \`loading="lazy"\`, \`decoding="async"\`, and Tailwind CSS for sizing to prevent layout shifts.
+- Raw HTML Output: Output ONLY the HTML content inside a single top-level <div> tag. No imports, no React component wrapping, no helper functions, and no 'export default'.
+- Tailwind CSS: Use Tailwind for all styling via the \`class\` attribute. 
 - Above the Fold: Product Title, dynamic Price, and primary CTA must be immediately visible on mobile.
 - Mobile-First Touch: All buttons must have a minimum touch target of \`h-12\` (48px).
 - Sticky Footer: Implement a sticky footer CTA bar (\`fixed bottom-0 w-full z-50\`) visible on mobile.
@@ -177,6 +178,8 @@ Create this for the product: "${title}" in the region: "${region}".`;
           componentCode = componentCode.substring(firstTagIndex, lastTagIndex + 1);
         }
       }
+      // Convert JSX className to standard HTML class (AI may still output className despite instructions)
+      componentCode = componentCode.replace(/className=/g, 'class=');
 
       return { componentCode, metadata };
     } catch (error) {

@@ -1091,6 +1091,7 @@ export default function AdminSettingsPage() {
                         <option value="claude">Claude</option>
                         <option value="openai">OpenAI</option>
                         <option value="openrouter">OpenRouter</option>
+                        <option value="nvidia">Nvidia NIM</option>
                       </select>
                     </div>
                     <div>
@@ -1098,10 +1099,10 @@ export default function AdminSettingsPage() {
                       <input type="password" value={whatsappConfig.chatbotApiKey} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotApiKey: e.target.value})} placeholder="Key (falls back to global key if empty)" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                   </div>
-                  {whatsappConfig.chatbotProvider === 'openrouter' && (
+                  {(whatsappConfig.chatbotProvider === 'openrouter' || whatsappConfig.chatbotProvider === 'nvidia') && (
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">OpenRouter Model</label>
-                      <input type="text" value={whatsappConfig.chatbotModel ?? ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotModel: e.target.value})} placeholder="e.g. google/gemini-2.0-flash-exp:free" className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">{whatsappConfig.chatbotProvider === 'nvidia' ? 'Nvidia Model' : 'OpenRouter Model'}</label>
+                      <input type="text" value={whatsappConfig.chatbotModel ?? ''} onChange={(e) => setWhatsappConfig({...whatsappConfig, chatbotModel: e.target.value})} placeholder={whatsappConfig.chatbotProvider === 'nvidia' ? 'e.g. meta/llama-3.1-405b-instruct' : 'e.g. google/gemini-2.0-flash-exp:free'} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
                     </div>
                   )}
                   <div>

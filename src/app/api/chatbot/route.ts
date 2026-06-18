@@ -116,6 +116,7 @@ export async function POST(req: Request) {
       openai: process.env.OPENAI_API_KEY,
       claude: process.env.CLAUDE_API_KEY,
       openrouter: process.env.OPENROUTER_API_KEY,
+      nvidia: process.env.NVIDIA_API_KEY,
     };
     const apiKey = (knowledge.config.chatbotApiKey || keyMap[provider_] || '').trim();
 

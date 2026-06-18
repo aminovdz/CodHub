@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect } from 'react';
 import Link from 'next/link';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
@@ -47,6 +47,25 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const page = store
     ? landingPages.find(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase())
     : undefined;
+
+  // Inject Tailwind CDN for AI-generated content that uses Tailwind utility classes.
+  // The build-time Tailwind scan can't see dynamically injected HTML, so the CDN runtime is needed.
+  useEffect(() => {
+    if (!page?.htmlContent) return;
+    
+    // Skip if already loaded
+    if (document.getElementById('tailwind-cdn-promo')) return;
+
+    const script = document.createElement('script');
+    script.id = 'tailwind-cdn-promo';
+    script.src = 'https://cdn.tailwindcss.com';
+    document.head.appendChild(script);
+
+    return () => {
+      const el = document.getElementById('tailwind-cdn-promo');
+      if (el) el.remove();
+    };
+  }, [page?.htmlContent]);
 
   // Show spinner while data is still loading from Supabase
   if (!_hasHydrated) {

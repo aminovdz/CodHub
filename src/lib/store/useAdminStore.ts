@@ -360,7 +360,7 @@ export interface Store {
     chatbotEnabled?: boolean;
     chatbotName?: string;
     chatbotInstructions?: string;
-    chatbotProvider?: 'gemini' | 'claude' | 'openai' | 'openrouter';
+    chatbotProvider?: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia';
     chatbotModel?: string;
     chatbotApiKey?: string;
   };
