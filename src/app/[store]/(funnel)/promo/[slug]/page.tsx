@@ -7,31 +7,8 @@ import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
 import { Loader2 } from 'lucide-react';
 
-// Split HTML/JSX content on [CHECKOUT_FORM:productId] shortcodes
-// Returns an array of segments: { type: 'html' | 'form', content: string, productId?: string }
-function parseShortcodes(html: string) {
-  const segments: Array<{ type: 'html' | 'form'; content: string; productId?: string }> = [];
-  const regex = /\[CHECKOUT_FORM(?::([^\]]+))?\]/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(html)) !== null) {
-    // HTML before this shortcode
-    if (match.index > lastIndex) {
-      segments.push({ type: 'html', content: html.slice(lastIndex, match.index) });
-    }
-    // The inline form
-    segments.push({ type: 'form', content: match[0], productId: match[1] || '' });
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Remaining HTML after last shortcode
-  if (lastIndex < html.length) {
-    segments.push({ type: 'html', content: html.slice(lastIndex) });
-  }
-
-  return segments.length > 0 ? segments : [{ type: 'html' as const, content: html }];
-}
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function PromoLandingPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
@@ -76,44 +53,43 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   }
 
 
-  const segments = parseShortcodes(cleanHtml);
-  const hasShortcodes = segments.some(s => s.type === 'form');
+  const hasShortcodes = /\[CHECKOUT_FORM/.test(cleanHtml);
+  
+  // Replace shortcodes with mount points
+  const processedHtml = cleanHtml.replace(
+    /\[CHECKOUT_FORM(?::([^\]]+))?\]/g, 
+    (match, productId, offset) => `<div id="checkout-mount-${offset}" class="checkout-mount-point" data-product-id="${productId || ''}"></div>`
+  );
 
-  // Simple case: no shortcodes → render as before
-  if (!hasShortcodes) {
-    return (
-      <>
-        <Script src="https://cdn.tailwindcss.com" strategy="lazyOnload" />
-        <div 
-          className="min-h-screen bg-white" 
-          dir={isArabic ? 'rtl' : 'ltr'}
-          dangerouslySetInnerHTML={{ __html: cleanHtml }}
-        />
-      </>
-    );
-  }
+  const [mountNodes, setMountNodes] = useState<Array<{ id: string, node: HTMLElement, productId: string }>>([]);
 
-  // Mixed: render HTML segments interleaved with React checkout forms
+  useEffect(() => {
+    if (hasShortcodes) {
+      const nodes = Array.from(document.querySelectorAll('.checkout-mount-point')).map(el => ({
+        id: el.id,
+        node: el as HTMLElement,
+        productId: el.getAttribute('data-product-id') || ''
+      }));
+      setMountNodes(nodes);
+    }
+  }, [processedHtml, hasShortcodes]);
+
   return (
     <>
       <Script src="https://cdn.tailwindcss.com" strategy="lazyOnload" />
-      <div className="min-h-screen bg-white" dir={isArabic ? 'rtl' : 'ltr'}>
-      {segments.map((seg, i) => {
-        if (seg.type === 'form') {
-          return (
-            <div key={i} className="px-4 py-2">
-              <InlineOrderForm productId={seg.productId || ''} region={region} />
-            </div>
-          );
-        }
-        return (
-          <div 
-            key={i} 
-            dangerouslySetInnerHTML={{ __html: seg.content }} 
-          />
-        );
-      })}
-    </div>
+      <div 
+        className="min-h-screen bg-white" 
+        dir={isArabic ? 'rtl' : 'ltr'}
+        dangerouslySetInnerHTML={{ __html: processedHtml }}
+      />
+      {mountNodes.map(({ id, node, productId }) => 
+        createPortal(
+          <div className="px-4 py-2 w-full max-w-lg mx-auto">
+            <InlineOrderForm productId={productId} region={region} />
+          </div>,
+          node
+        )
+      )}
     </>
   );
 }
