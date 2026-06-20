@@ -9,6 +9,7 @@ import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
 import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
+import { getCommunesForWilaya } from '@/lib/algeria-communes';
 
 export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: string, embedded?: boolean }) {
   const [step, setStep] = useState(1);
@@ -374,20 +375,7 @@ export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: strin
 
   const handleProceedToStep3 = () => setStep(3);
 
-  // Countdown timer — Start countdown on mount if step is 1 and configured
-  useEffect(() => {
-    if (checkoutConfig && (checkoutConfig.countdownMinutes ?? 5) > 0) {
-      const totalSecs = (checkoutConfig.countdownMinutes ?? 5) * 60;
-      setCountdownSecs(totalSecs);
-      const interval = setInterval(() => {
-        setCountdownSecs(prev => {
-          if (prev === null || prev <= 1) { clearInterval(interval); return 0; }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [checkoutConfig]);
+  // Countdown timer removed in favor of Trust Banner
 
   const handleComplete = async () => {
     setStatus('CONFIRMING');
@@ -702,14 +690,25 @@ export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: strin
           {/* Header */}
           <div className="p-5 text-center border-b border-slate-100">
 
-            {countdownSecs !== null && countdownSecs > 0 && (
-              <div className="mt-4 mx-4 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center gap-3 shadow-sm">
-                <div className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+            {(checkoutConfig?.enableTrustBanner ?? true) && (
+              <div className="mx-4 mt-4 mb-2 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                  <span className="font-bold text-emerald-800 text-sm">{t('checkout.secureCheckout', 'تسوق آمن ومضمون 100%')}</span>
                 </div>
-                <div className="text-sm font-bold text-rose-700">
-                  {t('checkout.highDemand', 'طلب مرتفع - تم حجز طلبك لمدة:')} <span className="font-black tabular-nums tracking-tight ml-1 text-rose-800 text-base">{String(Math.floor(countdownSecs / 60)).padStart(2,'0')}:{String(countdownSecs % 60).padStart(2,'0')}</span>
+                <div className="space-y-2 text-right">
+                  <div className="flex items-start gap-2 justify-end">
+                    <span className="text-xs font-semibold text-emerald-700">الدفع عند الاستلام - لن تدفع حتى تستلم وتفحص طلبك</span>
+                    <span className="text-emerald-500">✅</span>
+                  </div>
+                  <div className="flex items-start gap-2 justify-end">
+                    <span className="text-xs font-semibold text-emerald-700">شحن سريع - تسليم خلال 48 ساعة كحد أقصى</span>
+                    <span className="text-emerald-500">🚚</span>
+                  </div>
+                  <div className="flex items-start gap-2 justify-end">
+                    <span className="text-xs font-semibold text-emerald-700">ضمان استبدال واسترجاع - تسوق بدون مخاطرة</span>
+                    <span className="text-emerald-500">🛡️</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -982,10 +981,12 @@ export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: strin
                               <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'Commune')} *</label>
                               <div className="relative">
                                 <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <input type="text" value={commune} onChange={(e) => setCommune(e.target.value)}
-                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                  placeholder="e.g. Bab El Oued"
-                                />
+                                <select value={commune} onChange={(e) => setCommune(e.target.value)}
+                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
+                                >
+                                  <option value="" disabled>Select</option>
+                                  {getCommunesForWilaya(wilaya).map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
                               </div>
                             </div>
                           </div>

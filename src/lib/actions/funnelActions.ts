@@ -263,17 +263,12 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
       actualOrderId = inserted.id;
     }
 
-    // Trigger Meta Automated Campaign confirmation if enabled (delayed by 60s to allow self-confirmation)
+    // Trigger Meta Automated Campaign confirmation if enabled
     try {
-      setTimeout(async () => {
-        try {
-          await sendMetaConfirmation(actualOrderId);
-        } catch (e) {
-          console.error('[submitOrder delayed] Failed to dispatch Meta confirmation:', e);
-        }
-      }, 60000);
+      // Send instantly instead of delaying
+      await sendMetaConfirmation(actualOrderId);
     } catch (e) {
-      console.error('[submitOrder] Failed to schedule Meta confirmation:', e);
+      console.error('[submitOrder] Failed to dispatch Meta confirmation:', e);
     }
 
     // ── Email Notification to Confirmation Staff ──
@@ -733,4 +728,56 @@ async function resolveProductUrl(store: any, productName: string): Promise<strin
   }
 }
 
+/**
+ * Adds an OTO (One-Time Offer) item to an existing order.
+ * This is used for true One-Click Post-Purchase Upsells.
+ */
+export async function addOtoToOrder(orderId: string, otoItem: { id: string, name: string, price: number, imageUrl?: string }) {
+  try {
+    // 1. Fetch the existing order
+    const { data: order, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, cart, total_price, upsell_total')
+      .eq('id', orderId)
+      .single();
 
+    if (fetchError || !order) {
+      throw new Error(`Order not found: ${fetchError?.message}`);
+    }
+
+    // 2. Parse the existing cart
+    let cart = order.cart;
+    if (typeof cart === 'string') {
+      try { cart = JSON.parse(cart); } catch (e) { cart = []; }
+    }
+    if (!Array.isArray(cart)) cart = [];
+
+    // 3. Append the new item
+    const newItem = {
+      ...otoItem,
+      isUpsell: true
+    };
+    cart.push(newItem);
+
+    // 4. Recalculate totals
+    const newTotalPrice = (order.total_price || 0) + otoItem.price;
+    const newUpsellTotal = (order.upsell_total || 0) + otoItem.price;
+
+    // 5. Update the order
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        cart: cart,
+        total_price: newTotalPrice,
+        upsell_total: newUpsellTotal
+      })
+      .eq('id', orderId);
+
+    if (updateError) throw updateError;
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[addOtoToOrder] Error:', err);
+    return { error: err.message };
+  }
+}

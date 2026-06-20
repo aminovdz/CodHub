@@ -225,7 +225,7 @@ function checkoutConfigToRow(c: CheckoutConfig) {
     custom_fields: c.customFields,
     enable_step2_upsell: c.enableStep2Upsell,
     enable_post_purchase_oto: c.enablePostPurchaseOTO,
-    countdown_minutes: c.countdownMinutes,
+    enable_trust_banner: c.enableTrustBanner,
     enable_digital_receipt: c.enableDigitalReceipt,
     thank_you_message: c.thankYouMessage,
     show_address_fields: c.showAddressFields
@@ -255,7 +255,7 @@ function rowToCheckoutConfig(row: any): CheckoutConfig {
     customFields: customFields,
     enableStep2Upsell: row.enable_step2_upsell ?? true,
     enablePostPurchaseOTO: row.enable_post_purchase_oto ?? false,
-    countdownMinutes: row.countdown_minutes ?? 5,
+    enableTrustBanner: row.enable_trust_banner ?? true,
     enableDigitalReceipt: row.enable_digital_receipt ?? true,
     thankYouMessage: row.thank_you_message || '',
     showAddressFields: row.show_address_fields ?? true,
@@ -709,7 +709,8 @@ export interface CheckoutConfig {
   };
   customFields: CustomCheckoutField[];
   enableStep2Upsell: boolean;
-  countdownMinutes: number;
+  countdownMinutes?: number;
+  enableTrustBanner?: boolean;
   enablePostPurchaseOTO: boolean;
   enableDigitalReceipt?: boolean;
   thankYouMessage?: string;

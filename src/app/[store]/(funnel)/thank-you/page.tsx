@@ -8,7 +8,7 @@ import { CheckCircle2, Mail, ExternalLink, MessageCircle, ShoppingBag, ShieldChe
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getShortOrderId } from '@/lib/idHelper';
-import { markOrderSelfConfirmed } from '@/lib/actions/funnelActions';
+import { markOrderSelfConfirmed, addOtoToOrder } from '@/lib/actions/funnelActions';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
 
 export default function ThankYouPage({ params }: { params: Promise<{ store: string }> }) {
@@ -86,19 +86,26 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
     if (email) setEmailSubmitted(true);
   };
 
-  const handleOtoClaim = () => {
-    if (!otoProduct) return;
-    buyNow({
+  const handleOtoClaim = async () => {
+    if (!otoProduct || !draftOrderId) return;
+    
+    setOtoClaimed(true);
+    
+    const newItem = {
       id: otoProduct.id,
       name: otoQuantity > 1 ? `${otoProduct.title} (x${otoQuantity})` : otoProduct.title,
       price: otoPrice,
-      isUpsell: true,
       imageUrl: otoProduct.image
+    };
+
+    // 1. Update the Zustand store for UI reflection
+    addCartItem({
+      ...newItem,
+      isUpsell: true
     });
-    setOtoClaimed(true);
-    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    const basePath = isCustomDomain ? '' : `/${storeSlug}`;
-    setTimeout(() => router.push(`${basePath}/checkout`), 800);
+
+    // 2. Add to existing database order
+    await addOtoToOrder(draftOrderId, newItem);
   };
 
   // Store products for "You Might Also Like" (excluding already purchased)

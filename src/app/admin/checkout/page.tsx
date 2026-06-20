@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAdminStore, ShippingZone, CheckoutConfig, ALGERIA_WILAYAS, COUNTRY_DATA } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
-import { Save, Truck, Plus, Trash2, MapPin, Loader2, ShoppingCart, ShieldAlert, MessageCircle, Clock, CheckCircle2, Copy, Zap } from 'lucide-react';
+import { Save, Truck, Plus, Trash2, MapPin, Loader2, ShoppingCart, ShieldAlert, ShieldCheck, MessageCircle, Clock, CheckCircle2, Copy, Zap } from 'lucide-react';
 
 const DEFAULT_CHECKOUT_CONFIG: CheckoutConfig = {
   storeId: '',
@@ -21,7 +21,7 @@ const DEFAULT_CHECKOUT_CONFIG: CheckoutConfig = {
   customFields: [],
   enableStep2Upsell: true,
   enablePostPurchaseOTO: false,
-  countdownMinutes: 5,
+  enableTrustBanner: true,
   enableDigitalReceipt: true,
   thankYouMessage: '',
   showAddressFields: true
@@ -57,6 +57,7 @@ export default function AdminCheckoutEditor() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [cloneStoreId, setCloneStoreId] = useState('');
+  const [activeTab, setActiveTab] = useState<'checkout' | 'shipping'>('checkout');
 
   useEffect(() => {
     const existing = checkoutConfigs.find(c => c.storeId === activeStore.id);
@@ -190,8 +191,27 @@ export default function AdminCheckoutEditor() {
         <p className="text-slate-500 font-medium">Configure shipping zones and checkout behavior for <span className="font-bold text-indigo-600">{activeStore.name}</span>.</p>
       </div>
 
+      <div className="flex border-b border-slate-200 mb-8 space-x-8">
+        <button
+          type="button"
+          onClick={() => setActiveTab('checkout')}
+          className={`pb-4 font-bold transition-colors border-b-2 ${activeTab === 'checkout' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          Checkout Configuration
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('shipping')}
+          className={`pb-4 font-bold transition-colors border-b-2 ${activeTab === 'shipping' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+        >
+          Shipping Zones & Rates
+        </button>
+      </div>
+
       <form onSubmit={handleSave} className="space-y-8">
         
+        {activeTab === 'checkout' && (
+          <div className="space-y-8">
         {/* General Settings */}
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
@@ -338,12 +358,21 @@ export default function AdminCheckoutEditor() {
               <input type="checkbox" checked={config.enablePostPurchaseOTO} onChange={e => setConfig({...config, enablePostPurchaseOTO: e.target.checked})} className="w-5 h-5 rounded text-indigo-600" />
             </label>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                <Clock size={16} className="text-indigo-500" /> Urgency Countdown Timer (Minutes)
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="flex items-center justify-between cursor-pointer group">
+                <div>
+                  <div className="font-bold text-slate-900 flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-emerald-500" /> Trust & Guarantee Banner
+                  </div>
+                  <div className="text-sm text-slate-500 mt-1">Show a risk-reversal trust banner during checkout to increase conversion.</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={config.enableTrustBanner ?? true} 
+                  onChange={e => setConfig({...config, enableTrustBanner: e.target.checked})} 
+                  className="w-5 h-5 rounded text-indigo-600" 
+                />
               </label>
-              <input type="number" min={0} value={config.countdownMinutes} onChange={e => setConfig({...config, countdownMinutes: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm" />
-              <p className="text-xs text-slate-500 mt-2">Set to 0 to disable the countdown timer on Step 2.</p>
             </div>
 
             <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
@@ -445,7 +474,11 @@ export default function AdminCheckoutEditor() {
           </div>
         </div>
 
+        </div>
+        )}
+
         {/* Shipping Zones */}
+        {activeTab === 'shipping' && (
         <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -531,6 +564,7 @@ export default function AdminCheckoutEditor() {
             )}
           </div>
         </div>
+        )}
 
         <div className="flex justify-end">
           <button 

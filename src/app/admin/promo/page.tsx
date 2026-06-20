@@ -1,14 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
-import { uploadImageToSupabase } from '@/lib/storage';
-import dynamic from 'next/dynamic';
-
-const GrapesEditor = dynamic(() => import('@/components/admin/GrapesEditor'), { ssr: false });
+import { Save, Eye, Copy, X, Plus, Trash2 } from 'lucide-react';
+import { BlockBuilder } from '@/components/admin/promo/BlockBuilder';
 
 export default function AdminPromoPage() {
   const { activeStore, landingPages, setLandingPages, products, addActivityLog } = useAdminStore();
@@ -32,8 +29,6 @@ export default function AdminPromoPage() {
 </div>`);
 
   const [previewMode, setPreviewMode] = useState(false);
-  const [visualEditorOpen, setVisualEditorOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const { notify } = useNotificationStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
@@ -44,25 +39,6 @@ export default function AdminPromoPage() {
   const existingPage = selectedPageId 
     ? storePages.find(p => p.id === selectedPageId) 
     : storePages.find(p => p.slug === originalSlug);
-
-  const handlePromoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const url = await uploadImageToSupabase(file, 'images');
-      const block = `\n<!-- Custom Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${url}" alt="Campaign Image" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
-      setHtmlContent(prev => prev + block);
-      notify('Image uploaded and injected successfully!', 'success');
-    } catch (error: unknown) {
-      console.error(error);
-      const errMsg = error instanceof Error ? error.message : 'Failed to upload image';
-      notify(errMsg, 'error');
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,30 +100,6 @@ export default function AdminPromoPage() {
     setOriginalSlug(newSlug);
     setHtmlContent(newContent);
     setSelectedPageId(null);
-  };
-
-  const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout' | 'image') => {
-    let block = '';
-    if (type === 'hero') {
-      block = `\n<!-- Hero Section -->\n<div class="py-16 text-center bg-slate-50">\n  <h1 class="text-5xl font-black text-slate-900 mb-4">Your Main Headline</h1>\n  <p class="text-xl text-slate-600 mb-8">Supporting subheadline goes here to drive interest.</p>\n  <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800" alt="Hero" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover aspect-video">\n</div>\n`;
-    } else if (type === 'features') {
-      block = `\n<!-- Features Grid -->\n<div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-12 px-4">\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 1</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 2</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 3</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n</div>\n`;
-    } else if (type === 'form') {
-      const productIdParam = selectedProduct || '[PRODUCT_ID]';
-      const prod = selectedProduct ? storeProducts.find(p => p.id === selectedProduct) : null;
-      block = `\n<!-- Inline Checkout Form: [CHECKOUT_FORM:${productIdParam}] renders a live order form here -->\n[CHECKOUT_FORM:${productIdParam}]\n<!-- Product: ${prod ? prod.title : 'Select a product from the dropdown first'} -->\n`;
-    } else if (type === 'checkout') {
-      const prod = selectedProduct ? storeProducts.find(p => p.id === selectedProduct) : null;
-      const productIdParam = selectedProduct ? selectedProduct : '[PRODUCT_ID]';
-      const productLabel = prod ? prod.title : 'Selected Product';
-      block = `\n<!-- Order Button: links directly to checkout (bypasses product page) -->\n<div class="max-w-xl mx-auto py-10 px-4 text-center">\n  <a href="/${activeStore.region}/checkout?product=${productIdParam}" class="inline-flex items-center justify-center gap-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-2xl py-6 px-12 rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.3)] transition-all" style="text-decoration:none;display:block;border-radius:16px;background:#4f46e5;color:#fff;font-weight:900;font-size:1.5rem;padding:24px 48px;text-align:center;">\n    🛒 Order Now — Pay on Delivery\n  </a>\n  <p style="margin-top:12px;font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:0.08em;">${prod ? `Product: ${productLabel}` : 'Select a product from the dropdown first'}</p>\n</div>\n`;
-    } else if (type === 'image') {
-      const url = prompt('Enter Image URL:');
-      if (url) {
-        block = `\n<!-- Custom Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${url}" alt="Campaign Image" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
-      }
-    }
-    setHtmlContent(prev => prev + block);
   };
 
   return (
@@ -235,92 +187,12 @@ export default function AdminPromoPage() {
 
           <div>
             <div className="flex items-center justify-between mb-4">
-              <label className="block text-sm font-bold text-slate-700">Page Content</label>
-              <div className="flex items-center gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setVisualEditorOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-md transition-all active:scale-95"
-                >
-                  <LayoutTemplate size={16} /> Open Visual Builder
-                </button>
-              </div>
+              <label className="block text-sm font-bold text-slate-700">Page Content (Block Builder)</label>
             </div>
 
-            {/* Section Injector Toolbar */}
-            <div className="flex flex-wrap gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider w-full mb-1">Inject Sections</div>
-              <button type="button" onClick={() => injectSection('hero')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
-                <ImageIcon size={16} className="text-indigo-500" /> Hero Section
-              </button>
-              <button type="button" onClick={() => injectSection('features')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
-                <AlignLeft size={16} className="text-emerald-500" /> Features Grid
-              </button>
-              <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
-                {isUploading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin text-indigo-600" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud size={16} className="text-indigo-600" />
-                    Upload & Inject Image
-                  </>
-                )}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handlePromoImageUpload} 
-                  disabled={isUploading}
-                  className="hidden" 
-                />
-              </label>
-              <button type="button" onClick={() => injectSection('image')} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors shadow-sm">
-                <LinkIcon size={16} className="text-slate-500" /> Inject Image URL
-              </button>
-              <div className="w-px h-6 bg-slate-300 mx-1 self-center"></div>
-              <div className="flex items-center gap-2">
-                <select 
-                  value={selectedProduct} 
-                  onChange={e => setSelectedProduct(e.target.value)}
-                  className="px-2 py-1.5 text-sm rounded border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none"
-                >
-                  <option value="">Default Product</option>
-                  {storeProducts.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-                <button type="button" onClick={() => injectSection('checkout')} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-black hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">
-                  <PlusSquare size={16} /> Inject Order Button
-                </button>
-                <button type="button" onClick={() => injectSection('form')} className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-black hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200">
-                  <PlusSquare size={16} /> Inject Full Form
-                </button>
-              </div>
-            </div>
-            
-            <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
-              <span className="text-amber-500 mt-0.5">💡</span>
-              <div className="text-sm font-medium text-amber-800 space-y-2">
-                <div>
-                  <strong className="block font-bold text-amber-900 mb-1">Two ways to add a purchase option:</strong>
-                  <p>🔵 <strong>Inject Order Button</strong> — generates a styled link/button that redirects customer to the full checkout page.</p>
-                  <p>🟢 <strong>Inject Full Form</strong> — embeds a complete Name/Phone/Wilaya order form directly on this page. Customer orders without leaving.</p>
-                  <p className="text-amber-600 text-xs mt-0.5">Both require selecting a product from the dropdown first.</p>
-                </div>
-                <div className="pt-2 border-t border-amber-200/60">
-                  <strong className="block font-bold text-amber-900 mb-0.5">🖼️ How to upload images:</strong>
-                  <p className="text-xs text-amber-800">Use a free image host like <a href="https://postimages.org" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">postimages.org</a> or <a href="https://imgur.com" target="_blank" rel="noreferrer" className="text-indigo-600 underline hover:text-indigo-800 font-bold">imgur.com</a>, upload your image file, click <strong>Inject Image URL</strong> above, and paste the direct image URL.</p>
-                </div>
-              </div>
-            </div>
-            
-            <textarea 
-              value={htmlContent}
-              onChange={(e) => setHtmlContent(e.target.value)}
-              className="w-full h-[600px] p-4 bg-slate-900 text-emerald-400 font-mono text-sm rounded-xl border border-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none resize-y leading-relaxed"
-              spellCheck={false}
+            <BlockBuilder 
+              initialHtml={htmlContent} 
+              onChange={setHtmlContent} 
             />
           </div>
 
@@ -361,7 +233,7 @@ export default function AdminPromoPage() {
                     <script src="https://cdn.tailwindcss.com"></script>
                   </head>
                   <body>
-                    \${htmlContent.replace(/\[CHECKOUT_FORM(?::[^\]]+)?\]/g, '<div class="max-w-2xl mx-auto my-12 p-12 bg-slate-100 border-2 border-dashed border-indigo-300 rounded-3xl text-center"><h3 class="text-2xl font-black text-indigo-900 mb-2">React Checkout Component Rendered Here</h3><p class="text-indigo-600 font-medium">When customers visit this page, the live multi-step checkout form will appear inside this box.</p></div>')}
+                    ${htmlContent.replace(/(?:\\[|&#91;|%5B)CHECKOUT_FORM(?:\\s*:\\s*[a-zA-Z0-9-]+)?(?:\\]|&#93;|%5D)/g, '<div class="max-w-2xl mx-auto my-12 p-12 bg-slate-100 border-2 border-dashed border-indigo-300 rounded-3xl text-center"><h3 class="text-2xl font-black text-indigo-900 mb-2">React Checkout Component Rendered Here</h3><p class="text-indigo-600 font-medium">When customers visit this page, the live multi-step checkout form will appear inside this box.</p></div>')}
                   </body>
                 </html>
               `}
@@ -370,18 +242,6 @@ export default function AdminPromoPage() {
         </div>
       )}
 
-      {/* Visual Editor Modal */}
-      {visualEditorOpen && (
-        <GrapesEditor 
-          initialHtml={htmlContent}
-          onSave={(html) => {
-            setHtmlContent(html);
-            setVisualEditorOpen(false);
-            notify('Visual changes saved to raw content!', 'success');
-          }}
-          onClose={() => setVisualEditorOpen(false)}
-        />
-      )}
     </div>
 
     <ConfirmModal

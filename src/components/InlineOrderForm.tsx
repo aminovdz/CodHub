@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, memo } from 'react';
+import { useState, memo, useMemo } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
-import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin, BadgeCheck, ShieldCheck } from 'lucide-react';
+import { ShoppingBag, CheckCircle2, ChevronRight, Phone, User, MapPin, BadgeCheck, ShieldCheck, PackagePlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { submitOrder } from '@/lib/actions/funnelActions';
+import { ScarcityEngine } from '@/components/checkout/ScarcityEngine';
 
 const ALGERIA_WILAYAS = [
   "Adrar","Chlef","Laghouat","Oum El Bouaghi","Batna","Béjaïa","Biskra","Béchar","Blida","Bouira",
@@ -18,6 +19,7 @@ const ALGERIA_WILAYAS = [
 ];
 
 import { useTranslation } from '@/lib/hooks/useTranslation';
+import { getCommunesForWilaya } from '@/lib/algeria-communes';
 
 interface Props {
   productId: string;
@@ -29,10 +31,11 @@ interface Props {
 export default memo(function InlineOrderForm({ productId, region, utmSource, utmCampaign }: Props) {
   const router = useRouter();
   const { t } = useTranslation(region);
-  const { products, shippingZones, availableStores, setOrders } = useAdminStore();
+  const { products, shippingZones, availableStores, setOrders, checkoutConfigs } = useAdminStore();
   const { setLead, addCartItem, setAddressData, setDraftOrderId, setStatus } = useFunnelStore();
 
   const store = resolveStore(availableStores, region);
+  const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const product = products.find(p => p.id === productId);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
@@ -41,7 +44,9 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [wilaya, setWilaya] = useState('');
+  const [commune, setCommune] = useState('');
   const [qty, setQty] = useState(1);
+  const [selectedUpsells, setSelectedUpsells] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -53,10 +58,44 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
     );
   }
 
-  const deliveryZone = zones.find(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''))
+  const dynamicUpsells = useMemo(() => {
+    const upsellList: any[] = [];
+    if (product?.maximizerUpsells) {
+      product.maximizerUpsells.forEach(cfg => {
+        const target = products.find(tp => tp.id === cfg.targetProductId);
+        if (target) {
+          upsellList.push({
+            id: cfg.id,
+            productId: cfg.targetProductId,
+            name: cfg.titleOverride ? `${cfg.titleOverride} (${target.title})` : target.title,
+            price: Number(cfg.customPrice),
+            image: cfg.customImage || target.image
+          });
+        }
+      });
+    }
+    return upsellList;
+  }, [product, products]);
+
+  const handleUpsellToggle = (upsellId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedUpsells(prev => [...prev, upsellId]);
+    } else {
+      setSelectedUpsells(prev => prev.filter(id => id !== upsellId));
+    }
+  };
+
+  const deliveryZone = zones.find(z => z.wilaya === wilaya && z.commune === commune)
+    || zones.find(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''))
     || zones.find(z => z.wilaya === wilaya);
   const deliveryRate = deliveryZone?.deliveryRate || 0;
-  const total = (product.price * qty) + deliveryRate;
+  
+  const upsellsTotal = selectedUpsells.reduce((sum, upsellId) => {
+    const u = dynamicUpsells.find(up => up.id === upsellId);
+    return sum + (u ? u.price : 0);
+  }, 0);
+
+  const total = (product.price * qty) + deliveryRate + upsellsTotal;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,15 +109,24 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
     setLead(name, fullPhone);
     setDraftOrderId(orderId);
     addCartItem({ id: product.id, name: product.title, price: product.price, isUpsell: false });
-    if (wilaya) setAddressData({ wilaya, commune: '', detailedAddress: '' });
+    if (wilaya) setAddressData({ wilaya, commune, detailedAddress: '' });
+
+    const finalCart = [{ id: product.id, name: product.title, price: product.price * qty, isUpsell: false }];
+    selectedUpsells.forEach(upsellId => {
+      const u = dynamicUpsells.find(up => up.id === upsellId);
+      if (u) {
+        finalCart.push({ id: u.productId, name: u.name, price: u.price, isUpsell: true });
+        addCartItem({ id: u.productId, name: u.name, price: u.price, isUpsell: true });
+      }
+    });
 
     try {
       await submitOrder(orderId, region, {
         customerName: name,
         phone: fullPhone,
-        address: { wilaya, commune: '', detailedAddress: '' },
+        address: { wilaya, commune, detailedAddress: '' },
         instructions: '',
-        cart: [{ id: product.id, name: product.title, price: product.price * qty, isUpsell: false }],
+        cart: finalCart,
         total: total,
         deliveryRate: deliveryRate,
         source: utmSource || undefined,
@@ -96,8 +144,8 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
       phone: fullPhone,
       address: wilaya,
       wilaya,
-      commune: '',
-      product: `${product.title} (x${qty})`,
+      commune,
+      product: `${product.title} (x${qty})` + (selectedUpsells.length > 0 ? ` + ${selectedUpsells.length} Add-on(s)` : ''),
       total: total,
       deliveryRate,
       status: 'PENDING_AGENT_CONFIRMATION',
@@ -147,6 +195,7 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
 
   return (
     <div className="max-w-lg mx-auto my-8">
+      <ScarcityEngine productId={product.id} />
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
         {/* Product summary bar */}
         <div className="bg-indigo-600 p-5 text-white flex items-center gap-4">
@@ -216,6 +265,68 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
                     <option key={w} value={w}>{w}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+          )}
+
+          {/* Commune */}
+          {region === 'dz' && wilaya && (
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{t('checkout.commune', 'Commune')} *</label>
+              <div className="relative">
+                <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <select
+                  required
+                  value={commune}
+                  onChange={e => setCommune(e.target.value)}
+                  className="w-full pl-9 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-900 bg-white appearance-none"
+                >
+                  <option value="">Select your Commune</option>
+                  {getCommunesForWilaya(wilaya).map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* ── Inline Upsells ── */}
+          {dynamicUpsells.length > 0 && checkoutConfig?.enableStep2Upsell !== false && (
+            <div className="pt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <PackagePlus size={15} className="text-amber-500" />
+                <span className="text-xs font-black text-slate-700 uppercase tracking-widest">
+                  ⚡ {t('checkout.upsellTitle', 'Exclusive Add-ons — Limited Offer')}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {dynamicUpsells.map((upsell) => {
+                  const isSelected = selectedUpsells.includes(upsell.id);
+                  return (
+                    <label
+                      key={upsell.id}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300 bg-slate-50'}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => handleUpsellToggle(upsell.id, e.target.checked)}
+                        className="w-5 h-5 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 shrink-0"
+                      />
+                      {upsell.image && (
+                        <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={upsell.image} alt={upsell.name} className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-slate-900 text-sm leading-tight truncate">{upsell.name}</p>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">{t('checkout.upsellItemDesc', 'Highly recommended for best results')}</p>
+                      </div>
+                      <span className="font-black text-indigo-600 text-sm shrink-0">+{upsell.price} {currency}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           )}

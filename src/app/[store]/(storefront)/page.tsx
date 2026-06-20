@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Star, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import RichHtmlContent from '@/components/RichHtmlContent';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
 export default function StorefrontPage({ params }: { params: Promise<{ store: string }> }) {
@@ -173,7 +174,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
         if (block.type === 'html') {
           return (
             <div key={block.id} className="w-full mb-12">
-              <div dangerouslySetInnerHTML={{ __html: block.content }} />
+              <RichHtmlContent html={block.content} region={region} />
             </div>
           );
         }

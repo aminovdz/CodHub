@@ -1197,27 +1197,6 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Fraud & Security Rules Panel */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <ShieldAlert className="w-6 h-6 text-indigo-600" /> Fraud & Security Rules
-          </h2>
-          <div className="space-y-6">
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">IP Order Limit Timeframe (Minutes)</label>
-              <input 
-                type="number" 
-                min={1} 
-                value={translations?.ipOrderLimitTimeframe || ''} 
-                onChange={e => setTranslations(prev => ({ ...(prev || {}), ipOrderLimitTimeframe: e.target.value }))}
-                placeholder="e.g. 60 (leave empty to disable limit)" 
-                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Prevent multiple orders coming from the same IP address within this timeframe.</p>
-            </div>
-          </div>
-        </div>
-
         <div className="flex justify-end mt-8">
           <button type="submit" disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 active:scale-95 transition-all text-white px-8 py-4 rounded-xl font-black flex items-center gap-2 shadow-lg shadow-indigo-200 disabled:opacity-50">
             <Save size={20} /> {isSaving ? 'Saving...' : 'Save Settings'}

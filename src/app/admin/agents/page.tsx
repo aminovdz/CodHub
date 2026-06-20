@@ -630,7 +630,7 @@ export default function AgentsHubPage() {
                           </style>
                         </head>
                         <body>
-                          ${previewPageData.htmlContent.replace(/\[CHECKOUT_FORM(?::([^\]]+))?\]/g, `
+                          ${previewPageData.htmlContent.replace(/\[CHECKOUT_FORM[^\]]*\]/g, `
                             <div style="max-width: 450px; margin: 30px auto; padding: 20px; border: 2px dashed #6366f1; border-radius: 16px; text-align: center; background: #e0e7ff; color: #4338ca; font-weight: bold; font-family: sans-serif;">
                               🛍️ [Interactive COD Checkout Form Here]
                             </div>

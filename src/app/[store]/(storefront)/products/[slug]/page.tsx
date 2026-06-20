@@ -8,7 +8,9 @@ import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import RichHtmlContent from '@/components/RichHtmlContent';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
+import { ScarcityEngine } from '@/components/checkout/ScarcityEngine';
 
 // Using same mock data here for simplicity until DB connected
 const PRODUCTS = [
@@ -330,7 +332,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
             )}
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="flex items-center gap-3 text-slate-600">
                 <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
                   <Truck size={20} />
@@ -344,6 +346,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                 <span className="font-bold text-sm leading-tight">{t('checkout.secureText', '100% Secure Checkout')}</span>
               </div>
             </div>
+
+            <ScarcityEngine productId={product.id} />
 
             {/* Call to Action */}
             <div id="buy-button-section" className="mt-auto">
@@ -430,7 +434,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         {/* Main Description */}
         {((product as any).mainDesc || (product as any).description) && (
           <div className="max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
-            <div dangerouslySetInnerHTML={{ __html: (product as any).mainDesc || (product as any).description }} />
+            <RichHtmlContent html={(product as any).mainDesc || (product as any).description} region={region} />
           </div>
         )}
 
@@ -465,7 +469,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
               }
               if (block.type === 'html') {
                 return (
-                  <div key={block.id} className="w-full" dangerouslySetInnerHTML={{ __html: block.content }} />
+                  <RichHtmlContent key={block.id} html={block.content} region={region} />
                 );
               }
               return null;
