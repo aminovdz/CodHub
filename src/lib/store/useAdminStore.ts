@@ -218,7 +218,10 @@ function checkoutConfigToRow(c: CheckoutConfig) {
     store_id: c.storeId,
     address_autocomplete: c.addressAutocomplete,
     autocomplete_api_key: c.autocompleteApiKey,
-    fields: c.fields,
+    fields: {
+      ...c.fields,
+      productCheckoutType: c.productCheckoutType
+    },
     custom_fields: c.customFields,
     enable_step2_upsell: c.enableStep2Upsell,
     enable_post_purchase_oto: c.enablePostPurchaseOTO,
@@ -230,18 +233,33 @@ function checkoutConfigToRow(c: CheckoutConfig) {
 }
 
 function rowToCheckoutConfig(row: any): CheckoutConfig {
+  let fields = row.fields || { showEmail: false, requireEmail: false, showLastName: false };
+  if (typeof fields === 'string') {
+    try {
+      fields = JSON.parse(fields);
+    } catch (e) {}
+  }
+
+  let customFields = row.custom_fields || [];
+  if (typeof customFields === 'string') {
+    try {
+      customFields = JSON.parse(customFields);
+    } catch (e) {}
+  }
+
   return {
     storeId: row.store_id,
     addressAutocomplete: row.address_autocomplete,
     autocompleteApiKey: row.autocomplete_api_key,
-    fields: row.fields || { showEmail: false, requireEmail: false, showLastName: false },
-    customFields: row.custom_fields || [],
+    fields: fields,
+    customFields: customFields,
     enableStep2Upsell: row.enable_step2_upsell ?? true,
     enablePostPurchaseOTO: row.enable_post_purchase_oto ?? false,
     countdownMinutes: row.countdown_minutes ?? 5,
     enableDigitalReceipt: row.enable_digital_receipt ?? true,
     thankYouMessage: row.thank_you_message || '',
-    showAddressFields: row.show_address_fields ?? true
+    showAddressFields: row.show_address_fields ?? true,
+    productCheckoutType: fields.productCheckoutType || 'redirect'
   };
 }
 
@@ -676,6 +694,7 @@ export interface CustomCheckoutField {
 
 export interface CheckoutConfig {
   storeId: string;
+  productCheckoutType?: 'redirect' | 'popup' | 'inline';
   addressAutocomplete: boolean;
   autocompleteApiKey?: string;
   showAddressFields?: boolean;
@@ -812,7 +831,7 @@ interface AdminStore {
   commissionEntries: CommissionEntry[];
   setCommissionEntries: (updater: (prev: CommissionEntry[]) => CommissionEntry[]) => void;
 
-  fetchInitialData: (isAdmin?: boolean) => Promise<void>;
+  fetchInitialData: (isAdmin?: boolean, currentStoreId?: string) => Promise<void>;
 }
 
 const MOCK_STORES: Store[] = [];
@@ -1463,16 +1482,37 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         commissionEntries: updater(state.commissionEntries)
       })),
 
-      fetchInitialData: async (isAdmin = false) => {
-        console.log(`Fetching initial data from Supabase... (isAdmin: ${isAdmin})`);
+      fetchInitialData: async (isAdmin = false, currentStoreId?: string) => {
+        console.log(`Fetching initial data from Supabase... (isAdmin: ${isAdmin}, currentStoreId: ${currentStoreId})`);
         try {
+          let resolvedStoreId = currentStoreId;
+          
+          if (!isAdmin && !resolvedStoreId && typeof window !== 'undefined') {
+            const { data: stores } = await supabase.from('stores').select('*');
+            if (stores) {
+              const host = window.location.hostname.replace('www.', '').split(':')[0].toLowerCase();
+              let foundStore = stores.find(s => s.custom_domain && s.custom_domain.replace('www.', '').toLowerCase() === host);
+              
+              if (!foundStore) {
+                  const pathParts = window.location.pathname.split('/').filter(Boolean);
+                  if (pathParts.length > 0) {
+                     const slugOrRegion = pathParts[0].toLowerCase();
+                     foundStore = stores.find(s => slugify(s.name) === slugOrRegion || s.region.toLowerCase() === slugOrRegion);
+                  }
+              }
+              if (foundStore) {
+                 resolvedStoreId = foundStore.id;
+              }
+            }
+          }
+
           // Base data needed for both storefront and admin
           const basePromises = [
             supabase.from('stores').select('*'),
-            supabase.from('products').select('*'),
-            supabase.from('shipping_zones').select('*'),
-            supabase.from('checkout_configs').select('*'),
-            supabase.from('landing_pages').select('*')
+            resolvedStoreId ? supabase.from('products').select('*').eq('store_id', resolvedStoreId) : supabase.from('products').select('*'),
+            resolvedStoreId ? supabase.from('shipping_zones').select('*').eq('store_id', resolvedStoreId) : supabase.from('shipping_zones').select('*'),
+            resolvedStoreId ? supabase.from('checkout_configs').select('*').eq('store_id', resolvedStoreId) : supabase.from('checkout_configs').select('*'),
+            resolvedStoreId ? supabase.from('landing_pages').select('*').eq('store_id', resolvedStoreId) : supabase.from('landing_pages').select('*')
           ];
 
           // Heavy data only needed for admin

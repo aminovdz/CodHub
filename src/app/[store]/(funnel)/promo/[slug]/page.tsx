@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import InlineOrderForm from '@/components/InlineOrderForm';
 import { Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 export default function PromoLandingPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
@@ -15,81 +16,120 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const { availableStores, landingPages, _hasHydrated } = useAdminStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
+  const searchParams = useSearchParams();
 
-  const variants = store
+  const utmSource = searchParams.get('utm_source') || undefined;
+  const utmCampaign = searchParams.get('utm_campaign') || undefined;
+
+  const matchedPages = store
     ? landingPages.filter(p => p.storeId === store.id && p.slug.toLowerCase() === slug.toLowerCase() && p.published)
     : [];
 
   const [activeVariant, setActiveVariant] = useState<any>(null);
 
   useEffect(() => {
-    if (variants.length > 0 && !activeVariant) {
-      // Check for saved variant in localStorage
-      const storageKey = `ab_variant_${slug}`;
-      const savedVariantId = localStorage.getItem(storageKey);
+    if (matchedPages.length > 0 && !activeVariant) {
+      let pageToRender = matchedPages[0];
       
-      let selected = variants.find(v => v.id === savedVariantId);
-      
-      // If no saved variant or saved variant was deleted, pick a random one
-      if (!selected) {
-        const randomIndex = Math.floor(Math.random() * variants.length);
-        selected = variants[randomIndex];
-        localStorage.setItem(storageKey, selected.id);
+      // Check if it's an A/B test config
+      try {
+        const config = JSON.parse(pageToRender.htmlContent);
+        if (config.isAbTest && config.variants?.length === 2) {
+          const storageKey = `ab_variant_${slug}`;
+          const savedVariantId = localStorage.getItem(storageKey);
+          
+          let selectedId = savedVariantId;
+          if (!selectedId || !config.variants.includes(selectedId)) {
+            const trafficSplit = config.trafficSplit || 50;
+            const rand = Math.random() * 100;
+            selectedId = rand < trafficSplit ? config.variants[0] : config.variants[1];
+            localStorage.setItem(storageKey, selectedId as string);
+          }
+          
+          // Find the actual variant page
+          const actualPage = landingPages.find(p => p.id === selectedId);
+          if (actualPage) {
+            pageToRender = actualPage;
+          }
+        }
+      } catch (e) {
+        // Not JSON, just a normal page
       }
-      
-      setActiveVariant(selected);
+
+      setActiveVariant(pageToRender);
 
       // Fire tracking event for view
       fetch('/api/tracking', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'Landing Page View', variantId: selected.id, storeId: store!.id })
+        body: JSON.stringify({ action: 'Landing Page View', variantId: pageToRender.id, storeId: store!.id })
       }).catch(console.error);
     }
-  }, [variants.length, activeVariant, slug, store]);
+  }, [matchedPages, activeVariant, slug, store]);
 
-  const cleanHtml = activeVariant ? activeVariant.htmlContent.replace(/className=/g, 'class=') : '';
-  const hasShortcodes = /\[CHECKOUT_FORM/.test(cleanHtml);
-  
-  const processedHtml = cleanHtml.replace(
-    /\[CHECKOUT_FORM(?::([^\]]+))?\]/g, 
-    (match: string, productId: string, offset: number) => `<div id="checkout-mount-${offset}" class="checkout-mount-point w-full my-8" data-product-id="${productId || ''}"></div>`
-  );
-
+  const [processedHtml, setProcessedHtml] = useState('');
+  const [mountNodes, setMountNodes] = useState<{id: string, node: HTMLElement, productId: string}[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [mountNodes, setMountNodes] = useState<Array<{ id: string, node: HTMLElement, productId: string }>>([]);
 
+  // This effect runs whenever we get a new activeVariant
   useEffect(() => {
-    // 1. Setup Tailwind CDN dynamically
-    const scriptId = 'tailwind-cdn-dynamic';
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://cdn.tailwindcss.com';
-      document.head.appendChild(script);
+    if (!activeVariant) return;
+
+    let html = activeVariant.htmlContent;
+    // Inject Tailwind explicitly if not already there
+    if (!html.includes('cdn.tailwindcss.com')) {
+      html = `<script src="https://cdn.tailwindcss.com"></script>` + html;
     }
 
-    // 2. Map mount nodes for checkout form portals
-    if (activeVariant && containerRef.current && hasShortcodes) {
-      const nodes = Array.from(containerRef.current.querySelectorAll('.checkout-mount-point')).map(el => ({
-        id: el.id,
-        node: el as HTMLElement,
-        productId: el.getAttribute('data-product-id') || ''
-      }));
-      setMountNodes(nodes);
+    setProcessedHtml(html);
+  }, [activeVariant]);
+
+  const [hasShortcodes, setHasShortcodes] = useState(false);
+
+  // This effect parses the rendered HTML for our specific shortcodes
+  useEffect(() => {
+    if (!containerRef.current || !processedHtml || hasShortcodes) return;
+
+    // We look for any text nodes containing [product_checkout id="..."]
+    const regex = /\[product_checkout id="([^"]+)"\]/g;
+    
+    // Simplest way: replace the shortcode in the raw HTML with a unique mount point
+    let newHtml = processedHtml;
+    let match;
+    const newMounts: {id: string, productId: string}[] = [];
+    
+    // We use a safe copy of the string to avoid infinite loops if we mutate while matching
+    const tempHtml = processedHtml;
+    
+    while ((match = regex.exec(tempHtml)) !== null) {
+      const productId = match[1];
+      const uniqueId = `checkout-mount-${productId}-${Math.random().toString(36).substr(2, 9)}`;
+      newMounts.push({ id: uniqueId, productId });
+      
+      // Replace just this specific instance of the shortcode
+      newHtml = newHtml.replace(match[0], `<div id="${uniqueId}"></div>`);
     }
 
-    // 3. Cleanup on unmount
-    return () => {
-      const script = document.getElementById(scriptId);
-      if (script) script.remove();
-      const style = document.getElementById('tailwind-style');
-      if (style) style.remove();
-    };
+    if (newMounts.length > 0) {
+      setProcessedHtml(newHtml);
+      setHasShortcodes(true);
+      
+      // Need to wait for React to render the new HTML with the div containers
+      setTimeout(() => {
+        const nodes = newMounts.map(m => {
+          const el = document.getElementById(m.id);
+          return el ? { id: m.id, node: el, productId: m.productId } : null;
+        }).filter(Boolean) as {id: string, node: HTMLElement, productId: string}[];
+        
+        setMountNodes(nodes);
+      }, 50);
+    } else {
+      setHasShortcodes(true); // checked, none found
+    }
   }, [processedHtml, hasShortcodes, activeVariant]);
 
   // Show spinner while data is still loading from Supabase
-  if (!_hasHydrated || (variants.length > 0 && !activeVariant)) {
+  if (!_hasHydrated || (matchedPages.length > 0 && !activeVariant)) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 text-slate-400">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
@@ -98,7 +138,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
     );
   }
 
-  if (variants.length === 0 || !activeVariant) {
+  if (matchedPages.length === 0 || !activeVariant) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4">
         <h1 className="text-3xl font-black text-slate-900 mb-4">Promo Page Not Found</h1>
@@ -118,7 +158,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
         {mountNodes.map(({ id, node, productId }) => 
           createPortal(
             <div key={id} className="px-4 py-8 w-full max-w-lg mx-auto">
-              <InlineOrderForm productId={productId} region={region} />
+              <InlineOrderForm productId={productId} region={region} utmSource={utmSource} utmCampaign={utmCampaign} />
             </div>,
             node
           )

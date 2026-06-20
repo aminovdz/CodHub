@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const { storeName, orderId, total, currency, customer, phone, region, resendApiKey, notifyEmail, type } = data;
+    const { storeName, orderId, total, currency, customer, phone, region, resendApiKey, notifyEmail, staffEmails = [], type } = data;
 
     if (!resendApiKey || !notifyEmail) {
       console.warn('RESEND_API_KEY or NOTIFY_EMAIL not provided in payload. Skipping email notification.');
@@ -50,6 +50,9 @@ export async function POST(request: Request) {
       </div>
     `;
 
+    const recipients = [notifyEmail, ...staffEmails].filter(Boolean);
+    const uniqueRecipients = [...new Set(recipients)];
+
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         from: `COD Hub <onboarding@resend.dev>`,
-        to: [notifyEmail],
+        to: uniqueRecipients,
         subject: isStockout ? `🚨 OUT OF STOCK: ${customer} (${storeName})` : `🚨 New Order: ${total} ${currency} (${storeName})`,
         html: htmlContent
       })

@@ -22,9 +22,11 @@ import { useTranslation } from '@/lib/hooks/useTranslation';
 interface Props {
   productId: string;
   region: string;
+  utmSource?: string;
+  utmCampaign?: string;
 }
 
-export default memo(function InlineOrderForm({ productId, region }: Props) {
+export default memo(function InlineOrderForm({ productId, region, utmSource, utmCampaign }: Props) {
   const router = useRouter();
   const { t } = useTranslation(region);
   const { products, shippingZones, availableStores, setOrders } = useAdminStore();
@@ -79,6 +81,8 @@ export default memo(function InlineOrderForm({ productId, region }: Props) {
         cart: [{ id: product.id, name: product.title, price: product.price * qty, isUpsell: false }],
         total: total,
         deliveryRate: deliveryRate,
+        source: utmSource || undefined,
+        utmCampaign: utmCampaign || undefined,
       });
     } catch {
       // Non-blocking — order is logged client-side even if server action fails

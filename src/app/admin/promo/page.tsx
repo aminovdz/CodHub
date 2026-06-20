@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
-import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon, Edit3, BarChart3, SplitSquareHorizontal } from 'lucide-react';
+import { Save, LayoutTemplate, Eye, PlusSquare, Image as ImageIcon, AlignLeft, Copy, X, Plus, Trash2, Loader2, UploadCloud, Link as LinkIcon } from 'lucide-react';
 import { uploadImageToSupabase } from '@/lib/storage';
 import dynamic from 'next/dynamic';
 
@@ -22,7 +22,6 @@ export default function AdminPromoPage() {
   const [selectedProduct, setSelectedProduct] = useState('');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('flash-sale');
-  // originalSlug tracks the slug the page was LOADED with, so we can find it for updates even if user edits the slug
   const [originalSlug, setOriginalSlug] = useState('flash-sale');
   const [htmlContent, setHtmlContent] = useState(`<div class="bg-rose-600 text-white text-center py-2 font-bold">
   ⚡ FLASH SALE: 50% OFF
@@ -38,37 +37,13 @@ export default function AdminPromoPage() {
   const { notify } = useNotificationStore();
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Group pages by slug to manage variants
-  const storePages = landingPages.filter(p => p.storeId === activeStore.id);
-  const groupedPages = storePages.reduce((acc, page) => {
-    if (!acc[page.slug]) acc[page.slug] = [];
-    acc[page.slug].push(page);
-    return acc;
-  }, {} as Record<string, typeof landingPages>);
+  // Filter out A/B Test virtual pages
+  const storePages = landingPages.filter(p => p.storeId === activeStore.id && !p.htmlContent?.includes('"isAbTest":true'));
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
-  const uniqueSlugs = Object.keys(groupedPages);
-  const currentVariants = groupedPages[originalSlug] || [];
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
-
-  // Analytics tracking state
-  const [analytics, setAnalytics] = useState<Record<string, { views: number, conversions: number }>>({});
-  
-  // Fetch analytics for variants
-  import('react').then(({ useEffect }) => {
-    useEffect(() => {
-      if (currentVariants.length > 0) {
-        const variantIds = currentVariants.map(v => v.id).join(',');
-        fetch(`/api/tracking?storeId=${activeStore.id}&variantIds=${variantIds}`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              setAnalytics(data.stats);
-            }
-          })
-          .catch(console.error);
-      }
-    }, [currentVariants.length, activeStore.id]); // re-fetch if variant count changes
-  });
+  const existingPage = selectedPageId 
+    ? storePages.find(p => p.id === selectedPageId) 
+    : storePages.find(p => p.slug === originalSlug);
 
   const handlePromoImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,13 +64,6 @@ export default function AdminPromoPage() {
     }
   };
 
-
-
-  // The page currently being edited (can be null if it's a completely new unsaved page)
-  const existingPage = selectedVariantId 
-    ? landingPages.find(p => p.id === selectedVariantId) 
-    : landingPages.find(p => p.storeId === activeStore.id && p.slug === originalSlug);
-
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setLandingPages(prev => {
@@ -109,7 +77,6 @@ export default function AdminPromoPage() {
         published: true
       };
       if (existingPage) {
-        // Update by id, not slug, so slug changes work correctly
         return prev.map(p => p.id === existingPage.id ? updatedPage : p);
       } else {
         return [...prev, updatedPage];
@@ -121,8 +88,8 @@ export default function AdminPromoPage() {
       action: existingPage ? 'Landing Page Updated' : 'Landing Page Created',
       detail: `${existingPage ? 'Updated' : 'Created'} landing page "${title}" (slug: /promo/${slug})`
     });
-    // After saving, originalSlug should reflect the new slug
     setOriginalSlug(slug);
+    setSelectedPageId(existingPage?.id || null);
     notify(`Landing Page saved! Slug: /${activeStore.region}/promo/${slug}`, "success");
   };
 
@@ -138,41 +105,25 @@ export default function AdminPromoPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const loadExisting = (existingSlug: string) => {
-    const variants = groupedPages[existingSlug];
-    if (variants && variants.length > 0) {
-      const firstVariant = variants[0];
-      setTitle(firstVariant.title || '');
-      setSlug(firstVariant.slug);
-      setOriginalSlug(firstVariant.slug); 
-      setHtmlContent(firstVariant.htmlContent);
-      setSelectedVariantId(firstVariant.id);
+  const loadExisting = (pageId: string) => {
+    const page = storePages.find(p => p.id === pageId);
+    if (page) {
+      setTitle(page.title || '');
+      setSlug(page.slug);
+      setOriginalSlug(page.slug); 
+      setHtmlContent(page.htmlContent);
+      setSelectedPageId(page.id);
     }
-  };
-
-  const loadVariant = (variant: any) => {
-    setTitle(variant.title || '');
-    setSlug(variant.slug);
-    setHtmlContent(variant.htmlContent);
-    setSelectedVariantId(variant.id);
-  };
-
-  const handleCreateVariant = () => {
-    const nextVariantLetter = String.fromCharCode(65 + currentVariants.length);
-    setTitle(`Variant ${nextVariantLetter}`);
-    // slug remains the same to group them together
-    setHtmlContent(`<!-- Variant ${nextVariantLetter} -->\n${htmlContent}`);
-    setSelectedVariantId(null); // this forces a new save
   };
 
   const handleCreateNew = () => {
     const newSlug = `new-promo-${Date.now().toString().slice(-4)}`;
     const newContent = `<!-- Start fresh -->\n<div class="max-w-4xl mx-auto p-8 text-center">\n  <h1 class="text-4xl font-black">Your New Campaign</h1>\n</div>`;
-    setTitle('Variant A');
+    setTitle('New Campaign');
     setSlug(newSlug);
-    setOriginalSlug(newSlug); // Reset original slug for a new page
+    setOriginalSlug(newSlug);
     setHtmlContent(newContent);
-    setSelectedVariantId(null);
+    setSelectedPageId(null);
   };
 
   const injectSection = (type: 'hero' | 'features' | 'form' | 'checkout' | 'image') => {
@@ -182,7 +133,6 @@ export default function AdminPromoPage() {
     } else if (type === 'features') {
       block = `\n<!-- Features Grid -->\n<div class="grid grid-cols-1 md:grid-cols-3 gap-6 py-12 px-4">\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 1</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 2</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n  <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">Benefit 3</h3>\n    <p class="text-slate-500 text-sm">Explain why this feature matters to the customer.</p>\n  </div>\n</div>\n`;
     } else if (type === 'form') {
-      // Inline checkout form shortcode — rendered as a real React component on the live page
       const productIdParam = selectedProduct || '[PRODUCT_ID]';
       const prod = selectedProduct ? storeProducts.find(p => p.id === selectedProduct) : null;
       block = `\n<!-- Inline Checkout Form: [CHECKOUT_FORM:${productIdParam}] renders a live order form here -->\n[CHECKOUT_FORM:${productIdParam}]\n<!-- Product: ${prod ? prod.title : 'Select a product from the dropdown first'} -->\n`;
@@ -190,7 +140,6 @@ export default function AdminPromoPage() {
       const prod = selectedProduct ? storeProducts.find(p => p.id === selectedProduct) : null;
       const productIdParam = selectedProduct ? selectedProduct : '[PRODUCT_ID]';
       const productLabel = prod ? prod.title : 'Selected Product';
-      // Generate a real HTML button linking directly to checkout with the product ID
       block = `\n<!-- Order Button: links directly to checkout (bypasses product page) -->\n<div class="max-w-xl mx-auto py-10 px-4 text-center">\n  <a href="/${activeStore.region}/checkout?product=${productIdParam}" class="inline-flex items-center justify-center gap-3 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black text-2xl py-6 px-12 rounded-2xl shadow-[0_8px_30px_rgb(79,70,229,0.3)] transition-all" style="text-decoration:none;display:block;border-radius:16px;background:#4f46e5;color:#fff;font-weight:900;font-size:1.5rem;padding:24px 48px;text-align:center;">\n    🛒 Order Now — Pay on Delivery\n  </a>\n  <p style="margin-top:12px;font-size:13px;font-weight:700;color:#94a3b8;letter-spacing:0.08em;">${prod ? `Product: ${productLabel}` : 'Select a product from the dropdown first'}</p>\n</div>\n`;
     } else if (type === 'image') {
       const url = prompt('Enter Image URL:');
@@ -209,29 +158,21 @@ export default function AdminPromoPage() {
       <div className="w-full md:w-64 shrink-0 bg-white border border-slate-200 rounded-3xl p-4 shadow-sm md:sticky md:top-6">
         <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wider">Saved Pages</h3>
         <div className="space-y-2">
-          {uniqueSlugs.map(groupSlug => {
-            const group = groupedPages[groupSlug];
-            const primaryPage = group[0];
-            const variantCount = group.length;
-            const title = primaryPage.title ? primaryPage.title.replace(/Variant \w - /, '') : `/${groupSlug}`;
-            
+          {storePages.map(page => {
             return (
               <button 
-                key={groupSlug} 
-                onClick={() => loadExisting(groupSlug)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-colors ${slug === groupSlug ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                key={page.id} 
+                onClick={() => loadExisting(page.id)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold transition-colors ${selectedPageId === page.id || (slug === page.slug && !selectedPageId) ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50'}`}
               >
-                <div className="truncate">{title}</div>
+                <div className="truncate">{page.title || `/${page.slug}`}</div>
                 <div className="text-xs text-slate-400 font-normal truncate flex justify-between">
-                  <span>/{groupSlug}</span>
-                  {variantCount > 1 && (
-                    <span className="bg-indigo-100 text-indigo-700 px-1.5 rounded font-bold text-[10px]">A/B TEST</span>
-                  )}
+                  <span>/{page.slug}</span>
                 </div>
               </button>
             );
           })}
-          {uniqueSlugs.length === 0 && (
+          {storePages.length === 0 && (
             <div className="text-xs text-slate-400 font-medium px-2">No pages saved yet.</div>
           )}
         </div>
@@ -258,43 +199,6 @@ export default function AdminPromoPage() {
 
         <form onSubmit={handleSave} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
           
-          {currentVariants.length > 0 && (
-            <div className="flex items-center gap-2 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
-              <div className="flex items-center text-slate-500 mr-2 shrink-0">
-                <SplitSquareHorizontal size={18} className="mr-1.5" /> 
-                <span className="font-bold text-sm uppercase tracking-wider">A/B Test Variants</span>
-              </div>
-              {currentVariants.map((variant, index) => {
-                const isSelected = selectedVariantId === variant.id;
-                const stats = analytics[variant.id] || { views: 0, conversions: 0 };
-                const conversionRate = stats.views > 0 ? ((stats.conversions / stats.views) * 100).toFixed(1) : '0';
-                
-                return (
-                  <button
-                    key={variant.id}
-                    type="button"
-                    onClick={() => loadVariant(variant)}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-bold transition-all shrink-0 ${isSelected ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                  >
-                    <span>{variant.title?.replace(/Variant \w - /, '') || `Variant ${String.fromCharCode(65 + index)}`}</span>
-                    <div className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded-full ${isSelected ? 'bg-indigo-500/50 text-indigo-50' : 'bg-white text-slate-500'}`}>
-                      <span title="Views"><Eye size={10} className="inline mr-0.5"/>{stats.views}</span>
-                      <span title="Conversions"><BarChart3 size={10} className="inline mr-0.5"/>{stats.conversions}</span>
-                      <span className="font-black">({conversionRate}%)</span>
-                    </div>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={handleCreateVariant}
-                className="flex items-center gap-1.5 px-3 py-2 border-2 border-dashed border-slate-300 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 rounded-xl font-bold transition-colors shrink-0"
-              >
-                <Plus size={16} /> Add Variant
-              </button>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Page Title</label>
@@ -316,7 +220,6 @@ export default function AdminPromoPage() {
                   type="text" 
                   value={slug}
                   onChange={(e) => {
-                    // Auto-convert spaces to dashes and lowercase
                     const formatted = e.target.value
                       .toLowerCase()
                       .replace(/\s+/g, '-')
@@ -441,18 +344,27 @@ export default function AdminPromoPage() {
           <div className="flex items-center justify-between p-4 bg-white/10 text-white shrink-0">
             <div className="flex items-center gap-4">
               <h2 className="font-bold">Live Preview: /{activeStore.region}/promo/{slug}</h2>
-              <span className="text-xs bg-emerald-500 text-white px-2 py-1 rounded font-bold">TAILWIND INJECTED</span>
+              <span className="text-xs bg-emerald-500 text-white px-2 py-1 rounded font-bold">TAILWIND INJECTED (ISOLATED)</span>
             </div>
             <button onClick={() => setPreviewMode(false)} className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors"><X size={24} /></button>
           </div>
           
-          <div className="flex-1 bg-white overflow-y-auto">
-            <div 
-              className="min-h-full"
-              dangerouslySetInnerHTML={{ 
-                // We replace [CHECKOUT_FORM] with a visual placeholder for the preview
-                __html: htmlContent.replace(/\[CHECKOUT_FORM\]/g, '<div class="max-w-2xl mx-auto my-12 p-12 bg-slate-100 border-2 border-dashed border-indigo-300 rounded-3xl text-center"><h3 class="text-2xl font-black text-indigo-900 mb-2">React Checkout Component Rendered Here</h3><p class="text-indigo-600 font-medium">When customers visit this page, the live multi-step checkout form will appear inside this box.</p></div>') 
-              }} 
+          <div className="flex-1 bg-white overflow-hidden">
+            <iframe 
+              className="w-full h-full border-0"
+              srcDoc={`
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    <script src="https://cdn.tailwindcss.com"></script>
+                  </head>
+                  <body>
+                    \${htmlContent.replace(/\[CHECKOUT_FORM(?::[^\]]+)?\]/g, '<div class="max-w-2xl mx-auto my-12 p-12 bg-slate-100 border-2 border-dashed border-indigo-300 rounded-3xl text-center"><h3 class="text-2xl font-black text-indigo-900 mb-2">React Checkout Component Rendered Here</h3><p class="text-indigo-600 font-medium">When customers visit this page, the live multi-step checkout form will appear inside this box.</p></div>')}
+                  </body>
+                </html>
+              `}
             />
           </div>
         </div>

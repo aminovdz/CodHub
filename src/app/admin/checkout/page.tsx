@@ -197,8 +197,47 @@ export default function AdminCheckoutEditor() {
           <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
             <MapPin className="text-indigo-600" /> General Checkout Settings
           </h2>
-          
           <div className="space-y-4 mb-6">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <div className="font-bold text-slate-900 mb-1">Product Page Checkout Behavior</div>
+              <div className="text-sm text-slate-500 mb-4">Choose how the checkout form is presented when a customer clicks "Buy Now" on a product page.</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${config.productCheckoutType === 'redirect' || !config.productCheckoutType ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                  <input 
+                    type="radio" 
+                    name="checkoutType" 
+                    value="redirect" 
+                    checked={config.productCheckoutType === 'redirect' || !config.productCheckoutType} 
+                    onChange={() => setConfig({...config, productCheckoutType: 'redirect'})} 
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" 
+                  />
+                  <span className="ml-3 font-bold text-sm text-slate-700">Redirect to Checkout</span>
+                </label>
+                <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${config.productCheckoutType === 'popup' ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                  <input 
+                    type="radio" 
+                    name="checkoutType" 
+                    value="popup" 
+                    checked={config.productCheckoutType === 'popup'} 
+                    onChange={() => setConfig({...config, productCheckoutType: 'popup'})} 
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" 
+                  />
+                  <span className="ml-3 font-bold text-sm text-slate-700">Popup Modal</span>
+                </label>
+                <label className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${config.productCheckoutType === 'inline' ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                  <input 
+                    type="radio" 
+                    name="checkoutType" 
+                    value="inline" 
+                    checked={config.productCheckoutType === 'inline'} 
+                    onChange={() => setConfig({...config, productCheckoutType: 'inline'})} 
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500" 
+                  />
+                  <span className="ml-3 font-bold text-sm text-slate-700">Inline Form</span>
+                </label>
+              </div>
+            </div>
+
             <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
               <div>
                 <div className="font-bold text-slate-900">Address Autocomplete</div>

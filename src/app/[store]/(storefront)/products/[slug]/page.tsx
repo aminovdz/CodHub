@@ -8,6 +8,7 @@ import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 
 // Using same mock data here for simplicity until DB connected
 const PRODUCTS = [
@@ -66,8 +67,9 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
   const router = useRouter();
-  const { products, availableStores, _hasHydrated } = useAdminStore();
+  const { products, availableStores, _hasHydrated, checkoutConfigs } = useAdminStore();
   const store = resolveStore(availableStores, storeSlug);
+  const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const region = store?.region || storeSlug;
   const { t } = useTranslation(region);
   const decodedSlug = decodeURIComponent(slug);
@@ -81,6 +83,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
   const { buyNow, addCartItem } = useFunnelStore();
 
@@ -168,10 +171,17 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       }
     });
     
-    // 3. Push to checkout
-    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    const basePath = isCustomDomain ? '' : `/${storeSlug}`;
-    router.push(`${basePath}/checkout`);
+    // 3. Push to checkout or open modal
+    if (checkoutConfig?.productCheckoutType === 'popup') {
+      setIsCheckoutModalOpen(true);
+    } else if (checkoutConfig?.productCheckoutType === 'inline') {
+      const el = document.getElementById('inline-checkout-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
+      const basePath = isCustomDomain ? '' : `/${storeSlug}`;
+      router.push(`${basePath}/checkout`);
+    }
   };
 
   const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];
@@ -479,6 +489,30 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           <button className="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
             <X size={32} />
           </button>
+        </div>
+      )}
+
+      {/* Inline Checkout Section */}
+      {checkoutConfig?.productCheckoutType === 'inline' && (
+        <div id="inline-checkout-section" className="max-w-4xl mx-auto px-4 mt-8 pb-16">
+           <h2 className="text-2xl font-black text-center mb-8">{t('checkout.secureCheckout', 'Secure Checkout')}</h2>
+           <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+             <CheckoutForm storeSlug={storeSlug} embedded={true} />
+           </div>
+        </div>
+      )}
+
+      {/* Popup Checkout Modal */}
+      {checkoutConfig?.productCheckoutType === 'popup' && isCheckoutModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
+           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in zoom-in-95 duration-200">
+             <button onClick={() => setIsCheckoutModalOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full transition-colors shadow-sm">
+               <X size={24} />
+             </button>
+             <div className="p-1 sm:p-2 mt-8">
+               <CheckoutForm storeSlug={storeSlug} embedded={true} />
+             </div>
+           </div>
         </div>
       )}
     </div>
