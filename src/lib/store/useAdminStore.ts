@@ -60,6 +60,8 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
   };
 }
 
+import { AgentSkill } from '../agents/types';
+
 function rowToStore(row: any): Store {
   return {
     id: row.id,
@@ -220,7 +222,8 @@ function checkoutConfigToRow(c: CheckoutConfig) {
     autocomplete_api_key: c.autocompleteApiKey,
     fields: {
       ...c.fields,
-      productCheckoutType: c.productCheckoutType
+      productCheckoutType: c.productCheckoutType,
+      layout: c.layout
     },
     custom_fields: c.customFields,
     enable_step2_upsell: c.enableStep2Upsell,
@@ -259,7 +262,8 @@ function rowToCheckoutConfig(row: any): CheckoutConfig {
     enableDigitalReceipt: row.enable_digital_receipt ?? true,
     thankYouMessage: row.thank_you_message || '',
     showAddressFields: row.show_address_fields ?? true,
-    productCheckoutType: fields.productCheckoutType || 'redirect'
+    productCheckoutType: fields.productCheckoutType || 'redirect',
+    layout: fields.layout || '2-step'
   };
 }
 
@@ -714,6 +718,7 @@ export interface CheckoutConfig {
   enablePostPurchaseOTO: boolean;
   enableDigitalReceipt?: boolean;
   thankYouMessage?: string;
+  layout?: '1-step' | '2-step';
 }
 
 interface AdminStore {
@@ -833,6 +838,10 @@ interface AdminStore {
   setCommissionEntries: (updater: (prev: CommissionEntry[]) => CommissionEntry[]) => void;
 
   fetchInitialData: (isAdmin?: boolean, currentStoreId?: string) => Promise<void>;
+
+  // AI Agents - Dynamic Skills
+  dynamicSkills: AgentSkill[];
+  addDynamicSkill: (skill: AgentSkill) => void;
 }
 
 const MOCK_STORES: Store[] = [];
@@ -1312,6 +1321,15 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           }
         })();
       },
+      
+      dynamicSkills: [],
+      addDynamicSkill: (skill) => set((state) => {
+        const updated = [...state.dynamicSkills, skill];
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('codadmin-dynamic-skills', JSON.stringify(updated.map(s => ({...s, execute: undefined, preProcess: undefined})))); // execute cannot be serialized
+        }
+        return { dynamicSkills: updated };
+      }),
 
       saveCheckoutConfig: async (config) => {
         const row = checkoutConfigToRow(config);
@@ -1661,6 +1679,20 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           } catch (e) {
             console.warn("Failed to fetch initial activity logs:", e);
           }
+          
+          // Hydrate dynamic skills from local storage
+          if (typeof window !== 'undefined') {
+            try {
+              const savedSkills = localStorage.getItem('codadmin-dynamic-skills');
+              if (savedSkills) {
+                const parsedSkills = JSON.parse(savedSkills);
+                set({ dynamicSkills: parsedSkills });
+              }
+            } catch (e) {
+              console.warn("Failed to hydrate dynamic skills", e);
+            }
+          }
+
           // Force merge new default statuses into existing persisted store statuses
           set((state) => {
             const missingStatuses = DEFAULT_STATUSES.filter(s => !state.orderStatuses.includes(s));

@@ -342,13 +342,29 @@ export default function AdminCheckoutEditor() {
             <ShoppingCart className="text-indigo-600" /> Conversion & Optimization (CRO)
           </h2>
           <div className="space-y-6">
-            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
-              <div>
-                <div className="font-bold text-slate-900">Enable Step 2: Pre-Purchase Upsells</div>
-                <div className="text-sm text-slate-500 mt-1">Show the upsell step before completing checkout.</div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="block text-sm font-bold text-slate-700 mb-2">Checkout Layout Flow</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <label className={`cursor-pointer flex items-start gap-3 p-3 rounded-lg border-2 transition-all ${config.layout !== '1-step' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300'}`}>
+                  <div className="flex h-5 items-center mt-0.5">
+                    <input type="radio" name="checkout_layout" checked={config.layout !== '1-step'} onChange={() => setConfig({...config, layout: '2-step'})} className="h-4 w-4 text-indigo-600 border-slate-300 focus:ring-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900 text-sm">2-Step (Default)</div>
+                    <div className="text-xs text-slate-500 mt-1">Info & Upsells first, Delivery Address & Submit next.</div>
+                  </div>
+                </label>
+                <label className={`cursor-pointer flex items-start gap-3 p-3 rounded-lg border-2 transition-all ${config.layout === '1-step' ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-200 hover:border-indigo-300'}`}>
+                  <div className="flex h-5 items-center mt-0.5">
+                    <input type="radio" name="checkout_layout" checked={config.layout === '1-step'} onChange={() => setConfig({...config, layout: '1-step'})} className="h-4 w-4 text-indigo-600 border-slate-300 focus:ring-indigo-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900 text-sm">1-Step (Single Page)</div>
+                    <div className="text-xs text-slate-500 mt-1">All fields and Order Summary on one scrolling page.</div>
+                  </div>
+                </label>
               </div>
-              <input type="checkbox" checked={config.enableStep2Upsell} onChange={e => setConfig({...config, enableStep2Upsell: e.target.checked})} className="w-5 h-5 rounded text-indigo-600" />
-            </label>
+            </div>
 
             <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-indigo-300 transition-colors">
               <div>

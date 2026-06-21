@@ -1,17 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon } from 'lucide-react';
+import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { aiService } from '@/lib/services/aiService';
 
-const AGENTS = [
-  { id: 'cro', name: 'CRO Specialist', icon: <Presentation size={20} />, description: 'Builds high-converting landing pages', promptRole: 'Conversion Rate Optimization (CRO) Expert' },
-  { id: 'copywriter', name: 'Copywriter', icon: <FileText size={20} />, description: 'Product copy, Facebook ad copy & URL product research', promptRole: 'E-commerce Copywriter & Facebook Ads Copy Specialist' },
-  { id: 'product', name: 'Product Analyst', icon: <ShoppingBag size={20} />, description: 'Analyzes products and suggests pricing strategies', promptRole: 'E-commerce Product Strategy Analyst' },
-  { id: 'market', name: 'Market Researcher', icon: <Search size={20} />, description: 'Finds trending products and market gaps', promptRole: 'E-commerce Market Research Analyst' },
-  { id: 'social', name: 'FB/TikTok Analyst', icon: <Megaphone size={20} />, description: 'Writes ad scripts and analyzes campaign angles', promptRole: 'Facebook & TikTok Ads Strategist' }
-];
+import { AGENTS } from '@/lib/agents/agentConfig';
+import { SkillRegistry } from '@/lib/agents/skills/registry';
 
 type Message = {
   id: string;
@@ -25,7 +20,7 @@ type Message = {
 };
 
 export default function AgentsHubPage() {
-  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog, addProduct, categories, setCategories } = useAdminStore();
+  const { activeStore, aiProvider, setLandingPages, products, setProducts, agentChats, setAgentChat, addActivityLog, addProduct, categories, setCategories, addDynamicSkill } = useAdminStore();
   const [previewPageData, setPreviewPageData] = useState<{
     msgId: string;
     action: any;
@@ -47,6 +42,7 @@ export default function AgentsHubPage() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const skillUploadRef = useRef<HTMLInputElement>(null);
 
   const selectedAgent = AGENTS.find(a => a.id === selectedAgentId)!;
   const chatKey = `${activeStore.id}_${selectedAgentId}`;
@@ -105,6 +101,52 @@ export default function AgentsHubPage() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleSkillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const text = await file.text();
+    
+    // Simple regex parser for YAML frontmatter
+    const frontmatterMatch = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    
+    if (frontmatterMatch) {
+      const frontmatter = frontmatterMatch[1];
+      const instructions = frontmatterMatch[2].trim();
+      
+      const nameMatch = frontmatter.match(/name:\s*(.+)/);
+      const descMatch = frontmatter.match(/description:\s*(.+)/);
+      
+      const skillName = nameMatch ? nameMatch[1].trim() : file.name;
+      const description = descMatch ? descMatch[1].trim() : 'Dynamic skill uploaded from markdown';
+      
+      const newSkill = {
+        id: `DYNAMIC_${Date.now()}`,
+        name: skillName,
+        description,
+        instructions,
+        requiresValidation: false,
+        execute: async (data: any, context: any) => {
+          context.addActivityLog({
+            storeId: context.activeStoreId,
+            user: context.sessionUser,
+            action: 'Dynamic Skill Action',
+            detail: `Executed dynamic skill: ${skillName}`
+          });
+        }
+      };
+      
+      addDynamicSkill(newSkill);
+      alert(`Skill "${skillName}" successfully uploaded and assigned to your agents!`);
+    } else {
+      alert("Invalid skill markdown format. Missing frontmatter.");
+    }
+    
+    if (skillUploadRef.current) {
+      skillUploadRef.current.value = '';
+    }
+  };
+
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
 
@@ -130,26 +172,21 @@ export default function AgentsHubPage() {
       });
 
       let enrichedContent = userMessage.content;
-      const urlRegex = /https?:\/\/[^\s]+/g;
-      const urls = enrichedContent.match(urlRegex);
-      if (urls && urls.length > 0) {
-        const fetchedTexts: string[] = [];
-        for (const url of urls.slice(0, 3)) {
-          try {
-            const res = await fetch('/api/ai/fetch-url', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url }),
-            });
-            if (res.ok) {
-              const data = await res.json();
-              const snippet = `[Content from ${url}]\nTitle: ${data.title || 'N/A'}\nDescription: ${data.description || 'N/A'}\nText: ${(data.text || '').slice(0, 3000)}\n[/Content]`;
-              fetchedTexts.push(snippet);
-            }
-          } catch {}
-        }
-        if (fetchedTexts.length > 0) {
-          enrichedContent += '\n\n--- WEB CONTENT FETCHED FROM URLS ---\n' + fetchedTexts.join('\n\n');
+      
+      const skills = SkillRegistry.getSkills(selectedAgent.skills || []);
+      const context = {
+        activeStoreId: activeStore.id,
+        sessionUser,
+        categories,
+        setCategories,
+        addProduct,
+        addActivityLog,
+        setLandingPages
+      };
+
+      for (const skill of skills) {
+        if (skill.preProcess) {
+          enrichedContent = await skill.preProcess(enrichedContent, context);
         }
       }
 
@@ -174,58 +211,47 @@ export default function AgentsHubPage() {
   };
 
   const handleValidateAction = async (action: any, msgId: string) => {
-    if (action.type === 'CREATE_LANDING_PAGE') {
-      const newPage = {
-        id: Date.now().toString(),
-        storeId: activeStore.id,
-        title: action.previewData.title || 'AI Generated Page',
-        slug: 'promo-' + Math.random().toString(36).substring(7),
-        productId: action.previewData.productId || '',
-        htmlContent: action.previewData.htmlContent || '<h1>Missing HTML</h1>',
-        status: 'draft',
-        createdAt: new Date().toISOString()
+    let skill = SkillRegistry.getSkill(action.type);
+    
+    // Fallback for dynamic skills loaded from local storage where we lost the 'execute' function
+    const dynamicSkillMeta = useAdminStore.getState().dynamicSkills?.find(s => s.id === action.type);
+    if (!skill && dynamicSkillMeta) {
+      skill = {
+        ...dynamicSkillMeta,
+        execute: async (data: any, context: any) => {
+          context.addActivityLog({
+            storeId: context.activeStoreId,
+            user: context.sessionUser,
+            action: 'Dynamic Skill Action',
+            detail: `Executed dynamic skill: ${dynamicSkillMeta.name}`
+          });
+        }
       };
-      setLandingPages(prev => [...prev, newPage as any]);
-      addActivityLog({
-        storeId: activeStore.id,
-        user: sessionUser,
-        action: 'Landing Page Created',
-        detail: `Created AI landing page: ${newPage.title}`
-      });
-      alert('Landing Page added to your Promo section!');
-    } else if (action.type === 'CREATE_PRODUCT') {
-      const pd = action.previewData || {};
-      const newProduct = {
-        id: '',
-        storeId: activeStore.id,
-        title: pd.title || 'AI Generated Product',
-        price: typeof pd.price === 'number' ? pd.price : 0,
-        compareAtPrice: pd.compareAtPrice,
-        costPrice: pd.costPrice,
-        category: pd.category || 'General',
-        active: true,
-        image: pd.image || '',
-        shortDesc: pd.shortDesc || '',
-        mainDesc: pd.mainDesc || '',
-        stock: typeof pd.stock === 'number' ? pd.stock : 999,
-        seoTitle: pd.seoTitle || '',
-        seoDescription: pd.seoDescription || '',
-        seoSlug: pd.seoSlug || (pd.title ? pd.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : ''),
-        lowStockThreshold: 5,
-        disableOutOfStockPurchases: false,
-        disableCoupons: false,
-      };
-      if (newProduct.category && !categories.some(c => c.toLowerCase() === newProduct.category.toLowerCase())) {
-        setCategories(prev => [...prev, newProduct.category]);
+    }
+    
+    if (skill && skill.execute) {
+      try {
+        const context = {
+          activeStoreId: activeStore.id,
+          sessionUser,
+          categories,
+          setCategories,
+          addProduct,
+          addActivityLog,
+          setLandingPages
+        };
+        
+        await skill.execute(action.previewData, context);
+        
+        if (action.type !== 'CREATE_LANDING_PAGE') {
+          // Landing page handles its own alert currently in the modal
+          alert(`Successfully applied action: ${skill.name}`);
+        }
+      } catch (error) {
+        console.error('Action execution failed', error);
+        alert('Failed to execute action.');
+        return; // Don't mark as applied if it failed
       }
-      await addProduct(newProduct as any);
-      addActivityLog({
-        storeId: activeStore.id,
-        user: sessionUser,
-        action: 'Product Created',
-        detail: `Created AI product: ${newProduct.title}`
-      });
-      alert(`Product "${newProduct.title}" added to your store!`);
     } else if (action.type === 'UPDATE_PRODUCT') {
       addActivityLog({
         storeId: activeStore.id,
@@ -264,7 +290,15 @@ export default function AgentsHubPage() {
       <div className="flex-1 flex gap-6 overflow-hidden">
         {/* Agent Roster Sidebar */}
         <div className="w-80 flex flex-col gap-2 overflow-y-auto pr-2 pb-8">
-          {AGENTS.map(agent => (
+          {AGENTS.map(agent => {
+            let IconComponent: any = Bot;
+            if (agent.iconName === 'Presentation') IconComponent = Presentation;
+            if (agent.iconName === 'FileText') IconComponent = FileText;
+            if (agent.iconName === 'ShoppingBag') IconComponent = ShoppingBag;
+            if (agent.iconName === 'Search') IconComponent = Search;
+            if (agent.iconName === 'Megaphone') IconComponent = Megaphone;
+            
+            return (
             <button
               key={agent.id}
               onClick={() => {
@@ -279,7 +313,7 @@ export default function AgentsHubPage() {
             >
               <div className="flex items-center gap-3 mb-2 font-bold">
                 <div className={`p-2 rounded-lg ${selectedAgentId === agent.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700 text-indigo-600 dark:text-indigo-400'}`}>
-                  {agent.icon}
+                  <IconComponent size={20} />
                 </div>
                 {agent.name}
               </div>
@@ -287,14 +321,40 @@ export default function AgentsHubPage() {
                 {agent.description}
               </p>
             </button>
-          ))}
+            );
+          })}
+          
+          <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <input 
+              type="file" 
+              accept=".md" 
+              ref={skillUploadRef} 
+              className="hidden" 
+              onChange={handleSkillUpload} 
+            />
+            <button
+              onClick={() => skillUploadRef.current?.click()}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+            >
+              <Upload size={18} />
+              <span className="font-medium text-sm">Upload Skill (.md)</span>
+            </button>
+          </div>
         </div>
 
         {/* Chat Interface */}
         <div className="flex-1 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col overflow-hidden">
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex items-center gap-3">
             <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-              {selectedAgent.icon}
+              {(() => {
+                let IconComponent: any = Bot;
+                if (selectedAgent.iconName === 'Presentation') IconComponent = Presentation;
+                if (selectedAgent.iconName === 'FileText') IconComponent = FileText;
+                if (selectedAgent.iconName === 'ShoppingBag') IconComponent = ShoppingBag;
+                if (selectedAgent.iconName === 'Search') IconComponent = Search;
+                if (selectedAgent.iconName === 'Megaphone') IconComponent = Megaphone;
+                return <IconComponent size={20} />;
+              })()}
             </div>
             <div>
               <h2 className="font-bold text-slate-900 dark:text-white">{selectedAgent.name}</h2>
@@ -313,7 +373,15 @@ export default function AgentsHubPage() {
                 <div key={msg.id} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'agent' && (
                     <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 flex-shrink-0">
-                      {selectedAgent.icon}
+                      {(() => {
+                        let IconComponent: any = Bot;
+                        if (selectedAgent.iconName === 'Presentation') IconComponent = Presentation;
+                        if (selectedAgent.iconName === 'FileText') IconComponent = FileText;
+                        if (selectedAgent.iconName === 'ShoppingBag') IconComponent = ShoppingBag;
+                        if (selectedAgent.iconName === 'Search') IconComponent = Search;
+                        if (selectedAgent.iconName === 'Megaphone') IconComponent = Megaphone;
+                        return <IconComponent size={16} />;
+                      })()}
                     </div>
                   )}
                   

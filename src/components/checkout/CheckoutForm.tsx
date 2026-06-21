@@ -39,6 +39,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const prefix = store?.phonePrefix || (region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57');
+  const isOneStep = checkoutConfig?.layout === '1-step';
 
   // Track InitiateCheckout
   const cartIds = cart.map(i => i.id);
@@ -323,6 +324,63 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
       }
     }
   }, [draftOrderId, store?.id]);
+
+  // Auto-Save Draft Order for Abandoned Carts when user types info (crucial for 1-step checkout or embedded forms)
+  useEffect(() => {
+    const isValidPhone = phone && (phone.startsWith('0') ? phone.length >= 10 : phone.length >= 9);
+    const hasName = customerName && customerName.length > 2;
+
+    if (isValidPhone && hasName) {
+      const handler = setTimeout(async () => {
+        let localOrderId = draftOrderId;
+        let isNew = false;
+        if (!localOrderId) {
+          localOrderId = `ABN-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+          setDraftOrderId(localOrderId);
+          isNew = true;
+        }
+
+        if (store) {
+          setAbandonedCarts(prev => {
+            const filtered = prev.filter(c => c.id !== localOrderId);
+            return [{
+              id: localOrderId,
+              storeId: store.id,
+              customer: `${customerName} ${lastName || ''}`.trim(),
+              phone: `${prefix}${phone.replace(/^0+/, '')}`,
+              product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '),
+              total: finalTotal,
+              step: isOneStep ? 'Checkout' : 'Contact Info',
+              date: new Date().toISOString()
+            }, ...filtered];
+          });
+          
+          if (isNew) {
+            sessionStorage.setItem(`abandoned_ts_${localOrderId}`, Date.now().toString());
+            startAbandonedCartTimer(localOrderId);
+          }
+        }
+
+        try {
+          await saveDraftOrder({
+            id: localOrderId,
+            name: customerName,
+            phone: `${prefix}${phone.replace(/^0+/, '')}`,
+            region,
+            storeId: store?.id,
+            source: utmSource || undefined,
+            utmCampaign: utmCampaign || undefined,
+            product: cart.map(c => c.isUpsell ? `[Add-on] ${c.name}` : c.name).join(', '),
+          });
+        } catch (err) {
+          console.warn('[Auto-Save Draft] Failed:', err);
+        }
+      }, 2000); // 2 second debounce
+
+      return () => clearTimeout(handler);
+    }
+  }, [phone, customerName, lastName, draftOrderId, store, prefix, cart, finalTotal, region, utmSource, utmCampaign, isOneStep]);
+
 
   // Lead Capture -> Draft Order (Debounced / On Step 1 Complete)
   const handleProceedToStep2 = async () => {
@@ -683,21 +741,23 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
       <div className="max-w-lg mx-auto">
 
         {/* Progress Tracker — 2 steps */}
-        <div className="flex items-center justify-between mb-6 px-2 relative">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 -z-10" />
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-10 transition-all duration-500" style={{ width: step === 1 ? '0%' : '100%' }} />
-          {[
-            { num: 1, label: t('checkout.step1', 'Your Info') },
-            { num: 2, label: t('checkout.step3', 'Delivery') },
-          ].map(s => (
-            <div key={s.num} className={`flex flex-col items-center ${step >= s.num ? 'text-indigo-600' : 'text-slate-400'}`}>
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm mb-1.5 transition-all ${step >= s.num ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-200 text-slate-500'}`}>
-                {step > s.num ? '✓' : s.num}
+        {!isOneStep && (
+          <div className="flex items-center justify-between mb-6 px-2 relative">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-10 transition-all duration-500" style={{ width: step === 1 ? '0%' : '100%' }} />
+            {[
+              { num: 1, label: t('checkout.step1', 'Your Info') },
+              { num: 2, label: t('checkout.step3', 'Delivery') },
+            ].map(s => (
+              <div key={s.num} className={`flex flex-col items-center ${step >= s.num ? 'text-indigo-600' : 'text-slate-400'}`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-black text-sm mb-1.5 transition-all ${step >= s.num ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-200 text-slate-500'}`}>
+                  {step > s.num ? '✓' : s.num}
+                </div>
+                <span className="text-xs font-bold">{s.label}</span>
               </div>
-              <span className="text-xs font-bold">{s.label}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
           {/* Header */}
@@ -732,7 +792,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
             {/* ═══════════════════════════════════════════ */}
             {/* STEP 1: PRODUCT + UPSELLS + CONTACT INFO   */}
             {/* ═══════════════════════════════════════════ */}
-            {step === 1 && (
+            {(step === 1 || isOneStep) && (
               <div className="animate-in slide-in-from-right-4 fade-in duration-400">
 
                 {/* ── Quantity Offers (Bundle Selector) ── */}
@@ -909,23 +969,26 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   </div>
                 )}
 
-                <button
-                  onClick={handleProceedToAddress}
-                  disabled={!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid}
-                  style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                  className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
-                >
-                  {t('checkout.next', 'Continue to Delivery')}
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                </button>
+                {!isOneStep && (
+                  <button
+                    type="button"
+                    onClick={handleProceedToAddress}
+                    disabled={!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid}
+                    style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
+                    className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
+                  >
+                    {t('checkout.next', 'Continue to Delivery')}
+                    <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
               </div>
             )}
 
             {/* ═══════════════════════════════════════════════ */}
             {/* STEP 2: ORDER SUMMARY + ADDRESS FORM            */}
             {/* ═══════════════════════════════════════════════ */}
-            {step === 2 && (
-              <div className="animate-in slide-in-from-right-4 fade-in duration-400">
+            {(step === 2 || isOneStep) && (
+              <div className={`animate-in slide-in-from-right-4 fade-in duration-400 ${isOneStep ? 'mt-8 pt-8 border-t-2 border-slate-100 border-dashed' : ''}`}>
 
                 {/* ── Order Summary Card ── */}
                 <div className="bg-slate-900 rounded-2xl p-4 mb-6 text-white">
@@ -1084,7 +1147,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     <div className="pt-3 border-t border-slate-100">
                       {!appliedCoupon ? (
                         <div>
-                          <button onClick={() => setShowCouponInput(!showCouponInput)}
+                          <button type="button" onClick={() => setShowCouponInput(!showCouponInput)}
                             className="text-indigo-600 font-bold text-sm hover:underline"
                           >
                             {t('checkout.haveCoupon', '🏷️ لديك كوبون خصم؟')}
@@ -1109,7 +1172,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                             <div className="text-emerald-700 font-bold text-xs">{t('checkout.couponApplied', '✓ تم تطبيق الكوبون!')}</div>
                             <div className="text-emerald-600 font-black">{appliedCoupon.type === 'fixed' ? `-${appliedCoupon.value} ${currency}` : `-${appliedCoupon.value}%`}</div>
                           </div>
-                          <button onClick={handleRemoveCoupon} className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline">{t('checkout.remove', 'إزالة')}</button>
+                          <button type="button" onClick={handleRemoveCoupon} className="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors underline">{t('checkout.remove', 'إزالة')}</button>
                         </div>
                       )}
                     </div>
@@ -1133,19 +1196,23 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                 </div>
 
                 <div className="flex gap-3 mt-6">
-                  <button onClick={() => setStep(1)}
-                    className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
-                  >
-                    ← {t('checkout.back', 'Back')}
-                  </button>
+                  {!isOneStep && (
+                    <button type="button" onClick={() => setStep(1)}
+                      className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                      ← {t('checkout.back', 'Back')}
+                    </button>
+                  )}
                   <button
+                    type="button"
                     onClick={handleComplete}
                     disabled={
-                      checkoutConfig?.showAddressFields !== false
+                      (isOneStep && (!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid)) ||
+                      (checkoutConfig?.showAddressFields !== false
                         ? (region === 'dz'
                           ? (!wilaya || !commune || (deliveryType === 'home' && !detailedAddress))
                           : ((deliveryType === 'home' && !detailedAddress) || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
-                        : false
+                        : false)
                     }
                     style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
                     className={`flex-1 py-4 px-5 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 ${!store?.primaryColor ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 shadow-[0_8px_30px_rgb(22,163,74,0.3)]' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}

@@ -271,9 +271,18 @@ Create this for the product: "${title}" in the region: "${region}".`;
     }
   },
 
-  async chatWithAgent(agentType: string, prompt: string, storeContext: any, images?: any[], chatHistory: any[] = []): Promise<{ message: string, proposedAction: any } | null> {
+  async chatWithAgent(agentId: string, prompt: string, storeContext: any, images?: any[], chatHistory: any[] = []): Promise<{ message: string, proposedAction: any } | null> {
     try {
+      const { AGENTS } = require('../agents/agentConfig');
+      const { SkillRegistry } = require('../agents/skills/registry');
+      const agentConfig = AGENTS.find((a: any) => a.id === agentId);
+      const agentType = agentConfig ? agentConfig.promptRole : agentId;
+      let skills = agentConfig ? SkillRegistry.getSkills(agentConfig.skills) : [];
+
       const state = useAdminStore.getState();
+      const dynamicSkills = state.dynamicSkills || [];
+      skills = [...skills, ...dynamicSkills];
+
       const region = state.activeStore?.region || 'dz';
       
       let localizationInstructions = '';
@@ -311,184 +320,20 @@ Create this for the product: "${title}" in the region: "${region}".`;
   `;
       }
 
-      const isCopywriter = (agentType || '').toLowerCase().includes('copywriter');
-      const isCro = (agentType || '').toLowerCase().includes('cro');
-      const isMarket = (agentType || '').toLowerCase().includes('market research');
-
       let roleSpecificInstructions = '';
-      if (isCopywriter) {
-        roleSpecificInstructions = `
-  CRITICAL: You are an E-commerce Copywriter. You MUST propose a "CREATE_PRODUCT" action whenever the user asks you to write product copy, create a product, or research products from URLs.
-
-  SPECIALIZED CAPABILITIES:
-
-  1. PRODUCT COPY — Write product descriptions, titles, features, and SEO metadata.
-
-  2. FACEBOOK AD COPY — Write Facebook ad copy (primary text, headline, description, CTA).
-
-  3. URL PRODUCT RESEARCH — Analyze URLs (marked with "[Content from ...]" and "[/Content]") to extract product info and write copy.
-
-  MESSAGE FORMATTING — Your "message" field MUST include copy-pasteable HTML snippets for each section. Follow this EXACT structure:
-
-  For PRODUCT COPY output:
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  📦 PRODUCT COPY — HTML SNIPPETS
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  🏷️ TITLE
-  [exact product title — plain text, no HTML]
-
-  📝 SHORT DESCRIPTION
-  <p>Write 2-3 punchy sentences with <b>bold emphasis</b> on key benefits. This renders as a sub-headline below the title.</p>
-
-  📋 KEY FEATURES
-  <ul>
-  <li><b>Feature Name:</b> Benefit-driven description of this feature</li>
-  <li><b>Feature Name:</b> Benefit-driven description of this feature</li>
-  <li><b>Feature Name:</b> Benefit-driven description of this feature</li>
-  </ul>
-
-  📄 FULL DESCRIPTION
-  <h3>✦ Why Choose This Product</h3>
-  <p>Opening paragraph with <b>key highlights</b> covering the main value proposition. Explain what makes this product different from alternatives. 2-3 persuasive sentences.</p>
-
-  <h3>✦ Key Features</h3>
-  <ul>
-  <li><b>Feature Name:</b> Benefit-driven explanation of how this feature improves the user's life</li>
-  <li><b>Feature Name:</b> Benefit-driven explanation</li>
-  <li><b>Feature Name:</b> Benefit-driven explanation</li>
-  </ul>
-
-  <h3>✦ Specifications</h3>
-  <p>1-2 sentences on materials, dimensions, or technical specs that matter to the buyer.</p>
-
-  <h3>✦ Delivery & Guarantee</h3>
-  <p>Closing paragraph with <b>clear call to action</b> — include free delivery, payment on delivery, satisfaction guarantee, and urgency trigger (limited stock, special offer).</p>
-
-  🔍 SEO TITLE
-  [SEO-optimized title — max 60 chars, plain text]
-
-  🔍 SEO DESCRIPTION
-  [SEO meta description — max 155 chars, plain text]
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  For FACEBOOK AD COPY output:
-  ━━━━━━━━━━━━━━━━━━━━━━━━
-  📱 FACEBOOK AD COPY
-  ━━━━━━━━━━━━━━━━━━━━━━━━
-
-  📢 PRIMARY TEXT
-  [catchy hook + body, ~125 chars]
-
-  💬 HEADLINE
-  [benefit-driven, 40 chars max]
-
-  📝 DESCRIPTION
-  [supporting text, 30 chars max]
-
-  🎯 CALL TO ACTION
-  [e.g., Shop Now, Learn More]
-  ━━━━━━━━━━━━━━━━━━━━━━━━
-  `;
-      } else if (isCro) {
-        roleSpecificInstructions = `
-  CRITICAL: You are an advanced, autonomous AI Conversion Rate Optimization (CRO) Architect and Lead Next.js Developer. 
-  Your sole objective is to build hyper-localized, high-converting landing pages stripped of all navigational leaks, designed specifically to turn cold traffic into paying customers.
-
-  You operate strictly in a TWO-PHASE execution loop for every request:
-
-  ### PHASE 1: STRATEGIC ANALYSIS (Put this inside your JSON "message" field)
-  Analyze the target country's cultural nuances, local purchasing behavior, trust triggers, and the specific psychological hook of the product.
-  Explicitly define:
-  1. The psychological profile of the target consumer.
-  2. The mandatory structural blocks needed to maximize CRO.
-  3. The specific copywriting tone, localized terminology, and pricing presentation (local currency, regional payment expectations).
-  4. Output this strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED CRO STRATEGY" within your JSON "message" field.
-
-  ### PHASE 2: PRODUCTION-READY HTML (Put this inside your JSON "previewData.htmlContent" field)
-  Generate a complete, fully coded, direct-response landing page using pure HTML and Tailwind CSS classes.
-  Mandatory Page Requirements:
-  1. No Global Navigation or Footer Leaks: Remove standard headers/footers. The user has only two choices: convert or leave.
-  2. Perfect Message Match: The Hero headline must mirror the exact hook from the marketing angle.
-  3. Localized Social Proof: Testimonials, review names, and cities must reflect realistic profiles from the target region.
-  4. Hyper-Visual Value Proposition: Include a pain vs. solution feature grid, clear pricing cards showing the local currency, a device compatibility section, and a conversion-focused FAQ.
-  5. Absolute Friction Reduction: CTAs must be sticky, high-contrast, and action-driven. Use "[CHECKOUT_FORM]" as the placeholder for the order form.
-  
-  General Rules:
-  - Return ONLY pure HTML div structures for the htmlContent. NO <html>, <head>, or <body> tags. NO markdown wrappers inside htmlContent.
-  - IF AN IMAGE IS PROVIDED: Analyze the image carefully to determine the product, colors, and key features. Use this visual context to generate a highly tailored, visually consistent landing page.
-  `;
-      } else if (isMarket) {
-        roleSpecificInstructions = `
-  CRITICAL: You are a Market Research Analyst. When asked to research a product or market, provide a structured analysis including:
-  - Market Demand (High/Medium/Low)
-  - Target Audience Demographics
-  - Suggested Pricing Strategy
-  - Competitor Analysis
-  `;
-      }
-      const isCreateLandingPage = isCro || prompt.toLowerCase().includes('landing page') || prompt.toLowerCase().includes('landingpage');
-      const isCreateProduct = isCopywriter && (prompt.toLowerCase().includes('create') || prompt.toLowerCase().includes('write') || prompt.toLowerCase().includes('product') || prompt.toLowerCase().includes('copy') || prompt.toLowerCase().includes('url') || prompt.toLowerCase().includes('http'));
-
       let previewDataInstructions = '';
-      if (isCreateLandingPage) {
-        previewDataInstructions = `For "CREATE_LANDING_PAGE": "previewData" MUST include:
-    - "title": string (the page title)
-    - "productId": string (the product ID from context)
-    - "htmlContent": string (complete mobile-first HTML landing page with Tailwind CSS classes, including hero section, pricing, benefits, and CTA button)
+      const allowedActionTypes = ['NONE'];
 
-  For other action types: "previewData" can be any relevant data object.`;
-      } else if (isCreateProduct) {
-        previewDataInstructions = `CRITICAL: You MUST return a "proposedAction" with type "CREATE_PRODUCT" and "previewData" with this EXACT schema:
-
-  {
-    "type": "CREATE_PRODUCT",
-    "previewData": {
-      "title": "Product display name",
-      "price": 2999.00,
-      "compareAtPrice": 3999.00,
-      "costPrice": 1500.00,
-      "category": "Electronics",
-      "shortDesc": "A short punchy 2-sentence description highlighting the main benefit — PLAIN TEXT ONLY, no HTML tags (storefront renders as plain text)",
-      "mainDesc": "<h3>✦ Why Choose This Product</h3>\\n<p>Introducing our <b>premium-quality product</b> designed to elevate your everyday experience. Carefully crafted with the finest materials for lasting durability and maximum comfort.</p>\\n\\n<h3>✦ Key Features</h3>\\n<ul>\\n<li><b>Superior Quality:</b> Premium-grade materials built to last — enjoy years of reliable use</li>\\n<li><b>Ergonomic Design:</b> Engineered for all-day comfort — you won't even notice you're wearing it</li>\\n<li><b>Effortless Setup:</b> Ready to use right out of the box — zero configuration needed</li>\\n</ul>\\n\\n<h3>✦ Specifications</h3>\\n<p>Premium materials with careful attention to every detail. Designed for everyday use in any environment.</p>\\n\\n<h3>✦ Delivery & Guarantee</h3>\\n<p>Order now and enjoy <b>free delivery</b> across all Algeria. Pay only when you receive your order — no upfront payment, no risk! Backed by our satisfaction guarantee.</p>",
-      "seoTitle": "SEO-optimized title under 60 chars",
-      "seoDescription": "SEO meta description under 155 chars",
-      "seoSlug": "seo-friendly-url-slug-separated-by-hyphens",
-      "image": "https://example.com/product-image.jpg",
-      "stock": 50,
-      "blocks": [
-        {
-          "id": "block-1",
-          "type": "html",
-          "content": "<div class=\\"bg-slate-50 p-6 rounded-2xl border border-slate-200 text-center\\">\\n  <h4 class=\\"text-xl font-black text-slate-900 mb-2\\">Premium Quality Guarantee</h4>\\n  <p class=\\"text-slate-600\\">We stand behind our products 100%.</p>\\n</div>"
+      if (skills.length > 0) {
+        roleSpecificInstructions += '\n\nSPECIALIZED CAPABILITIES AND INSTRUCTIONS:\n';
+        for (const skill of skills) {
+          roleSpecificInstructions += `\n--- SKILL: ${skill.name} ---\n${skill.instructions}\n`;
+          allowedActionTypes.push(skill.id);
+          
+          if (skill.previewDataInstructions) {
+            previewDataInstructions += `\n${skill.previewDataInstructions}\n`;
+          }
         }
-      ]
-    }
-  }
-
-  HTML QUALITY RULES — Strictly follow for ALL HTML output in mainDesc and message body:
-
-  STRUCTURE & SEMANTICS:
-  ✓ Use <h3> for section headings (e.g., <h3>✦ Key Features</h3>) to create visual hierarchy
-  ✓ Wrap every paragraph in <p> tags — never leave bare text
-  ✓ Use <ul><li> for bullet lists, <ol><li> for numbered steps
-  ✓ Use <b> or <strong> for bold emphasis on key phrases
-  ✓ Separate logical sections with blank lines in the HTML source for easy editing
-  ✓ Keep HTML clean, valid, and properly indented
-
-  FORBIDDEN:
-  ✗ NEVER use markdown (**bold**, *italic*, - lists, ## headings, etc.)
-  ✗ NEVER wrap HTML in backticks (\`\`\`) or code fences
-  ✗ NEVER use bare \\n newlines without proper HTML tags
-  ✗ NEVER leave tags unclosed or improperly nested
-  ✗ NEVER mix markdown and HTML — use HTML exclusively
-  ✗ NEVER output a single-line blob of HTML — use \\n between sections for readability
-
-  RULES:
-  - price, compareAtPrice, costPrice are normal decimal numbers (e.g., 149.99, NOT 14999). Do NOT multiply by 100.
-  - mainDesc must be well-structured HTML with <h3> section headings, <p> paragraphs, <ul><li> lists, and <b> or <strong> bold. Each section separated by a blank line. NO markdown, NO bare text, NO code fences, NO single-line blobs.
-  - shortDesc must be 1-2 sentences PLAIN TEXT — absolutely NO HTML at all! HTML tags will display literally as raw code on the storefront.
-  - Include the action EVERY TIME you write product copy or create a product`;
       } else {
         previewDataInstructions = `"previewData": {} // Include any data needed for the UI to show a preview (e.g. product fields, analysis results)`;
       }
@@ -529,7 +374,7 @@ Create this for the product: "${title}" in the region: "${region}".`;
       {
         "message": "Your text response or explanation to the user.",
         "proposedAction": {
-          "type": "NONE" | "CREATE_LANDING_PAGE" | "CREATE_PRODUCT" | "UPDATE_PRODUCT" | "MARKET_RESEARCH",
+          "type": ${allowedActionTypes.map(t => `"${t}"`).join(' | ')},
           "previewData": { ... }
         }
       }
