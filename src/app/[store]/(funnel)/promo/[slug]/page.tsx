@@ -85,7 +85,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   return (
     <>
       <div className="w-full min-h-screen bg-white">
-        <RichHtmlContent html={activeVariant.htmlContent} region={region} utmSource={utmSource} utmCampaign={utmCampaign} />
+        <RichHtmlContent html={activeVariant.htmlContent} region={region} storeSlug={resolvedParams.store} utmSource={utmSource} utmCampaign={utmCampaign} />
       </div>
     </>
   );

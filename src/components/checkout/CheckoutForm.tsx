@@ -11,7 +11,7 @@ import { useTranslation } from '@/lib/hooks/useTranslation';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
 import { getCommunesForWilaya } from '@/lib/algeria-communes';
 
-export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: string, embedded?: boolean }) {
+export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { storeSlug: string, embedded?: boolean, forceProductId?: string }) {
   const [step, setStep] = useState(1);
   const [isAnimatingPrice, setIsAnimatingPrice] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
@@ -23,7 +23,7 @@ export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: strin
 
   const { 
     customerName, phone, draftOrderId, cart, getTotalPrice,
-    setLead, setDraftOrderId, addCartItem, removeCartItem, 
+    setLead, setDraftOrderId, addCartItem, removeCartItem, buyNow,
     setAddressData, setDeliveryInstructions, deliveryInstructions, setStatus
   } = useFunnelStore();
 
@@ -56,6 +56,19 @@ export function CheckoutForm({ storeSlug, embedded = false }: { storeSlug: strin
     setUtmSource(sessionStorage.getItem('utm_source') || '');
     setUtmCampaign(sessionStorage.getItem('utm_campaign') || '');
   }, []);
+
+  // Force single product if used on a landing page via forceProductId
+  useEffect(() => {
+    if (forceProductId && products.length > 0) {
+      const primaryItem = cart.find(i => !i.isUpsell);
+      if (!primaryItem || primaryItem.id !== forceProductId) {
+        const p = products.find(prod => prod.id === forceProductId);
+        if (p) {
+          buyNow({ id: p.id, name: p.title, price: p.price, isUpsell: false });
+        }
+      }
+    }
+  }, [forceProductId, products, cart, buyNow]);
   
   // Local Address State
   const [wilaya, setWilaya] = useState('');

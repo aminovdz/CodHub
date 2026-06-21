@@ -174,7 +174,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
         if (block.type === 'html') {
           return (
             <div key={block.id} className="w-full mb-12">
-              <RichHtmlContent html={block.content} region={region} />
+              <RichHtmlContent html={block.content} region={region} storeSlug={storeSlug} />
             </div>
           );
         }

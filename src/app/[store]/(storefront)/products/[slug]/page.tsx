@@ -434,7 +434,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         {/* Main Description */}
         {((product as any).mainDesc || (product as any).description) && (
           <div className="max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
-            <RichHtmlContent html={(product as any).mainDesc || (product as any).description} region={region} />
+            <RichHtmlContent html={(product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
           </div>
         )}
 
@@ -469,7 +469,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
               }
               if (block.type === 'html') {
                 return (
-                  <RichHtmlContent key={block.id} html={block.content} region={region} />
+                  <RichHtmlContent key={block.id} html={block.content} region={region} storeSlug={storeSlug} />
                 );
               }
               return null;

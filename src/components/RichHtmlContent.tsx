@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import InlineOrderForm from '@/components/InlineOrderForm';
+import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 
 interface Props {
   html: string;
   region: string;
+  storeSlug: string;
   utmSource?: string;
   utmCampaign?: string;
 }
@@ -16,12 +17,12 @@ type Segment =
 
 /**
  * Splits raw HTML at [CHECKOUT_FORM:xxx] shortcodes and renders
- * React <InlineOrderForm> components directly inline.
+ * React <CheckoutForm> components directly inline.
  *
  * No portals, no setTimeout, no DOM lookups — just synchronous
  * string splitting + React rendering in a single pass.
  */
-export default function RichHtmlContent({ html, region, utmSource, utmCampaign }: Props) {
+export default function RichHtmlContent({ html, region, storeSlug, utmSource, utmCampaign }: Props) {
   const segments: Segment[] = useMemo(() => {
     if (!html) return [];
 
@@ -72,12 +73,11 @@ export default function RichHtmlContent({ html, region, utmSource, utmCampaign }
       {segments.map((seg, i) => {
         if (seg.type === 'checkout') {
           return (
-            <div key={`checkout-${i}`} id="checkout" className="w-full max-w-lg mx-auto px-4 py-8">
-              <InlineOrderForm
-                productId={seg.productId}
-                region={region}
-                utmSource={utmSource}
-                utmCampaign={utmCampaign}
+            <div key={`checkout-${i}`} id="checkout" className="w-full max-w-2xl mx-auto px-4 py-8">
+              <CheckoutForm
+                storeSlug={storeSlug}
+                embedded={true}
+                forceProductId={seg.productId}
               />
             </div>
           );
