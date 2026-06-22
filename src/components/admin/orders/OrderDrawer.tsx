@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Phone, MessageSquare, CheckCircle2, XCircle, PhoneCall, ChevronDown, ChevronUp, Package, MapPin, User, Clock, Edit2, PhoneMissed, Calendar } from 'lucide-react';
+import { X, Phone, MessageSquare, CheckCircle2, XCircle, PhoneCall, ChevronDown, ChevronUp, Package, MapPin, User, Clock, Edit2, PhoneMissed, Calendar, List } from 'lucide-react';
 import { useAdminStore, Order, CallLog } from '@/lib/store/useAdminStore';
 import { supabase } from '@/lib/supabase';
 import { getShortOrderId } from '@/lib/idHelper';
@@ -23,7 +23,7 @@ export default function OrderDrawer({
   sessionUser: string; isAdmin: boolean;
   onOpenWhatsApp: (order: Order) => void;
 }) {
-  const { activeStore, orders, setOrders, callLogs, setCallLogs, addActivityLog, orderStatuses } = useAdminStore();
+  const { activeStore, orders, setOrders, callLogs, setCallLogs, addActivityLog, orderStatuses, checkoutConfigs } = useAdminStore();
   const [callNote, setCallNote] = useState('');
   const [showEditForm, setShowEditForm] = useState(false);
   const [editForm, setEditForm] = useState<Order | null>(null);
@@ -368,6 +368,39 @@ export default function OrderDrawer({
                     )}
                   </div>
                 </div>
+
+                {/* Custom Fields */}
+                {(() => {
+                  const config = checkoutConfigs.find(c => c.storeId === activeStore.id);
+                  const systemKeys = ['step', 'coupon', 'utm_campaign', 'source', 'confirmed_at', 'confirmation_duration_seconds'];
+                  
+                  // Extract non-system custom fields
+                  const extraFields = Object.entries(order.customFields || {}).filter(
+                    ([k, v]) => !systemKeys.includes(k) && v !== '' && v !== null && v !== undefined
+                  );
+
+                  if (extraFields.length === 0) return null;
+
+                  return (
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">
+                        <List size={10} className="inline mr-1" />Extra Fields
+                      </p>
+                      <div className="space-y-1 text-sm font-bold text-slate-700 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                        {extraFields.map(([key, value]) => {
+                          const matchedField = config?.customFields?.find(f => f.id === key);
+                          const label = matchedField ? matchedField.label : (key.charAt(0).toUpperCase() + key.slice(1));
+                          return (
+                            <div key={key} className="flex flex-col gap-0.5">
+                              <span className="text-slate-400 text-xs">{label}</span>
+                              <span className="break-words">{String(value)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* User notes */}
                 {userNotes.length > 0 && (

@@ -223,19 +223,20 @@ function checkoutConfigToRow(c: CheckoutConfig) {
     fields: {
       ...c.fields,
       productCheckoutType: c.productCheckoutType,
-      layout: c.layout
+      layout: c.layout,
+      enableTrustBanner: c.enableTrustBanner
     },
     custom_fields: c.customFields,
     enable_step2_upsell: c.enableStep2Upsell,
+    countdown_minutes: c.countdownMinutes,
     enable_post_purchase_oto: c.enablePostPurchaseOTO,
-    enable_trust_banner: c.enableTrustBanner,
     enable_digital_receipt: c.enableDigitalReceipt,
     thank_you_message: c.thankYouMessage,
     show_address_fields: c.showAddressFields
   };
 }
 
-function rowToCheckoutConfig(row: any): CheckoutConfig {
+export function rowToCheckoutConfig(row: any): CheckoutConfig {
   let fields = row.fields || { showEmail: false, requireEmail: false, showLastName: false };
   if (typeof fields === 'string') {
     try {
@@ -252,18 +253,28 @@ function rowToCheckoutConfig(row: any): CheckoutConfig {
 
   return {
     storeId: row.store_id,
-    addressAutocomplete: row.address_autocomplete,
-    autocompleteApiKey: row.autocomplete_api_key,
-    fields: fields,
-    customFields: customFields,
-    enableStep2Upsell: row.enable_step2_upsell ?? true,
-    enablePostPurchaseOTO: row.enable_post_purchase_oto ?? false,
-    enableTrustBanner: row.enable_trust_banner ?? true,
-    enableDigitalReceipt: row.enable_digital_receipt ?? true,
-    thankYouMessage: row.thank_you_message || '',
+    addressAutocomplete: row.address_autocomplete ?? false,
+    autocompleteApiKey: row.autocomplete_api_key || '',
     showAddressFields: row.show_address_fields ?? true,
+    fields: {
+      showEmail: fields.showEmail ?? false,
+      requireEmail: fields.requireEmail ?? false,
+      showLastName: fields.showLastName ?? false,
+      showCity: fields.showCity ?? true,
+      showPostalCode: fields.showPostalCode ?? false,
+      showProvince: fields.showProvince ?? true,
+      showCountry: fields.showCountry ?? false,
+      scarcityConfig: fields.scarcityConfig,
+    },
     productCheckoutType: fields.productCheckoutType || 'redirect',
-    layout: fields.layout || '2-step'
+    layout: fields.layout || '1-step',
+    enableTrustBanner: fields.enableTrustBanner ?? true,
+    customFields,
+    enableStep2Upsell: row.enable_step2_upsell ?? true,
+    countdownMinutes: row.countdown_minutes,
+    enablePostPurchaseOTO: row.enable_post_purchase_oto ?? false,
+    enableDigitalReceipt: row.enable_digital_receipt ?? true,
+    thankYouMessage: row.thank_you_message || ''
   };
 }
 
@@ -364,6 +375,14 @@ export interface Store {
   yalidineApiKey?: string;
   yalidineApiToken?: string;
   genericWebhookUrl?: string;
+  smsConfig?: {
+    enabled?: boolean;
+    provider?: 'twilio' | 'vonage' | 'smsdz';
+    apiKey?: string;
+    apiSecret?: string;
+    senderId?: string;
+    confirmationTemplate?: string;
+  };
   whatsappConfig?: {
     abandonedCartEnabled?: boolean;
     abandonedCartDelayMinutes?: number;
@@ -385,6 +404,7 @@ export interface Store {
     chatbotProvider?: 'gemini' | 'claude' | 'openai' | 'openrouter' | 'nvidia';
     chatbotModel?: string;
     chatbotApiKey?: string;
+    customTemplates?: { id: string; name: string; text: string; }[];
   };
   dzFulfillment?: {
     defaultProvider: 'yalidine' | 'zrexpress' | 'mayestro' | 'dhd';
@@ -696,6 +716,15 @@ export interface CustomCheckoutField {
   required: boolean;
 }
 
+export interface ScarcityConfig {
+  enabled: boolean;
+  stockText: string;
+  viewersText: string;
+  ordersTodayText: string;
+  verifiedText: string;
+  fastDeliveryText: string;
+}
+
 export interface CheckoutConfig {
   storeId: string;
   productCheckoutType?: 'redirect' | 'popup' | 'inline';
@@ -710,6 +739,7 @@ export interface CheckoutConfig {
     showPostalCode?: boolean;
     showProvince?: boolean;
     showCountry?: boolean;
+    scarcityConfig?: ScarcityConfig;
   };
   customFields: CustomCheckoutField[];
   enableStep2Upsell: boolean;
@@ -1152,7 +1182,24 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         staffAccounts: updater(state.staffAccounts)
       })),
       addStaffAccount: async (account) => {
-        const row = staffToRow(account);
+        let finalPin = account.pin;
+        if (finalPin && !finalPin.startsWith('$2a$') && !finalPin.startsWith('$2b$')) {
+          try {
+            const res = await fetch('/api/admin/staff/hash', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin: finalPin })
+            });
+            if (res.ok) {
+              const data = await res.json();
+              finalPin = data.hash;
+            }
+          } catch (e) {
+            console.error("Failed to hash pin", e);
+          }
+        }
+
+        const row = staffToRow({ ...account, pin: finalPin });
         console.log("Inserting staff row:", row);
 
         const { data, error } = await supabase
@@ -1201,7 +1248,25 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         set((state) => ({
           staffAccounts: state.staffAccounts.map(a => a.id === id ? { ...a, ...data } : a)
         }));
-        const row = staffToRow(data as Partial<StaffAccount>);
+        
+        let finalPin = data.pin;
+        if (finalPin && !finalPin.startsWith('$2a$') && !finalPin.startsWith('$2b$')) {
+          try {
+            const res = await fetch('/api/admin/staff/hash', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pin: finalPin })
+            });
+            if (res.ok) {
+              const hashData = await res.json();
+              finalPin = hashData.hash;
+            }
+          } catch (e) {
+            console.error("Failed to hash pin during update", e);
+          }
+        }
+
+        const row = staffToRow({ ...data, pin: finalPin } as Partial<StaffAccount>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
         if (Object.keys(cleanRow).length > 0) {
           const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
@@ -1551,13 +1616,10 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             { data: zones },
             { data: configs },
             { data: landingPages },
-          ] = await Promise.all(basePromises);
-
-          const [
             { data: orders },
             { data: staff },
             { data: callLogs }
-          ] = await Promise.all(adminPromises);
+          ] = await Promise.all([...basePromises, ...adminPromises]);
           
           if (stores && stores.length > 0) {
             const mapped = stores.map(rowToStore);

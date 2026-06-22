@@ -107,6 +107,9 @@ export default function AdminSettingsPage() {
     fields: checkoutConfigs?.find(c=>c.storeId === activeStore.id)?.fields || { showEmail: false, requireEmail: false, showLastName: false, showCity: true, showPostalCode: true, showProvince: true, showCountry: true },
   });
 
+  // SMS State
+  const [smsConfig, setSmsConfig] = useState<any>({});
+
   // WhatsApp State
   const [whatsappConfig, setWhatsappConfig] = useState({
     abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
@@ -129,6 +132,7 @@ export default function AdminSettingsPage() {
     chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
     chatbotModel: activeStore.whatsappConfig?.chatbotModel || '',
     chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
+    customTemplates: activeStore.whatsappConfig?.customTemplates || [] as { id: string; name: string; text: string; }[],
   });
 
   // Fraud Rules State
@@ -183,6 +187,15 @@ export default function AdminSettingsPage() {
       fields: checkoutConfigs?.find(c=>c.storeId === activeStore.id)?.fields || { showEmail: false, requireEmail: false, showLastName: false, showCity: true, showPostalCode: true, showProvince: true, showCountry: true },
     });
 
+    setSmsConfig({
+      enabled: activeStore.smsConfig?.enabled ?? false,
+      provider: activeStore.smsConfig?.provider ?? 'twilio',
+      apiKey: activeStore.smsConfig?.apiKey ?? '',
+      apiSecret: activeStore.smsConfig?.apiSecret ?? '',
+      senderId: activeStore.smsConfig?.senderId ?? '',
+      confirmationTemplate: activeStore.smsConfig?.confirmationTemplate ?? 'Hello [NAME], your order #[ORDER_ID] for [PRODUCT] has been confirmed and is being shipped! - [STORE_NAME]'
+    });
+
     setWhatsappConfig({
       abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
       abandonedCartDelayMinutes: activeStore.whatsappConfig?.abandonedCartDelayMinutes ?? 30,
@@ -204,6 +217,7 @@ export default function AdminSettingsPage() {
       chatbotProvider: activeStore.whatsappConfig?.chatbotProvider || 'gemini',
       chatbotModel: activeStore.whatsappConfig?.chatbotModel || '',
       chatbotApiKey: activeStore.whatsappConfig?.chatbotApiKey || '',
+      customTemplates: activeStore.whatsappConfig?.customTemplates || [],
     });
 
     setFraudConfig(activeStore.fraudConfig || {
@@ -225,7 +239,7 @@ export default function AdminSettingsPage() {
       name: localStoreName,
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
-      whatsappConfig, dzFulfillment, primaryColor: localPrimaryColor,
+      whatsappConfig, smsConfig, dzFulfillment, primaryColor: localPrimaryColor,
       customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
       stickyBuyButton: { enabled: stickyBuyEnabled, text: stickyBuyText, customCss: stickyBuyCss }
     });
@@ -985,6 +999,52 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
               )}
+
+              {/* Custom Predefined Templates */}
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-700 mt-6">
+                <div className="mb-4">
+                  <h3 className="font-bold text-slate-900 dark:text-white">Custom Predefined Templates</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Create multiple templates to quickly send to customers when confirming orders or recovering abandoned carts.</p>
+                </div>
+                <div className="space-y-4">
+                  {(whatsappConfig.customTemplates || []).map((t, i) => (
+                    <div key={t.id} className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600 relative">
+                      <button type="button" onClick={() => {
+                        const newTemplates = [...(whatsappConfig.customTemplates || [])];
+                        newTemplates.splice(i, 1);
+                        setWhatsappConfig({...whatsappConfig, customTemplates: newTemplates});
+                      }} className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 p-1 bg-rose-100 rounded-lg">
+                        <Trash2 size={14} />
+                      </button>
+                      <div className="mb-3 pr-8">
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Template Name</label>
+                        <input type="text" value={t.name} onChange={(e) => {
+                          const newTemplates = [...(whatsappConfig.customTemplates || [])];
+                          newTemplates[i].name = e.target.value;
+                          setWhatsappConfig({...whatsappConfig, customTemplates: newTemplates});
+                        }} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-sm font-bold outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Message Content</label>
+                        <textarea value={t.text} onChange={(e) => {
+                          const newTemplates = [...(whatsappConfig.customTemplates || [])];
+                          newTemplates[i].text = e.target.value;
+                          setWhatsappConfig({...whatsappConfig, customTemplates: newTemplates});
+                        }} rows={3} className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-sm outline-none resize-none" />
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => {
+                    const newId = Math.random().toString(36).substring(7);
+                    setWhatsappConfig({
+                      ...whatsappConfig, 
+                      customTemplates: [...(whatsappConfig.customTemplates || []), { id: newId, name: 'New Template', text: 'Hello [NAME], this is [STORE_NAME]...' }]
+                    });
+                  }} className="w-full py-3 bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 font-bold rounded-xl hover:border-indigo-500 hover:text-indigo-600 transition-colors">
+                    + Add New Template
+                  </button>
+                </div>
+              </div>
             </div>
 
 

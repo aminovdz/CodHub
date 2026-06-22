@@ -365,7 +365,7 @@ export default function AdminProductsPage() {
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                   <td className="p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
-                      {p.image ? <img src={p.image} alt={p.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><ImageIcon size={16}/></div>}
+                      {p.image ? <img src={p.image} alt={p.title} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><ImageIcon size={16}/></div>}
                     </div>
                     <span className="font-bold text-slate-900">{p.title || 'Untitled Product'}</span>
                   </td>
@@ -432,7 +432,7 @@ export default function AdminProductsPage() {
                     <div className="flex items-center gap-6 mb-2">
                       <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0">
                         {editingProduct.image ? (
-                          <img src={editingProduct.image} alt="Preview" className="w-full h-full object-cover" />
+                          <img src={editingProduct.image} alt="Preview" loading="lazy" className="w-full h-full object-cover" />
                         ) : (
                           <ImageIcon size={32} className="text-slate-400" />
                         )}
@@ -494,7 +494,7 @@ export default function AdminProductsPage() {
                               onClick={() => handleSetMainImage(imgUrl)}
                               title={editingProduct.image === imgUrl ? 'Main image' : 'Click to set as main'}
                             >
-                              <img src={imgUrl} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
+                              <img src={imgUrl} alt={`Gallery ${i + 1}`} loading="lazy" className="w-full h-full object-cover" />
                               {editingProduct.image === imgUrl && (
                                 <div className="absolute top-0 left-0 bg-indigo-600 text-white text-[7px] font-black px-1 rounded-br">MAIN</div>
                               )}

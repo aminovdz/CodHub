@@ -17,7 +17,7 @@ if (!ADMIN_PIN) {
 export async function POST(req: Request) {
   try {
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-    const rateLimit = checkRateLimit(ip, 5, 60 * 1000); // 5 attempts per minute
+    const rateLimit = await checkRateLimit(ip, 5, 60 * 1000); // 5 attempts per minute
     if (!rateLimit.success) {
       return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
     }
@@ -56,8 +56,6 @@ export async function POST(req: Request) {
       let isValidPin = false;
       if (staffAccount.pin && (staffAccount.pin.startsWith('$2a$') || staffAccount.pin.startsWith('$2b$'))) {
         isValidPin = await bcrypt.compare(pin, staffAccount.pin);
-      } else {
-        isValidPin = staffAccount.pin === pin;
       }
 
       if (!isValidPin) {

@@ -161,15 +161,7 @@ create table public.checkout_configs (
     thank_you_message text
 );
 
--- Set up Row Level Security (RLS)
-alter table public.stores disable row level security;
-alter table public.products disable row level security;
-alter table public.orders disable row level security;
-alter table public.landing_pages disable row level security;
-alter table public.shipping_zones disable row level security;
-alter table public.coupons disable row level security;
-alter table public.checkout_configs disable row level security;
-alter table public.staff_accounts disable row level security;
+-- Row Level Security (RLS) policies are managed in migrations
 
 -- 9. Activity Logs Table
 create table public.activity_logs (
@@ -181,4 +173,3 @@ create table public.activity_logs (
     timestamp timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
-alter table public.activity_logs disable row level security;

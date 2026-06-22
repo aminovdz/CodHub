@@ -118,7 +118,7 @@ export default function AdminStockPage() {
                   <tr className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        {p.image && <img src={p.image} alt={p.title} className="w-10 h-10 rounded-xl object-cover shrink-0" />}
+                        {p.image && <img src={p.image} alt={p.title} loading="lazy" className="w-10 h-10 rounded-xl object-cover shrink-0" />}
                         {!p.image && <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center"><Package size={18} className="text-slate-400" /></div>}
                         <div>
                           <div className="font-bold text-slate-900">{p.title}</div>

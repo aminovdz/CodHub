@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAdminStore, ShippingZone, CheckoutConfig, ALGERIA_WILAYAS, COUNTRY_DATA } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
-import { Save, Truck, Plus, Trash2, MapPin, Loader2, ShoppingCart, ShieldAlert, ShieldCheck, MessageCircle, Clock, CheckCircle2, Copy, Zap } from 'lucide-react';
+import { Save, Truck, Plus, Trash2, MapPin, Loader2, ShoppingCart, ShieldAlert, ShieldCheck, MessageCircle, Clock, CheckCircle2, Copy, Zap, Flame } from 'lucide-react';
 
 const DEFAULT_CHECKOUT_CONFIG: CheckoutConfig = {
   storeId: '',
@@ -411,6 +411,89 @@ export default function AdminCheckoutEditor() {
                 placeholder="Your order is now being processed..."
               />
             </div>
+          </div>
+        </div>
+
+        {/* Urgency & Trust Engine */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <Flame className="text-orange-500" /> Urgency & Trust Engine
+          </h2>
+          <div className="space-y-6">
+            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-orange-300 transition-colors">
+              <div>
+                <div className="font-bold text-slate-900">Enable Scarcity Widgets</div>
+                <div className="text-sm text-slate-500 mt-1">Show live viewers, low stock warnings, and trust badges on product pages.</div>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={config.fields?.scarcityConfig?.enabled ?? true} 
+                onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || { stockText: '', viewersText: '', ordersTodayText: '', verifiedText: '', fastDeliveryText: '' }), enabled: e.target.checked}}})} 
+                className="w-5 h-5 rounded text-orange-600 focus:ring-orange-500" 
+              />
+            </label>
+
+            {(config.fields?.scarcityConfig?.enabled ?? true) && (
+              <div className="space-y-4 pl-6 border-l-2 border-orange-100 animate-in fade-in">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Low Stock Warning Text</label>
+                  <input 
+                    type="text" 
+                    value={config.fields?.scarcityConfig?.stockText ?? 'Only {stock} items left in stock!'}
+                    onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || {enabled:true,stockText:'',viewersText:'',ordersTodayText:'',verifiedText:'',fastDeliveryText:''}), stockText: e.target.value}}})}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-600 outline-none font-medium text-sm"
+                    placeholder="Only {stock} items left in stock!"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Use {'{stock}'} to show the random stock number.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Live Viewers Text</label>
+                  <input 
+                    type="text" 
+                    value={config.fields?.scarcityConfig?.viewersText ?? '{viewers} people viewing this'}
+                    onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || {enabled:true,stockText:'',viewersText:'',ordersTodayText:'',verifiedText:'',fastDeliveryText:''}), viewersText: e.target.value}}})}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-600 outline-none font-medium text-sm"
+                    placeholder="{viewers} people viewing this"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1">Orders Today Text</label>
+                  <input 
+                    type="text" 
+                    value={config.fields?.scarcityConfig?.ordersTodayText ?? '{orders} orders today'}
+                    onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || {enabled:true,stockText:'',viewersText:'',ordersTodayText:'',verifiedText:'',fastDeliveryText:''}), ordersTodayText: e.target.value}}})}
+                    className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-600 outline-none font-medium text-sm"
+                    placeholder="{orders} orders today"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Use {'{orders}'} for a random number of orders.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Verified Product Text</label>
+                    <input 
+                      type="text" 
+                      value={config.fields?.scarcityConfig?.verifiedText ?? 'Verified Product'}
+                      onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || {enabled:true,stockText:'',viewersText:'',ordersTodayText:'',verifiedText:'',fastDeliveryText:''}), verifiedText: e.target.value}}})}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-600 outline-none font-medium text-sm"
+                      placeholder="Verified Product"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">Fast Delivery Text</label>
+                    <input 
+                      type="text" 
+                      value={config.fields?.scarcityConfig?.fastDeliveryText ?? 'Fast Delivery'}
+                      onChange={e => setConfig({...config, fields: {...config.fields, scarcityConfig: {...(config.fields.scarcityConfig || {enabled:true,stockText:'',viewersText:'',ordersTodayText:'',verifiedText:'',fastDeliveryText:''}), fastDeliveryText: e.target.value}}})}
+                      className="w-full px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm"
+                      placeholder="Fast Delivery"
+                    />
+                  </div>
+                </div>
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-500">
+                  <span className="font-bold text-slate-700">Tip:</span> Leave any text field completely empty to hide that specific badge. For example, clearing the Fast Delivery text will hide the Fast Delivery badge.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { slugify } from '../utils';
 import { headers } from 'next/headers';
+import { sendSms } from './smsActions';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -537,8 +538,9 @@ export async function sendMetaConfirmation(orderId: string) {
     }
 
     const config = store.whatsapp_config || {};
-    if (!config.metaEnabled) {
-      return { success: false, error: 'Meta WhatsApp API is not enabled for this store' };
+    const smsConfig = store.smsConfig || {};
+    if (!config.metaEnabled && !smsConfig.enabled) {
+      return { success: false, error: 'Neither WhatsApp nor SMS is enabled for this store' };
     }
 
     // 3. Skip if self-confirmed
@@ -559,17 +561,40 @@ export async function sendMetaConfirmation(orderId: string) {
 
     console.log(`[Meta] Sending confirmation to ${order.phone} — template: ${metaTemplateName}`, bodyParams);
 
-    // 5. Send via Meta Graph API
-    const { ok, data } = await sendMetaWhatsAppTemplate({
-      phoneNumberId: metaPhoneNumberId,
-      accessToken: metaAccessToken,
-      to: order.phone,
-      templateName: metaTemplateName,
-      languageCode: metaLanguageCode || 'en_US',
-      bodyParams,
-    });
+    // 5. Send via Meta Graph API or SMS Fallback
+    let ok = false;
+    let data: any;
+    let fallbackToSms = false;
+    let usedMethod = '';
 
-    const metaMessageId = data?.messages?.[0]?.id;
+    if (config.metaEnabled && metaPhoneNumberId && metaAccessToken && metaTemplateName) {
+      const result = await sendMetaWhatsAppTemplate({
+        phoneNumberId: metaPhoneNumberId,
+        accessToken: metaAccessToken,
+        to: order.phone,
+        templateName: metaTemplateName,
+        languageCode: metaLanguageCode || 'en_US',
+        bodyParams,
+      });
+      ok = result.ok;
+      data = result.data;
+      usedMethod = 'WhatsApp';
+      if (!ok) fallbackToSms = true;
+    } else {
+      fallbackToSms = true;
+    }
+
+    let smsResult: any;
+    if (fallbackToSms && smsConfig.enabled) {
+      console.log(`[SMS] Falling back to SMS for ${order.phone}`);
+      smsResult = await sendSms(smsConfig, order.phone, bodyParams, order, store);
+      if (smsResult.success) {
+        ok = true;
+        usedMethod = 'SMS';
+      }
+    }
+
+    const metaMessageId = data?.messages?.[0]?.id || smsResult?.messageId;
 
     // 6. Log to message_logs
     await logMetaMessage({
@@ -582,11 +607,11 @@ export async function sendMetaConfirmation(orderId: string) {
     });
 
     // 7. Append note to order
-    const author = 'System (Meta WhatsApp)';
+    const author = `System (${usedMethod})`;
     const createdAt = new Date().toISOString();
     const newNote = ok
-      ? { author, text: `WhatsApp confirmation sent via Meta template: "${metaTemplateName}" (msg: ${metaMessageId || 'n/a'})`, createdAt }
-      : { author, text: `Meta WhatsApp confirmation failed: ${JSON.stringify(data?.error || data)}`, createdAt };
+      ? { author, text: `${usedMethod} confirmation sent. (msg: ${metaMessageId || 'n/a'})`, createdAt }
+      : { author, text: `Confirmation failed (WhatsApp/SMS).`, createdAt };
 
     const updatedNotes = order.notes ? [...order.notes, newNote] : [newNote];
     await supabase.from('orders').update({ notes: updatedNotes }).eq('id', orderId);

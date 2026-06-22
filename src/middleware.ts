@@ -52,8 +52,10 @@ export async function middleware(req: NextRequest) {
     }
 
     try {
-      // In Edge runtime, we use jose to verify the JWT
-      const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+      const JWT_SECRET = process.env.JWT_SECRET;
+      if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not configured');
+      }
       const key = new TextEncoder().encode(JWT_SECRET);
       const { jwtVerify } = await import('jose');
       await jwtVerify(token, key);
@@ -70,7 +72,10 @@ export async function middleware(req: NextRequest) {
     const token = req.cookies.get('codadmin_token')?.value;
     if (token) {
       try {
-        const JWT_SECRET = process.env.JWT_SECRET || 'fallback-super-secret-key-123456';
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) {
+          throw new Error('JWT_SECRET is not configured');
+        }
         const key = new TextEncoder().encode(JWT_SECRET);
         const { jwtVerify } = await import('jose');
         await jwtVerify(token, key);
@@ -111,33 +116,12 @@ export async function middleware(req: NextRequest) {
     return NextResponse.rewrite(new URL(`/${subdomain}${url.pathname}`, req.url));
   }
 
-  // Query Supabase dynamic custom domains matching this host
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (supabaseUrl && supabaseKey && host !== 'localhost' && !host.endsWith('.vercel.app')) {
-    try {
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/stores?custom_domain=eq.${host}&select=name,region`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-          next: { revalidate: 60 }
-        }
-      );
-      if (res.ok) {
-        const stores = await res.json();
-        if (stores && stores.length > 0) {
-          const storeSlug = slugify(stores[0].name) || stores[0].region.toLowerCase();
-          return NextResponse.rewrite(new URL(`/${storeSlug}${url.pathname}`, req.url));
-        }
-      }
-    } catch (e) {
-      console.error("Middleware Supabase custom domain fetch error:", e);
-    }
-  }
+  // Custom domain resolution logic moved to the application layer (React Server Components)
+  // to avoid runtime database fetches in the Edge Middleware.
+  // We pass the resolved host via headers so the layout/page can use standard caching.
+  const response = NextResponse.next();
+  response.headers.set('x-cod-domain', host);
+  return response;
 
   return NextResponse.next();
 }

@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
 import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3, User, Phone, Mail } from 'lucide-react';
 import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
-import { useAdminStore, resolveStore, Coupon } from '@/lib/store/useAdminStore';
+import { resolveStore, Coupon } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { usePixelEvent } from '@/hooks/usePixelEvent';
 import { getCommunesForWilaya } from '@/lib/algeria-communes';
@@ -31,9 +32,10 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   const searchParams = useSearchParams();
   const totalPrice = getTotalPrice();
 
-  const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog } = useAdminStore();
+  const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog, customerBlacklist } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
+  const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(region.toLowerCase());
   const { t } = useTranslation(region);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
@@ -341,7 +343,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
         }
 
         if (store) {
-          setAbandonedCarts(prev => {
+          setAbandonedCarts((prev: any[]) => {
             const filtered = prev.filter(c => c.id !== localOrderId);
             return [{
               id: localOrderId,
@@ -400,7 +402,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
     // Synchronous local state capture (guarantees Abandoned Cart appears even if network hangs)
     if (store) {
-      setAbandonedCarts(prev => {
+      setAbandonedCarts((prev: any[]) => {
         // remove existing if updating
         const filtered = prev.filter(c => c.id !== localOrderId);
         return [{
@@ -449,6 +451,15 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   // Countdown timer removed in favor of Trust Banner
 
   const handleComplete = async () => {
+    // Check blacklist first
+    if (store && customerBlacklist) {
+      const isBlacklisted = customerBlacklist.some(b => b.storeId === store.id && b.phone === phone);
+      if (isBlacklisted) {
+        alert(t('checkout.error.blacklisted', 'We cannot process your order at this time. Please contact support.'));
+        return;
+      }
+    }
+
     setStatus('CONFIRMING');
 
     // Clear abandoned cart timer
@@ -476,7 +487,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
     // Update Local Dashboard instantly
     if (store) {
-      setOrders(prev => [
+      setOrders((prev: any[]) => [
         {
           id: finalOrderId,
           storeId: store.id,
@@ -510,17 +521,17 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
       // Remove from abandoned carts using the locally tracked draftOrderId
       if (draftOrderId) {
-        setAbandonedCarts(prev => prev.filter(c => c.id !== draftOrderId));
+        setAbandonedCarts((prev: any[]) => prev.filter((c: any) => c.id !== draftOrderId));
       }
 
       // Mark coupon as used
       if (appliedCoupon) {
-        setCoupons(prev => prev.map(c => c.id === appliedCoupon.id ? { ...c, usedCount: c.usedCount + 1 } : c));
+        setCoupons((prev: any[]) => prev.map((c: any) => c.id === appliedCoupon.id ? { ...c, usedCount: c.usedCount + 1 } : c));
       }
 
       // Decrement stock and check for stockout
       let stockoutProduct = '';
-      setProducts(prev => prev.map(p => {
+      setProducts((prev: any[]) => prev.map((p: any) => {
         const inCart = cart.find(c => c.id === p.id);
         if (inCart) {
           const newStock = Math.max(0, (p.stock || 0) - 1);
@@ -674,7 +685,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
     if (!draftOrderId) setDraftOrderId(localOrderId);
 
     if (store) {
-      setAbandonedCarts(prev => {
+      setAbandonedCarts((prev: any[]) => {
         const filtered = prev.filter(c => c.id !== localOrderId);
         return [{
           id: localOrderId, storeId: store.id,
@@ -765,22 +776,22 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
             {(checkoutConfig?.enableTrustBanner ?? true) && (
               <div className="mx-4 mt-4 mb-2 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
-                <div className="flex items-center gap-2 mb-3">
+                <div className={`flex items-center gap-2 mb-3 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
                   <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <span className="font-bold text-emerald-800 text-sm">{t('checkout.secureCheckout', 'تسوق آمن ومضمون 100%')}</span>
+                  <span className="font-bold text-emerald-800 text-sm">{t('checkout.secureCheckout', '100% Secure Checkout')}</span>
                 </div>
-                <div className="space-y-2 text-right">
-                  <div className="flex items-start gap-2 justify-end">
-                    <span className="text-xs font-semibold text-emerald-700">الدفع عند الاستلام - لن تدفع حتى تستلم وتفحص طلبك</span>
-                    <span className="text-emerald-500">✅</span>
+                <div className={`space-y-2 ${isArabic ? 'text-right' : 'text-left'}`}>
+                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
+                    <span className="text-emerald-500 mt-0.5">✅</span>
+                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item1', 'Pay on delivery - you will not pay until you receive and inspect your order')}</span>
                   </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <span className="text-xs font-semibold text-emerald-700">شحن سريع - تسليم خلال 48 ساعة كحد أقصى</span>
-                    <span className="text-emerald-500">🚚</span>
+                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
+                    <span className="text-emerald-500 mt-0.5">🚚</span>
+                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item2', 'Fast shipping - delivery within 48 hours maximum')}</span>
                   </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <span className="text-xs font-semibold text-emerald-700">ضمان استبدال واسترجاع - تسوق بدون مخاطرة</span>
-                    <span className="text-emerald-500">🛡️</span>
+                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
+                    <span className="text-emerald-500 mt-0.5">🛡️</span>
+                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item3', 'Replacement and return guarantee - shop without risk')}</span>
                   </div>
                 </div>
               </div>

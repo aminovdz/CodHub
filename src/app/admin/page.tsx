@@ -5,6 +5,7 @@ import { TrendingUp, ShoppingCart, DollarSign, Package, AlertCircle, RefreshCw, 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
+import DOMPurify from 'dompurify';
 
 export default function AdminDashboard() {
   const { activeStore, orders, products, staffGoals, commissionEntries, activityLogs } = useAdminStore();
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
             {chiefOfStaffBrief && (
               <div 
                 className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800 pt-4"
-                dangerouslySetInnerHTML={{ __html: chiefOfStaffBrief }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(chiefOfStaffBrief) }}
               />
             )}
             {!chiefOfStaffBrief && !isGeneratingBrief && (

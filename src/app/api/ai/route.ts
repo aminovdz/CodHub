@@ -4,7 +4,13 @@ export async function POST(req: Request) {
   try {
     const { prompt, type, productData, images, provider = 'gemini', apiKey: reqApiKey, model } = await req.json();
 
-    const apiKey = reqApiKey || process.env.GEMINI_API_KEY;
+    const apiKey = reqApiKey || (
+      provider === 'gemini' ? process.env.GEMINI_API_KEY :
+      provider === 'claude' ? process.env.CLAUDE_API_KEY :
+      provider === 'openai' ? process.env.OPENAI_API_KEY :
+      provider === 'openrouter' ? process.env.OPENROUTER_API_KEY :
+      provider === 'nvidia' ? process.env.NVIDIA_API_KEY : null
+    );
     if (!apiKey) {
       return NextResponse.json(
         { error: `API Key not configured for provider: ${provider}. Please set it in the Admin Settings.` },

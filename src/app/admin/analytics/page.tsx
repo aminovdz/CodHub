@@ -2,12 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
-import { TrendingUp, Package, MapPin, Users, BarChart2, DollarSign, Filter, Download, Megaphone } from 'lucide-react';
+import { TrendingUp, Package, MapPin, Users, BarChart2, DollarSign, Filter, Download, Megaphone, AlertTriangle } from 'lucide-react';
 
-type Tab = 'revenue' | 'products' | 'wilaya' | 'staff' | 'financial' | 'funnel' | 'marketing';
+type Tab = 'revenue' | 'products' | 'wilaya' | 'staff' | 'financial' | 'funnel' | 'marketing' | 'rto';
 
 export default function AdminAnalyticsPage() {
-  const { activeStore, orders, callLogs } = useAdminStore();
+  const { activeStore, orders, callLogs, staffAccounts } = useAdminStore();
   const [tab, setTab] = useState<Tab>('revenue');
   const [rangeDays, setRangeDays] = useState(30);
   const [manualSpend, setManualSpend] = useState<Record<string, number>>({});
@@ -78,7 +78,18 @@ export default function AdminAnalyticsPage() {
 
   const staffPerf = useMemo(() => {
     const storeLogs = callLogs.filter(c => c.storeId === activeStore.id);
-    const agents = Array.from(new Set(storeLogs.map(c => c.agentName)));
+    
+    // Get all unique agents from logs
+    const loggedAgents = Array.from(new Set(storeLogs.map(c => c.agentName)));
+    
+    // Get all staff accounts that have access to this store
+    const storeStaff = staffAccounts
+      .filter((s: any) => s.storeIds?.includes(activeStore.id) || s.storeId === activeStore.id || (!s.storeIds?.length && !s.storeId))
+      .map((s: any) => s.name);
+      
+    // Combine both sets
+    const agents = Array.from(new Set([...loggedAgents, ...storeStaff]));
+
     return agents.map(agent => {
       const calls = storeLogs.filter(c => c.agentName === agent);
       const confirmed = calls.filter(c => c.result === 'confirmed').length;
@@ -89,7 +100,7 @@ export default function AdminAnalyticsPage() {
         answerRate: calls.length > 0 ? Math.round((answered / calls.length) * 100) : 0,
       };
     }).sort((a, b) => b.confirmed - a.confirmed);
-  }, [callLogs, activeStore.id]);
+  }, [callLogs, activeStore.id, staffAccounts]);
 
   // Financial Metrics
   const financialData = useMemo(() => {
@@ -141,6 +152,7 @@ export default function AdminAnalyticsPage() {
     { key: 'products' as Tab, label: 'Products', icon: <Package size={15} /> },
     { key: 'wilaya' as Tab, label: 'Wilaya Heatmap', icon: <MapPin size={15} /> },
     { key: 'staff' as Tab, label: 'Staff', icon: <Users size={15} /> },
+    { key: 'rto' as Tab, label: 'RTO Analytics', icon: <AlertTriangle size={15} /> },
   ];
 
   return (
@@ -468,6 +480,80 @@ export default function AdminAnalyticsPage() {
           </table>
         </div>
       )}
+
+      {/* RTO ANALYTICS */}
+      {tab === 'rto' && (() => {
+        // Calculate RTO stats
+        const dispatchedOrders = rangeOrders.filter(o => ['DELIVERED', 'RETURNED', 'RTO'].includes(o.status || ''));
+        const totalDispatched = dispatchedOrders.length;
+        const totalReturned = dispatchedOrders.filter(o => ['RETURNED', 'RTO'].includes(o.status || '')).length;
+        const totalDelivered = dispatchedOrders.filter(o => o.status === 'DELIVERED').length;
+        
+        const overallRtoRate = totalDispatched > 0 ? ((totalReturned / totalDispatched) * 100).toFixed(1) : '0.0';
+
+        // RTO by Wilaya
+        const wilayaRto = dispatchedOrders.reduce((acc, o) => {
+          const w = o.wilaya || 'Unknown';
+          if (!acc[w]) acc[w] = { total: 0, returned: 0 };
+          acc[w].total++;
+          if (['RETURNED', 'RTO'].includes(o.status || '')) acc[w].returned++;
+          return acc;
+        }, {} as Record<string, { total: number, returned: number }>);
+
+        const sortedWilayaRto = Object.entries(wilayaRto)
+          .map(([w, data]) => ({ wilaya: w, ...data, rate: (data.returned / data.total) * 100 }))
+          .sort((a, b) => b.rate - a.rate)
+          .slice(0, 10);
+
+        return (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="text-sm font-bold text-slate-500 mb-1">Overall RTO Rate</div>
+                <div className="text-4xl font-black text-rose-600">{overallRtoRate}%</div>
+                <div className="text-sm text-slate-400 mt-2">{totalReturned} returned out of {totalDispatched} dispatched</div>
+              </div>
+              <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <div className="text-sm font-bold text-slate-500 mb-1">Delivered Successfully</div>
+                <div className="text-4xl font-black text-emerald-600">{totalDelivered}</div>
+                <div className="text-sm text-slate-400 mt-2">Profitable deliveries</div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="font-black text-lg text-slate-900 dark:text-white">Top 10 Wilayas by RTO Rate</h3>
+              </div>
+              <table className="w-full">
+                <thead className="bg-slate-50 dark:bg-slate-900">
+                  <tr>
+                    <th className="p-4 text-left font-bold text-slate-600 dark:text-slate-400">Wilaya</th>
+                    <th className="p-4 text-right font-bold text-slate-600 dark:text-slate-400">Dispatched</th>
+                    <th className="p-4 text-right font-bold text-slate-600 dark:text-slate-400">Returned</th>
+                    <th className="p-4 text-right font-bold text-slate-600 dark:text-slate-400">RTO Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedWilayaRto.length === 0 && (
+                    <tr><td colSpan={4} className="p-8 text-center text-slate-400">No dispatch data in this period.</td></tr>
+                  )}
+                  {sortedWilayaRto.map(w => (
+                    <tr key={w.wilaya} className="border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="p-4 font-bold text-slate-900 dark:text-white">{w.wilaya}</td>
+                      <td className="p-4 text-right">{w.total}</td>
+                      <td className="p-4 text-right font-bold text-rose-500">{w.returned}</td>
+                      <td className="p-4 text-right font-black" style={{ color: w.rate > 30 ? '#e11d48' : w.rate > 15 ? '#d97706' : '#059669' }}>
+                        {w.rate.toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }

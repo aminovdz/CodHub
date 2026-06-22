@@ -1,8 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
-import webpagePreset from 'grapesjs-preset-webpage';
-import basicBlocks from 'grapesjs-blocks-basic';
 
 interface Props {
   initialHtml: string;
@@ -15,22 +12,31 @@ export default function GrapesEditor({ initialHtml, onSave, onClose }: Props) {
   const editorInstance = useRef<any>(null);
 
   useEffect(() => {
-    if (!editorRef.current) return;
+    let isMounted = true;
 
-    editorInstance.current = grapesjs.init({
-      container: editorRef.current,
-      fromElement: false,
-      height: '100vh',
-      width: 'auto',
-      storageManager: false,
-      plugins: [webpagePreset, basicBlocks],
-      components: initialHtml,
-      canvas: {
-        scripts: [
-          'https://cdn.tailwindcss.com'
-        ]
-      }
-    });
+    const initEditor = async () => {
+      if (!editorRef.current) return;
+
+      const grapesjs = (await import('grapesjs')).default;
+      const webpagePreset = (await import('grapesjs-preset-webpage')).default;
+      const basicBlocks = (await import('grapesjs-blocks-basic')).default;
+
+      if (!isMounted) return;
+
+      editorInstance.current = grapesjs.init({
+        container: editorRef.current,
+        fromElement: false,
+        height: '100vh',
+        width: 'auto',
+        storageManager: false,
+        plugins: [webpagePreset, basicBlocks],
+        components: initialHtml,
+        canvas: {
+          scripts: [
+            'https://cdn.tailwindcss.com'
+          ]
+        }
+      });
 
     // Add a save button to the top panel
     editorInstance.current.Panels.addButton('options', {
@@ -157,7 +163,12 @@ export default function GrapesEditor({ initialHtml, onSave, onClose }: Props) {
       `,
     });
 
+    };
+
+    initEditor();
+
     return () => {
+      isMounted = false;
       if (editorInstance.current) {
         editorInstance.current.destroy();
       }

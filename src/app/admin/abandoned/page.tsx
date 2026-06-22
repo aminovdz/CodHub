@@ -20,6 +20,7 @@ export default function AdminAbandonedCartsPage() {
   const [whatsappModal, setWhatsappModal] = useState<{
     phone: string;
     message: string;
+    cart?: any;
   } | null>(null);
 
   const handleRecover = (cart: any) => {
@@ -30,7 +31,8 @@ export default function AdminAbandonedCartsPage() {
                      .replace(/\[STORE_NAME\]/g, activeStore.name || '');
     setWhatsappModal({
       phone: cart.phone,
-      message: message
+      message: message,
+      cart: cart
     });
   };
 
@@ -171,6 +173,37 @@ export default function AdminAbandonedCartsPage() {
                 <input type="text" disabled={!isAdmin} value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed" />
                 {!isAdmin && <p className="text-[10px] text-slate-400 mt-1">Staff members cannot modify recipient phone numbers.</p>}
               </div>
+
+              {activeStore.whatsappConfig?.customTemplates && activeStore.whatsappConfig.customTemplates.length > 0 && (
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Template</label>
+                  <select 
+                    className="w-full p-3.5 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-600 outline-none"
+                    onChange={(e) => {
+                      let templateText = activeStore.whatsappConfig?.abandonedCartScript || "Hello *[NAME]*, this is *[STORE_NAME]*. We noticed you were interested in *[PRODUCT]* but didn't complete your order. We still have it reserved for you! Would you like us to confirm this Cash on Delivery order and ship it to you? Order: #[ORDER_ID]";
+                      if (e.target.value !== 'default') {
+                        const selected = activeStore.whatsappConfig?.customTemplates?.find(t => t.id === e.target.value);
+                        if (selected) templateText = selected.text;
+                      }
+                      
+                      const cart = whatsappModal.cart;
+                      if (cart) {
+                        templateText = templateText.replace(/\[NAME\]/g, cart.customer || '')
+                                                   .replace(/\[ORDER_ID\]/g, cart.id || '')
+                                                   .replace(/\[PRODUCT\]/g, cart.product || '')
+                                                   .replace(/\[STORE_NAME\]/g, activeStore.name || '');
+                      }
+                      setWhatsappModal({ ...whatsappModal, message: templateText });
+                    }}
+                  >
+                    <option value="default">Default Abandoned Cart Message</option>
+                    {activeStore.whatsappConfig.customTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>
                 <textarea value={whatsappModal.message} onChange={e => setWhatsappModal({...whatsappModal, message: e.target.value})} rows={6} className="w-full p-4 rounded-xl border border-slate-200 font-medium focus:ring-2 focus:ring-indigo-600 outline-none resize-none" />

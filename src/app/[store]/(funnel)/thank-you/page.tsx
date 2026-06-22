@@ -2,7 +2,8 @@
 
 import { use, useState } from 'react';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { CheckCircle2, Mail, ExternalLink, MessageCircle, ShoppingBag, ShieldCheck, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -17,7 +18,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
   const router = useRouter();
 
   const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addressData, addCartItem, buyNow } = useFunnelStore();
-  const { availableStores, checkoutConfigs, products } = useAdminStore();
+  const { availableStores, checkoutConfigs, products } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
   const { t } = useTranslation(region);

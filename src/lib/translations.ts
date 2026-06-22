@@ -157,6 +157,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Pay on delivery - you will not pay until you receive and inspect your order',
+    'checkout.trustBanner.item2': 'Fast shipping - delivery within 48 hours maximum',
+    'checkout.trustBanner.item3': 'Replacement and return guarantee - shop without risk',
   },
   fr: {
     'hero.title': 'Produits Premium. Paiement à la Livraison.',
@@ -232,6 +235,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Paiement à la livraison - vous ne paierez qu\'après avoir reçu et inspecté votre commande',
+    'checkout.trustBanner.item2': 'Livraison rapide - livraison sous 48 heures maximum',
+    'checkout.trustBanner.item3': 'Garantie de remplacement et de retour - achetez sans risque',
   },
   ar: {
     'checkout.title': 'الدفع عند الاستلام',
@@ -329,6 +335,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'د.ج',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'الدفع عند الاستلام - لن تدفع حتى تستلم وتفحص طلبك',
+    'checkout.trustBanner.item2': 'شحن سريع - توصيل خلال 48 ساعة كحد أقصى',
+    'checkout.trustBanner.item3': 'ضمان استبدال واسترجاع - تسوق بدون مخاطرة',
   },
   es: {
     'hero.title': 'Productos Premium. Pago Contra Reembolso.',
@@ -387,6 +396,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Pago contra entrega - no pagará hasta que reciba y revise su pedido',
+    'checkout.trustBanner.item2': 'Envío rápido - entrega en 48 horas como máximo',
+    'checkout.trustBanner.item3': 'Garantía de cambio y devolución - compre sin riesgo',
   },
   ro: {
     'hero.title': 'Produse Premium. Plata la Livrare.',
@@ -445,6 +457,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Plată la livrare - nu veți plăti până când nu primiți și inspectați comanda',
+    'checkout.trustBanner.item2': 'Livrare rapidă - livrare în maxim 48 de ore',
+    'checkout.trustBanner.item3': 'Garanție de înlocuire și retur - cumpărați fără risc',
   },
   pt: {
     'hero.title': 'Produtos Premium. Pagamento na Entrega.',
@@ -500,6 +515,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Pagamento na entrega - não pagará até receber e inspecionar sua encomenda',
+    'checkout.trustBanner.item2': 'Envio rápido - entrega em 48 horas no máximo',
+    'checkout.trustBanner.item3': 'Garantia de substituição e devolução - compre sem risco',
   },
   it: {
     'hero.title': 'Prodotti Premium. Pagamento alla Consegna.',
@@ -555,6 +573,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Pagamento alla consegna - non pagherai fino a quando non riceverai e ispezionerai il tuo ordine',
+    'checkout.trustBanner.item2': 'Spedizione veloce - consegna entro 48 ore al massimo',
+    'checkout.trustBanner.item3': 'Garanzia di sostituzione e reso - fai acquisti senza rischi',
   },
   hu: {
     'hero.title': 'Prémium Termékek. Utánvétes Fizetés.',
@@ -609,6 +630,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Utánvétes fizetés - addig nem fizet, amíg meg nem kapja és meg nem vizsgálja a rendelését',
+    'checkout.trustBanner.item2': 'Gyors szállítás - kézbesítés legfeljebb 48 órán belül',
+    'checkout.trustBanner.item3': 'Csere- és visszaküldési garancia - vásároljon kockázat nélkül',
   },
   pl: {
     'hero.title': 'Produkty Premium. Płatność przy Odbiorze.',
@@ -663,6 +687,9 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'currency.dzd': 'DZD',
     'currency.ron': 'RON',
     'currency.cop': 'COP',
+    'checkout.trustBanner.item1': 'Płatność przy odbiorze - nie płacisz, dopóki nie otrzymasz i sprawdzisz zamówienia',
+    'checkout.trustBanner.item2': 'Szybka wysyłka - dostawa w ciągu maksymalnie 48 godzin',
+    'checkout.trustBanner.item3': 'Gwarancja wymiany i zwrotu - kupuj bez ryzyka',
   },
   cs: {
     'hero.title': 'Prémiové Produkty. Platba na Dobírku.',

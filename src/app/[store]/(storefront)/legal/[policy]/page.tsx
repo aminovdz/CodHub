@@ -2,7 +2,8 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 
 // Mocks removed
 
@@ -11,7 +12,7 @@ export default function LegalPage({ params }: { params: Promise<{ store: string,
   const storeSlug = resolvedParams.store;
   const policySlug = resolvedParams.policy;
 
-  const { legalPages, availableStores } = useAdminStore();
+  const { legalPages, availableStores } = useStorefrontStore();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {

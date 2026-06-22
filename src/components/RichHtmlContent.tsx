@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
+import DOMPurify from 'dompurify';
 
 interface Props {
   html: string;
@@ -88,7 +89,7 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
           <div
             key={`html-${i}`}
             className="w-full"
-            dangerouslySetInnerHTML={{ __html: seg.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(seg.content) }}
           />
         );
       })}

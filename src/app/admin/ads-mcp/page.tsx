@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Megaphone, Play, Pause, RefreshCw, Plus, TrendingUp, DollarSign, Target, BarChart3, Settings2, PlayCircle, Loader2, Globe, AlertTriangle, CheckCircle2, XCircle, ChevronDown, Zap, Trash2, Edit3, Search, SlidersHorizontal, ExternalLink, Info } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
+import DOMPurify from 'dompurify';
 import { aiService } from '@/lib/services/aiService';
 
 type ApiFn = (body: any) => Promise<any>;
@@ -702,7 +703,7 @@ export default function AdsMcpPage() {
                       </button>
                     </div>
                     {aiRecommendations && (
-                      <div className="p-5 text-sm text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: aiRecommendations }} />
+                      <div className="p-5 text-sm text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(aiRecommendations) }} />
                     )}
                   </div>
 

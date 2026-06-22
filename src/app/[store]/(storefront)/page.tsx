@@ -3,7 +3,8 @@
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Star, ShoppingBag, CheckCircle2 } from 'lucide-react';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import RichHtmlContent from '@/components/RichHtmlContent';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
@@ -12,7 +13,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
   const storeSlug = resolvedParams.store;
   // Currency will be initialized after store is fetched
   
-  const { availableStores, homepages, products, categories } = useAdminStore();
+  const { availableStores, homepages, products, categories } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
   const { t } = useTranslation(region);

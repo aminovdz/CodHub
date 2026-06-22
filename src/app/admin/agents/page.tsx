@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { aiService } from '@/lib/services/aiService';
 
@@ -399,7 +400,7 @@ export default function AgentsHubPage() {
                           {msg.attachments.map((att: any, i: number) => (
                             <div key={i} className="relative rounded-lg overflow-hidden border border-white/20 bg-white/10 w-24 h-24 flex items-center justify-center">
                               {att.mimeType.startsWith('image/') ? (
-                                <img src={att.data} alt={att.name} className="w-full h-full object-cover" />
+                                <img src={att.data} alt={att.name} loading="lazy" className="w-full h-full object-cover" />
                               ) : (
                                 <div className="text-center p-2">
                                   <FileText size={24} className="mx-auto mb-1 opacity-70" />
@@ -437,7 +438,7 @@ export default function AgentsHubPage() {
                                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                                   {pd.image && (
                                     <div className="w-full h-32 bg-slate-100 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
-                                      <img src={pd.image} alt={pd.title} className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                      <img src={pd.image} alt={pd.title} loading="lazy" className="w-full h-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                                     </div>
                                   )}
                                   <div className="p-4 space-y-3">
@@ -455,7 +456,9 @@ export default function AgentsHubPage() {
                                     {pd.shortDesc && <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{pd.shortDesc}</p>}
                                     {pd.mainDesc && (
                                       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 max-h-32 overflow-y-auto">
-                                        <div className="text-xs text-slate-700 dark:text-slate-300 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: pd.mainDesc }} />
+                                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100">
+                                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pd.mainDesc) }} />
+                                        </div>
                                       </div>
                                     )}
                                     {pd.stock !== undefined && <p className="text-[10px] font-bold text-slate-400">Stock: {pd.stock}</p>}
@@ -533,7 +536,7 @@ export default function AgentsHubPage() {
                 {attachments.map((att: any, i: number) => (
                   <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 group flex items-center justify-center">
                     {att.mimeType.startsWith('image/') ? (
-                      <img src={att.data} alt="Upload preview" className="w-full h-full object-cover" />
+                      <img src={att.data} alt="Upload preview" loading="lazy" className="w-full h-full object-cover" />
                     ) : (
                       <FileText size={24} className="text-slate-400" />
                     )}

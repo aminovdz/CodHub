@@ -177,6 +177,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const navLinks = [
     { href: basePath,                label: 'Dashboard',       icon: <LayoutDashboard size={18} />, roles: ['admin', 'fulfillment', 'confirmation'] },
     { href: `${basePath}/orders`,    label: 'Orders',          icon: <ShoppingCart size={18} />,    roles: ['admin', 'fulfillment', 'confirmation'] },
+
     { href: `${basePath}/abandoned`, label: 'Abandoned Carts', icon: <Ghost size={18} />,           roles: ['admin', 'confirmation'] },
     { href: `${basePath}/analytics`, label: 'Analytics',       icon: <BarChart2 size={18} />,       roles: ['admin'] },
     { href: `${basePath}/calculator`,label: 'Profit Calculator',icon: <Calculator size={18} />,     roles: ['admin'] },

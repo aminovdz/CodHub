@@ -1,7 +1,8 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import RichHtmlContent from '@/components/RichHtmlContent';
 import { Loader2 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -10,7 +11,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const resolvedParams = use(params);
   const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
-  const { availableStores, landingPages, _hasHydrated } = useAdminStore();
+  const { availableStores, landingPages, _hasHydrated } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
   const searchParams = useSearchParams();

@@ -20,7 +20,7 @@ export default function AdminOrdersPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [whatsappModal, setWhatsappModal] = useState<{ orderId: string; phone: string; message: string; } | null>(null);
+  const [whatsappModal, setWhatsappModal] = useState<{orderId: string, phone: string, message: string, order?: Order} | null>(null);
   const [isSendingMeta, setIsSendingMeta] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
@@ -64,7 +64,7 @@ export default function AdminOrdersPage() {
                      .replace(/\[ORDER_ID\]/g, order.id || '')
                      .replace(/\[PRODUCT\]/g, order.product || '')
                      .replace(/\[STORE_NAME\]/g, activeStore.name || '');
-    setWhatsappModal({ orderId: order.id, phone: order.phone, message });
+    setWhatsappModal({ orderId: order.id, phone: order.phone, message, order });
   };
 
   const exportCSV = () => {
@@ -567,6 +567,37 @@ export default function AdminOrdersPage() {
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Recipient Phone</label>
                 <input type="text" disabled={!isAdmin} value={whatsappModal.phone} onChange={e => setWhatsappModal({...whatsappModal, phone: e.target.value})} className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 font-bold focus:ring-2 focus:ring-indigo-600 outline-none disabled:text-slate-400" />
               </div>
+              
+              {activeStore.whatsappConfig?.customTemplates && activeStore.whatsappConfig.customTemplates.length > 0 && (
+                <div>
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Template</label>
+                  <select 
+                    className="w-full p-3 rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-indigo-600 outline-none"
+                    onChange={(e) => {
+                      let templateText = activeStore.whatsappConfig?.thankYouMessage || "Hello *[NAME]*, this is *[STORE_NAME]*. We are pleased to confirm your Cash on Delivery order for *[PRODUCT]*! We are preparing it for shipment. Order: #[ORDER_ID]";
+                      if (e.target.value !== 'default') {
+                        const selected = activeStore.whatsappConfig?.customTemplates?.find(t => t.id === e.target.value);
+                        if (selected) templateText = selected.text;
+                      }
+                      
+                      const order = whatsappModal.order;
+                      if (order) {
+                        templateText = templateText.replace(/\[NAME\]/g, order.customer || '')
+                                                   .replace(/\[ORDER_ID\]/g, order.id || '')
+                                                   .replace(/\[PRODUCT\]/g, order.product || '')
+                                                   .replace(/\[STORE_NAME\]/g, activeStore.name || '');
+                      }
+                      setWhatsappModal({ ...whatsappModal, message: templateText });
+                    }}
+                  >
+                    <option value="default">Default Thank You Message</option>
+                    {activeStore.whatsappConfig.customTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-1.5">Message Text</label>
                 <textarea value={whatsappModal.message} onChange={e => setWhatsappModal({...whatsappModal, message: e.target.value})} rows={6} className="w-full p-4 rounded-2xl border border-slate-200 bg-slate-50 font-medium focus:ring-2 focus:ring-indigo-600 outline-none resize-none" />

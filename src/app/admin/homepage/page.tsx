@@ -165,9 +165,6 @@ export default function AdminHomepageEditor() {
         <button onClick={() => setActiveTab('footer')} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'footer' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
           <Layout size={18} /> Footer
         </button>
-        <button onClick={() => setActiveTab('pixels')} className={`flex-1 flex justify-center items-center gap-2 py-3 text-sm font-bold rounded-lg transition-all ${activeTab === 'pixels' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-          <Globe size={18} /> Tracking Pixels
-        </button>
       </div>
 
       <div className="mt-8">
@@ -315,40 +312,6 @@ export default function AdminHomepageEditor() {
                     {(footer.legalLinks || []).length === 0 && <p className="text-xs text-slate-400 font-medium">No legal links added yet.</p>}
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-
-
-        {/* ================= PIXELS TAB ================= */}
-        {activeTab === 'pixels' && (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-slate-50 p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Tracking Pixels</h2>
-              <p className="text-sm text-slate-500">Add your pixel IDs here. We will automatically inject the required scripts into your storefront.</p>
-            </div>
-            <div className="p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Google Analytics Snippet / ID</label>
-                <textarea rows={3} placeholder="Paste full <script> snippet or G-XXXXXXXXXX ID" value={analytics.google} onChange={e => setAnalytics({...analytics, google: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Facebook Pixel Snippet / ID</label>
-                <textarea rows={3} placeholder="Paste full <script> snippet or 123456789012345 ID" value={analytics.facebook} onChange={e => setAnalytics({...analytics, facebook: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">TikTok Pixel Snippet / ID</label>
-                <textarea rows={3} placeholder="Paste full <script> snippet or CXXXXXXX... ID" value={analytics.tiktok} onChange={e => setAnalytics({...analytics, tiktok: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Snapchat Pixel Snippet / ID</label>
-                <textarea rows={3} placeholder="Paste full <script> snippet or XXXXXXXX-XXXX... ID" value={analytics.snapchat} onChange={e => setAnalytics({...analytics, snapchat: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1">Pinterest Tag Snippet / ID</label>
-                <textarea rows={3} placeholder="Paste full <script> snippet or 261... ID" value={analytics.pinterest} onChange={e => setAnalytics({...analytics, pinterest: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 font-mono text-xs" />
               </div>
             </div>
           </div>

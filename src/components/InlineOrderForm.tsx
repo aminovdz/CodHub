@@ -195,7 +195,7 @@ export default memo(function InlineOrderForm({ productId, region, utmSource, utm
 
   return (
     <div className="max-w-lg mx-auto my-8">
-      <ScarcityEngine productId={product.id} />
+      <ScarcityEngine productId={product.id} config={checkoutConfig?.fields?.scarcityConfig} />
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
         {/* Product summary bar */}
         <div className="bg-indigo-600 p-5 text-white flex items-center gap-4">

@@ -7,7 +7,8 @@ import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCi
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import RichHtmlContent from '@/components/RichHtmlContent';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { ScarcityEngine } from '@/components/checkout/ScarcityEngine';
@@ -69,7 +70,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
   const router = useRouter();
-  const { products, availableStores, _hasHydrated, checkoutConfigs } = useAdminStore();
+  const { products, availableStores, _hasHydrated, checkoutConfigs } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const region = store?.region || storeSlug;
@@ -347,7 +348,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
               </div>
             </div>
 
-            <ScarcityEngine productId={product.id} />
+            <ScarcityEngine productId={product.id} config={checkoutConfig?.fields?.scarcityConfig} />
 
             {/* Call to Action */}
             <div id="buy-button-section" className="mt-auto">

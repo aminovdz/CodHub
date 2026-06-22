@@ -88,7 +88,7 @@ ${customInstructions}`;
 export async function POST(req: Request) {
   try {
     const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-    const rateLimit = checkRateLimit(`chat_${ip}`, 10, 60 * 1000); // 10 messages per minute
+    const rateLimit = await checkRateLimit(`chat_${ip}`, 10, 60 * 1000); // 10 messages per minute
     if (!rateLimit.success) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
     }
