@@ -85,11 +85,17 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
         }
 
         // HTML segment — render with dangerouslySetInnerHTML
+        let sanitized = seg.content;
+        if (typeof window !== 'undefined') {
+           const purify = typeof DOMPurify === 'function' ? DOMPurify(window) : DOMPurify;
+           sanitized = purify.sanitize ? purify.sanitize(seg.content) : (purify as any).default?.sanitize?.(seg.content) || seg.content;
+        }
+
         return (
           <div
             key={`html-${i}`}
             className="w-full"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(seg.content) }}
+            dangerouslySetInnerHTML={{ __html: sanitized }}
           />
         );
       })}
