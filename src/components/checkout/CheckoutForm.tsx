@@ -208,14 +208,19 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
       if (!zone) {
         zone = zones.find(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''));
       }
-      return zone ? zone.deliveryRate : 0;
+      if (zone) {
+        return deliveryType === 'desk' && zone.deskRate !== undefined ? zone.deskRate : zone.deliveryRate;
+      }
+      return 0;
     }
     if (province) {
       const zone = zones.find(z => z.wilaya.trim().toLowerCase() === province.trim().toLowerCase());
-      if (zone) return zone.deliveryRate;
+      if (zone) {
+        return deliveryType === 'desk' && zone.deskRate !== undefined ? zone.deskRate : zone.deliveryRate;
+      }
     }
     return 0;
-  }, [wilaya, commune, province, zones, region, checkoutConfig]);
+  }, [wilaya, commune, province, zones, region, checkoutConfig, deliveryType]);
 
   // Calculate discount
   const discountAmount = useMemo(() => {
@@ -1024,18 +1029,20 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                                 </select>
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'البلدية')} *</label>
-                              <div className="relative">
-                                <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <select value={commune} onChange={(e) => setCommune(e.target.value)}
-                                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
-                                >
-                                  <option value="" disabled>Select</option>
-                                  {getCommunesForWilaya(wilaya).map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
+                            {checkoutConfig?.fields?.showCity !== false && (
+                              <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'البلدية')} *</label>
+                                <div className="relative">
+                                  <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                  <select value={commune} onChange={(e) => setCommune(e.target.value)}
+                                    className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
+                                  >
+                                    <option value="" disabled>Select</option>
+                                    {getCommunesForWilaya(wilaya).map(c => <option key={c} value={c}>{c}</option>)}
+                                  </select>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
                           {/* Only show detailed address for Home Delivery */}
                           {deliveryType === 'home' && (
@@ -1181,7 +1188,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                       (isOneStep && (!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid)) ||
                       (checkoutConfig?.showAddressFields !== false
                         ? (region === 'dz'
-                          ? (!wilaya || !commune || (deliveryType === 'home' && !detailedAddress))
+                          ? (!wilaya || (checkoutConfig?.fields?.showCity !== false && !commune) || (deliveryType === 'home' && !detailedAddress))
                           : ((deliveryType === 'home' && !detailedAddress) || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
                         : false)
                     }

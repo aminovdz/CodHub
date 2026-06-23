@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../supabase';
-import { Store, Product, ShippingZone, CheckoutConfig, Coupon, HomepageConfig, LegalPage, LandingPage, BlacklistedCustomer, rowToCheckoutConfig, rowToProduct } from './useAdminStore';
+import { Store, Product, ShippingZone, CheckoutConfig, Coupon, HomepageConfig, LegalPage, LandingPage, BlacklistedCustomer, rowToCheckoutConfig, rowToProduct, rowToShippingZone } from './useAdminStore';
 import { slugify } from '../utils';
 
 interface StorefrontState {
@@ -84,7 +84,7 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
     set({ 
       availableStores: mappedStores, 
       products: products ? products.map(rowToProduct) : [],
-      shippingZones: zones as ShippingZone[] || [],
+      shippingZones: zones ? zones.map(rowToShippingZone) : [],
       checkoutConfigs: configs ? configs.map(rowToCheckoutConfig) : [],
       landingPages: landingPages as LandingPage[] || [],
       homepages: extractedHomepages,

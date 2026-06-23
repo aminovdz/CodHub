@@ -196,13 +196,14 @@ function rowToStaff(row: any): StaffAccount {
 }
 
 // --- ShippingZone mappers ---
-function rowToShippingZone(row: any): ShippingZone {
+export function rowToShippingZone(row: any): ShippingZone {
   return {
     id: row.id,
     storeId: row.store_id,
     wilaya: row.wilaya,
     commune: row.commune,
     deliveryRate: row.home_delivery_rate ?? row.delivery_rate ?? 0,
+    deskRate: row.desk_delivery_rate,
   };
 }
 
@@ -211,7 +212,8 @@ function shippingZoneToRow(z: ShippingZone) {
     store_id: z.storeId,
     wilaya: z.wilaya,
     commune: z.commune,
-    home_delivery_rate: z.deliveryRate
+    home_delivery_rate: z.deliveryRate,
+    desk_delivery_rate: z.deskRate,
   };
 }
 
@@ -671,6 +673,7 @@ export interface ShippingZone {
   wilaya: string;
   commune: string;
   deliveryRate: number;
+  deskRate?: number;
 }
 
 // Keep legacy for existing, but new features use Store.fraudConfig
