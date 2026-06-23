@@ -203,7 +203,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   }  
 
   const deliveryRate = useMemo(() => {
-    if (region === 'dz' && !checkoutConfig?.addressAutocomplete) {
+    if (region === 'dz') {
       let zone = zones.find(z => z.wilaya === wilaya && z.commune === commune);
       if (!zone) {
         zone = zones.find(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''));
@@ -513,8 +513,8 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
           postalCode: region !== 'dz' ? postalCode : undefined,
           province: region !== 'dz' ? province : undefined,
           country: region !== 'dz' ? country : undefined,
-          wilaya: (region === 'dz' && !checkoutConfig?.addressAutocomplete) ? wilaya : undefined,
-          commune: (region === 'dz' && !checkoutConfig?.addressAutocomplete) ? commune : undefined,
+          wilaya: region === 'dz' ? wilaya : undefined,
+          commune: region === 'dz' ? commune : undefined,
           product: cart.map(c => c.name).join(', '),
           total: finalTotal,
           status: 'PENDING_AGENT_CONFIRMATION',
