@@ -289,7 +289,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
               {/* THUMBNAILS (LEFT IN RTL) */}
               {productImages.length > 1 && (
                 <div className="w-14 md:w-20 shrink-0 relative">
-                  <div className="absolute inset-0 flex flex-col gap-2 overflow-y-auto hide-scrollbar pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <div className="absolute inset-0 flex flex-col justify-center gap-2 overflow-y-auto hide-scrollbar pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {productImages.map((img: string, i: number) => (
                       <button
                         key={i}
