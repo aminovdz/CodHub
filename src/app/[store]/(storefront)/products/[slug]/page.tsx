@@ -195,7 +195,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
     );
   }
 
-  const productImages = (product as any).images?.length ? (product as any).images : [product.image];
+  const rawImages = (product as any).images || [];
+  const productImages = Array.from(new Set([product.image, ...rawImages])).filter(Boolean) as string[];
   const currentImage = productImages[selectedImageIndex] || product.image;
 
   const storeWhatsapp = store?.whatsappConfig?.thankYouEnabled ? store.whatsappConfig.thankYouNumber : null;
