@@ -32,7 +32,7 @@ export default function StickyBuyButton({
       return
     }
 
-    const el = document.getElementById('buy-button-section')
+    const el = document.getElementById('buy-button-section') || document.getElementById('inline-checkout-section')
     if (!el) return
 
     const observer = new IntersectionObserver(

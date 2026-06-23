@@ -33,17 +33,17 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
               />
             ) : (
               <p className="text-sm text-slate-400 max-w-sm mb-6">
-                {t('footer.aboutDefault', 'The premium cash on delivery shopping experience. Quality products, fast delivery, and no credit card required.')}
+                {t('footer.aboutDefault', 'تجربة التسوق المميزة بالدفع عند الاستلام. منتجات عالية الجودة، توصيل سريع، وبدون حاجة لبطاقة ائتمان.')}
               </p>
             )}
             <div className="flex items-center gap-4 text-sm font-bold">
-              <span className="flex items-center gap-2"><Truck size={16} className="text-indigo-400"/> {t('product.payOnDelivery', 'Pay on Delivery')}</span>
-              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-400"/> {t('checkout.secureText', '100% Secure Checkout')}</span>
+              <span className="flex items-center gap-2"><Truck size={16} className="text-indigo-400"/> {t('product.payOnDelivery', 'الدفع عند الاستلام')}</span>
+              <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-400"/> {t('checkout.secureText', 'تسوق آمن 100%')}</span>
             </div>
           </div>
 
           <div className="border-t border-slate-700 pt-6 md:border-t-0 md:pt-0">
-            <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">{t('footer.storeLinks', 'Store Links')}</h4>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">{t('footer.storeLinks', 'روابط المتجر')}</h4>
             <ul className="space-y-2 text-sm font-medium">
               {(footerConfig?.storeLinks && footerConfig.storeLinks.length > 0) ? (
                 footerConfig.storeLinks.map((link, i) => (
@@ -51,16 +51,16 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
                 ))
               ) : (
                 <>
-                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.allProducts', 'All Products')}</Link></li>
-                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.bestSellers', 'Best Sellers')}</Link></li>
-                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.trackOrder', 'Track Order')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.allProducts', 'جميع المنتجات')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.bestSellers', 'الأكثر مبيعاً')}</Link></li>
+                  <li><Link href={basePath || '/'} className="hover:text-white transition-colors">{t('footer.trackOrder', 'تتبع الطلب')}</Link></li>
                 </>
               )}
             </ul>
           </div>
 
           <div>
-            <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">{t('footer.legalSupport', 'Legal & Support')}</h4>
+            <h4 className="text-white font-bold mb-4 uppercase tracking-wider text-sm">{t('footer.legalSupport', 'السياسات والدعم')}</h4>
             <ul className="space-y-2 text-sm font-medium">
               {(footerConfig?.legalLinks && footerConfig.legalLinks.length > 0) ? (
                 footerConfig.legalLinks.map((link, i) => (
@@ -68,9 +68,9 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
                 ))
               ) : (
                 <>
-                  <li><Link href={`${basePath}/legal/privacy-policy`} className="hover:text-white transition-colors">{t('footer.privacyPolicy', 'Privacy Policy')}</Link></li>
-                  <li><Link href={`${basePath}/legal/terms-of-service`} className="hover:text-white transition-colors">{t('footer.termsOfService', 'Terms of Service')}</Link></li>
-                  <li><Link href={`${basePath}/legal/refund-policy`} className="hover:text-white transition-colors">{t('footer.refundPolicy', 'Refund Policy')}</Link></li>
+                  <li><Link href={`${basePath}/legal/privacy-policy`} className="hover:text-white transition-colors">{t('footer.privacyPolicy', 'سياسة الخصوصية')}</Link></li>
+                  <li><Link href={`${basePath}/legal/terms-of-service`} className="hover:text-white transition-colors">{t('footer.termsOfService', 'شروط الخدمة')}</Link></li>
+                  <li><Link href={`${basePath}/legal/refund-policy`} className="hover:text-white transition-colors">{t('footer.refundPolicy', 'سياسة الاسترجاع')}</Link></li>
                 </>
               )}
               
@@ -85,7 +85,7 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
         </div>
 
         <div className="pt-8 border-t border-slate-800 text-center text-xs text-slate-500 font-medium">
-          &copy; {currentYear} {store?.name || 'CODHUB'} E-commerce. {t('footer.allRightsReserved', 'All rights reserved.')}
+          &copy; {currentYear} {store?.name || 'CODHUB'} E-commerce. {t('footer.allRightsReserved', 'جميع الحقوق محفوظة.')}
         </div>
       </div>
     </footer>

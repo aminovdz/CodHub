@@ -774,28 +774,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
           {/* Header */}
           <div className="p-5 text-center border-b border-slate-100">
 
-            {(checkoutConfig?.enableTrustBanner ?? true) && (
-              <div className="mx-4 mt-4 mb-2 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
-                <div className={`flex items-center gap-2 mb-3 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
-                  <ShieldCheck className="w-5 h-5 text-emerald-600" />
-                  <span className="font-bold text-emerald-800 text-sm">{t('checkout.secureCheckout', '100% Secure Checkout')}</span>
-                </div>
-                <div className={`space-y-2 ${isArabic ? 'text-right' : 'text-left'}`}>
-                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
-                    <span className="text-emerald-500 mt-0.5">✅</span>
-                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item1', 'Pay on delivery - you will not pay until you receive and inspect your order')}</span>
-                  </div>
-                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
-                    <span className="text-emerald-500 mt-0.5">🚚</span>
-                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item2', 'Fast shipping - delivery within 48 hours maximum')}</span>
-                  </div>
-                  <div className={`flex items-start gap-2 ${isArabic ? 'flex-row-reverse justify-start' : 'justify-start'}`}>
-                    <span className="text-emerald-500 mt-0.5">🛡️</span>
-                    <span className="text-xs font-semibold text-emerald-700">{t('checkout.trustBanner.item3', 'Replacement and return guarantee - shop without risk')}</span>
-                  </div>
-                </div>
-              </div>
-            )}
+
           </div>
 
           <div className="p-5 md:p-7">
@@ -1222,13 +1201,13 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
           <div className="fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 shadow-[0_-8px_20px_rgba(0,0,0,0.06)] py-3 px-5 z-50">
             <div className="max-w-lg mx-auto flex justify-between items-center">
               <div>
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('checkout.totalDue', 'Total')}</div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t('checkout.totalDue', 'الإجمالي')}</div>
                 <div className={`text-2xl font-black text-indigo-600 transition-transform ${isAnimatingPrice ? 'scale-110 text-rose-500' : ''}`}>
                   {isMounted ? finalTotal : '0'} <span className="text-base">{currency}</span>
                 </div>
               </div>
               <div className="text-right text-xs text-slate-400 font-medium">
-                {isMounted ? cart.length : 0} {t('checkout.items', 'item(s)')}
+                {isMounted ? cart.length : 0} {t('checkout.items', 'منتج')}
               </div>
             </div>
           </div>

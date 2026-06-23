@@ -46,9 +46,8 @@ export default function AdminSettingsPage() {
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
-  const [stickyBuyEnabled, setStickyBuyEnabled] = useState(activeStore.stickyBuyButton?.enabled ?? false);
-  const [stickyBuyText, setStickyBuyText] = useState(activeStore.stickyBuyButton?.text || 'Order Now');
-  const [stickyBuyCss, setStickyBuyCss] = useState(activeStore.stickyBuyButton?.customCss || '');
+
+
 
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingStore, setIsCreatingStore] = useState(false);
@@ -241,7 +240,7 @@ export default function AdminSettingsPage() {
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, smsConfig, dzFulfillment, primaryColor: localPrimaryColor,
       customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
-      stickyBuyButton: { enabled: stickyBuyEnabled, text: stickyBuyText, customCss: stickyBuyCss }
+      fraudConfig
     });
 
     setGlobalApiKey(localApiKey);
@@ -1203,57 +1202,41 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Sticky Buy Button Panel */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <ShoppingCart className="w-6 h-6 text-indigo-600" /> Sticky Buy Button
+{/* Fraud Prevention */}
+        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <ShieldAlert className="text-rose-500" /> Fraud Prevention Rules
           </h2>
-          
           <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
               <div>
-                <label className="font-bold text-sm text-slate-700 dark:text-slate-300">Enable Sticky Buy Button</label>
-                <p className="text-xs text-slate-500 mt-1">Shows a fixed bottom bar with buy button when users scroll past the main CTA.</p>
+                <div className="font-bold text-slate-900">Block Duplicate IPs</div>
+                <div className="text-sm text-slate-500 mt-1">Prevent multiple orders from the same IP within a timeframe.</div>
               </div>
-              <button
-                type="button"
-                onClick={() => setStickyBuyEnabled(!stickyBuyEnabled)}
-                className={`relative w-12 h-7 rounded-full transition-colors ${stickyBuyEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
-              >
-                <span className={`absolute top-1 left-1 w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${stickyBuyEnabled ? 'translate-x-5' : ''}`} />
-              </button>
-            </div>
+              <input type="checkbox" checked={fraudConfig.blockDuplicateIps} onChange={e => setFraudConfig({...fraudConfig, blockDuplicateIps: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
+            </label>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Button Text</label>
-              <input
-                type="text"
-                value={stickyBuyText}
-                onChange={e => setStickyBuyText(e.target.value)}
-                placeholder="Order Now"
-                className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
-              />
-              <p className="text-xs text-slate-500 mt-2">Text displayed on the sticky buy button.</p>
-            </div>
+            {fraudConfig.blockDuplicateIps && (
+              <div className="pl-6 border-l-2 border-rose-100">
+                <label className="block text-sm font-bold text-slate-700 mb-2">IP Block Window (Hours)</label>
+                <input type="number" min={1} value={fraudConfig.duplicateIpTimeframeHours} onChange={e => setFraudConfig({...fraudConfig, duplicateIpTimeframeHours: parseInt(e.target.value) || 24})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
+              </div>
+            )}
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Custom CSS</label>
-              <textarea
-                value={stickyBuyCss}
-                onChange={e => setStickyBuyCss(e.target.value)}
-                placeholder=".sh-sticky-bar { background: #000; }&#10;.sh-sticky-bar-price { color: #fff; }&#10;.sh-sticky-bar-button { background: #ff6600; }"
-                rows={6}
-                className="w-full px-4 py-3 rounded-xl border border-slate-800 bg-slate-900 text-emerald-400 font-mono text-sm focus:ring-2 focus:ring-indigo-600 outline-none resize-none"
-                spellCheck={false}
-              />
-              <p className="text-xs text-slate-500 mt-2">
-                Available classes: <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar</code> (outer bar), 
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-inner</code> (inner row),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-price</code> (price text),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-compare</code> (compare price),
-                <code className="bg-slate-200 dark:bg-slate-950 px-1 py-0.5 rounded text-xs">.sh-sticky-bar-button</code> (buy button).
-              </p>
-            </div>
+            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
+              <div>
+                <div className="font-bold text-slate-900">Manual Approval for High-Value</div>
+                <div className="text-sm text-slate-500 mt-1">Flag orders above a certain amount for manual review.</div>
+              </div>
+              <input type="checkbox" checked={fraudConfig.requireApprovalForHighValue} onChange={e => setFraudConfig({...fraudConfig, requireApprovalForHighValue: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
+            </label>
+
+            {fraudConfig.requireApprovalForHighValue && (
+              <div className="pl-6 border-l-2 border-rose-100">
+                <label className="block text-sm font-bold text-slate-700 mb-2">High-Value Threshold ({activeStore.currency})</label>
+                <input type="number" min={0} value={fraudConfig.highValueThreshold} onChange={e => setFraudConfig({...fraudConfig, highValueThreshold: parseInt(e.target.value) || 0})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
+              </div>
+            )}
           </div>
         </div>
 
