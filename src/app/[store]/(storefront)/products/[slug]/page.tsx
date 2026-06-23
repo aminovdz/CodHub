@@ -258,7 +258,10 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         ⚡ توصيل سريع — الدفع عند الاستلام ✓
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 pt-4 md:pt-8">
+      <div className="max-w-6xl mx-auto px-4 pt-4 md:pt-8">
+        <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-start">
+          {/* IMAGES COLUMN (LEFT IN RTL) */}
+          <div className="w-full lg:w-1/2 lg:sticky lg:top-8">
         
         {/* HERO IMAGE */}
         <div 
@@ -300,6 +303,11 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
             ))}
           </div>
         )}
+
+        </div>
+
+          {/* CONTENT COLUMN (RIGHT IN RTL) */}
+          <div className="w-full lg:w-1/2">
 
         {/* TRUST STRIP */}
         <div className="grid grid-cols-3 gap-2 mb-8 bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-sm">
@@ -449,6 +457,9 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
             <RichHtmlContent html={(product as any).main_desc || (product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
           </div>
         )}
+
+        </div>
+        </div>
 
         {/* REVIEWS SECTION */}
         <div className="mb-12 border-t border-slate-100 pt-12">
