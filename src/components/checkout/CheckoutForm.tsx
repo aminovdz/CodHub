@@ -34,13 +34,13 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
   const { availableStores, shippingZones, checkoutConfigs, setOrders, products, setProducts, setAbandonedCarts, coupons, setCoupons, addActivityLog, customerBlacklist } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
-  const region = store?.region || storeSlug;
+  const region = (store?.region || storeSlug).toLowerCase();
   const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(region.toLowerCase());
   const { t } = useTranslation(region);
-  const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
+  const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region.toLowerCase() === 'ro' ? 'RON' : region.toLowerCase() === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
-  const prefix = store?.phonePrefix || (region === 'dz' ? '+213' : region === 'ro' ? '+40' : '+57');
+  const prefix = store?.phonePrefix || (region.toLowerCase() === 'dz' ? '+213' : region.toLowerCase() === 'ro' ? '+40' : '+57');
   const isOneStep = checkoutConfig?.layout === '1-step';
 
   // Track InitiateCheckout
