@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, ArrowLeft, CheckCircle2, AlertCircle, Loader2, PackagePlus, X, RefreshCw, HeadphonesIcon, TrendingUp, ThumbsUp } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, X, Headset } from 'lucide-react';
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
@@ -25,7 +25,6 @@ const PRODUCTS = [
     originalPrice: { dz: 6900, ro: 129, co: 120000 },
     rating: 4.8,
     reviews: 124,
-    soldCount: 1240,
     description: "Align your spine and reduce back pain instantly. Made with breathable, high-quality neoprene, this posture corrector uses magnetic therapy to relieve muscle tension. Invisible under clothing."
   },
   {
@@ -38,7 +37,6 @@ const PRODUCTS = [
     originalPrice: { dz: 14900, ro: 299, co: 250000 },
     rating: 4.9,
     reviews: 89,
-    soldCount: 890,
     description: "Recover faster with 30-speed high-torque vibration. Includes 6 interchangeable heads for targeted muscle relief. Ultra-quiet motor and 6-hour battery life."
   },
   {
@@ -51,7 +49,6 @@ const PRODUCTS = [
     originalPrice: { dz: 4500, ro: 89, co: 80000 },
     rating: 4.6,
     reviews: 312,
-    soldCount: 3120,
     description: "Transform any room with 16 million colors. Syncs with music and controls via smartphone app. Easy peel-and-stick installation."
   },
   {
@@ -64,7 +61,6 @@ const PRODUCTS = [
     originalPrice: { dz: 8000, ro: 149, co: 150000 },
     rating: 4.7,
     reviews: 201,
-    soldCount: 2010,
     description: "Crystal clear audio with Active Noise Cancellation. 24-hour total playtime with the wireless charging case. IPX4 water resistant for workouts."
   }
 ];
@@ -80,10 +76,14 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const region = store?.region || storeSlug;
   const { t } = useTranslation(region);
   const decodedSlug = decodeURIComponent(slug);
-  const product = products.find(p => p.seoSlug === decodedSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') === decodedSlug) || PRODUCTS.find(p => p.slug === decodedSlug);
+  const findProduct = (p: any) => {
+    const titleSlug = p.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return p.seo_slug === decodedSlug || p.seo_slug === slug || p.seoSlug === decodedSlug || p.seoSlug === slug || titleSlug === decodedSlug || titleSlug === slug;
+  };
+  const product = products.find(findProduct) || PRODUCTS.find(p => p.slug === decodedSlug || p.slug === slug);
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const regionLower = region?.toLowerCase() || '';
-  const isArabic = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes(regionLower);
+  const isArabic = true; // Force RTL and Arabic alignment for now as requested by user
 
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [hasAutoSelected, setHasAutoSelected] = useState(false);
@@ -94,15 +94,16 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
 
   const { buyNow, addCartItem } = useFunnelStore();
 
+  // Resolve cross-sell products from the relatedProducts field
   const crossSellProducts = useMemo(() => {
-    const relatedRaw = (product as any)?.relatedProducts;
+    const relatedRaw = (product as any)?.relatedProducts || (product as any)?.related_products;
     if (!relatedRaw || !products.length) return [];
     const relatedIds = relatedRaw.split(',').map((s: string) => s.trim()).filter(Boolean);
     return relatedIds
       .map((idOrTitle: string) => products.find(p => p.id === idOrTitle || p.title.toLowerCase().includes(idOrTitle.toLowerCase())))
       .filter((p: any): p is NonNullable<typeof p> => !!p && p.id !== product?.id && p.active !== false)
       .slice(0, 2); 
-  }, [(product as any)?.relatedProducts, products, product?.id]);
+  }, [(product as any)?.relatedProducts, (product as any)?.related_products, products, product?.id]);
 
   useEffect(() => {
     if (!hasAutoSelected && product && (product as any).variants && (product as any).variants.length > 0) {
@@ -118,8 +119,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
 
   useEffect(() => {
     if (product) {
-      const title = (product as any).seoTitle || product.title;
-      const desc = (product as any).seoDescription || (product as any).shortDesc || (product as any).description || '';
+      const title = (product as any).seo_title || (product as any).seoTitle || product.title;
+      const desc = (product as any).seo_description || (product as any).seoDescription || (product as any).short_desc || (product as any).shortDesc || (product as any).description || '';
       document.title = title;
       let metaDesc = document.querySelector('meta[name="description"]');
       if (!metaDesc) {
@@ -131,6 +132,24 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
     }
   }, [product]);
 
+  const basePrice = product ? (typeof product.price === 'number' ? product.price : (product.price as any)[region]) : 0;
+  const finalPrice = (selectedVariant && selectedVariant.priceModifier > 0) ? selectedVariant.priceModifier : basePrice;
+
+  // Auto-sync product to cart so the embedded checkout form shows the correct price/item immediately
+  useEffect(() => {
+    if (product && checkoutConfig?.productCheckoutType === 'inline') {
+      buyNow({
+        id: product.id,
+        name: product.title + (selectedVariant ? ` - ${selectedVariant.label}` : ''),
+        price: finalPrice,
+        isUpsell: false,
+        imageUrl: product.image,
+        variantId: selectedVariant?.id,
+        variantName: selectedVariant?.label
+      });
+    }
+  }, [product, selectedVariant, region, buyNow, checkoutConfig, finalPrice]);
+
   if (!_hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center text-slate-400">
@@ -141,21 +160,48 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   }
 
   if (!product) {
-    return <div className="min-h-screen flex items-center justify-center font-black text-2xl text-slate-400">Product not found</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center font-black text-2xl text-slate-400 p-8" dir="ltr">
+        <div>Product not found</div>
+        <div className="mt-6 text-sm font-normal text-left text-slate-500 bg-slate-50 p-4 rounded-lg w-full max-w-2xl border border-slate-200">
+          <p className="font-bold text-slate-700 mb-2">Diagnostic Info:</p>
+          <p>Requested URL Slug: <span className="font-mono text-blue-600">{slug}</span></p>
+          <p>Decoded Slug: <span className="font-mono text-blue-600">{decodedSlug}</span></p>
+          <p>Store: <span className="font-mono text-blue-600">{storeSlug}</span></p>
+          <p>Products in DB: <span className="font-mono text-blue-600">{products.length}</span></p>
+          <div className="mt-2">
+            <p className="font-bold text-slate-700">Available DB Slugs:</p>
+            <ul className="list-disc pl-5 mt-1 max-h-32 overflow-y-auto">
+              {products.slice(0, 10).map((p, i) => (
+                <li key={i} className="font-mono">{p.seo_slug || p.seoSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')} <span className="text-xs text-slate-400">({p.title})</span></li>
+              ))}
+              {products.length > 10 && <li>... and {products.length - 10} more</li>}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const productImages = (product as any).images?.length ? (product as any).images : [product.image];
   const currentImage = productImages[selectedImageIndex] || product.image;
 
+  const storeWhatsapp = store?.whatsappConfig?.enabled ? store.whatsappConfig.phoneNumber : null;
+
+  const handleWhatsApp = () => {
+    const num = storeWhatsapp || '';
+    if (!num) return;
+    const msg = `مرحباً، أود طلب: ${product.title} ${selectedVariant ? `(${selectedVariant.label})` : ''}`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
   const handleBuyNow = () => {
     if ((product as any).variants && (product as any).variants.length > 0 && !selectedVariant) {
-      alert('Please select a variant first.');
+      alert('الرجاء اختيار خيار أولاً.');
       return;
     }
 
-    const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];
-    const finalPrice = (selectedVariant && selectedVariant.priceModifier > 0) ? selectedVariant.priceModifier : basePrice;
-
+    // 1. Overwrite cart with just this item
     buyNow({
       id: product.id,
       name: product.title + (selectedVariant ? ` - ${selectedVariant.label}` : ''),
@@ -166,6 +212,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       variantName: selectedVariant?.label
     });
 
+    // 2. Add any selected cross-sell items
     selectedCrossSells.forEach(csId => {
       const csProduct = products.find(p => p.id === csId);
       if (csProduct) {
@@ -174,6 +221,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       }
     });
     
+    // 3. Push to checkout or open modal
     if (checkoutConfig?.productCheckoutType === 'popup') {
       setIsCheckoutModalOpen(true);
     } else if (checkoutConfig?.productCheckoutType === 'inline') {
@@ -186,374 +234,285 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
     }
   };
 
-  const basePrice = typeof product.price === 'number' ? product.price : (product.price as any)[region];
-  const finalPrice = (selectedVariant && selectedVariant.priceModifier > 0) ? selectedVariant.priceModifier : basePrice;
-  const compareAt = (product as any).compareAtPrice || (product as any).originalPrice?.[region];
+  const compareAt = (product as any).compare_at_price || (product as any).compareAtPrice || (product as any).originalPrice?.[region];
   const finalCompareAt = compareAt ? compareAt : null;
-  const discountPercent = finalCompareAt ? Math.round(((finalCompareAt - finalPrice) / finalCompareAt) * 100) : 0;
   const isSoldOut = (product as any).disableOutOfStockPurchases && ((product as any).stock || 0) <= 0;
 
-  const rating = (product as any).starsRate || (product as any).rating || 5.0;
-  const reviewsCount = (product as any).reviewsCount || (product as any).reviews || 0;
-  const soldCount = (product as any).soldCount || Math.floor(reviewsCount * 5.4);
-
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-28" dir={isArabic ? 'rtl' : 'ltr'}>
-      
-      {/* TOP NOTIFICATION BANNER */}
-      <div className="bg-indigo-600 text-white text-xs font-bold text-center py-2 px-4 sticky top-0 z-50 flex items-center justify-center gap-2 shadow-md">
-        <span>⚡ {t('product.topBanner', 'Flash Offer — Free shipping to all regions & Cash on Delivery')}</span>
+    <div className="min-h-screen bg-white font-sans pb-24" dir="rtl">
+      {/* Top Ticker */}
+      <div className="bg-indigo-950 text-white text-center text-xs md:text-sm font-bold py-2 px-4 tracking-wide">
+        ⚡ توصيل سريع — الدفع عند الاستلام ✓
       </div>
 
       <div className="max-w-4xl mx-auto px-4 pt-4 md:pt-8">
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="flex flex-col md:flex-row gap-0">
-            
-            {/* LEFT: IMAGE GALLERY (Mobile First Order) */}
-            <div className="w-full md:w-1/2 bg-slate-50 relative border-b md:border-b-0 md:border-r border-slate-200">
-              {/* Floating Badges */}
-              <div className="absolute top-4 left-4 z-10 flex flex-col gap-2">
-                <span className="bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-sm flex items-center gap-1">
-                  🔥 Best Seller
-                </span>
-                {discountPercent > 0 && (
-                  <span className="bg-emerald-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">
-                    -{discountPercent}%
-                  </span>
-                )}
-              </div>
-
-              <div 
-                className="aspect-square w-full relative cursor-zoom-in group"
-                onClick={() => setIsZoomed(true)}
+        
+        {/* HERO IMAGE */}
+        <div 
+          className="relative aspect-square md:aspect-[4/3] bg-slate-100 rounded-3xl overflow-hidden mb-4 group cursor-zoom-in shadow-sm"
+          onClick={() => setIsZoomed(true)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
+            alt={product.title}
+            className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
+          />
+          <div className="absolute top-4 right-4 bg-amber-500 text-slate-900 text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">
+            🔥 الأكثر مبيعاً
+          </div>
+          {checkoutConfig?.fields?.scarcityConfig?.enabled && (
+             <div className="absolute top-4 left-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">
+               ⏱ عرض محدود
+             </div>
+          )}
+        </div>
+        
+        {/* Image Thumbnails */}
+        {productImages.length > 1 && (
+          <div className="flex justify-center gap-2 overflow-x-auto pb-2 mb-6 hide-scrollbar">
+            {productImages.map((img: string, i: number) => (
+              <button
+                key={i}
+                onClick={() => setSelectedImageIndex(i)}
+                className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                  selectedImageIndex === i
+                    ? 'border-indigo-600 ring-1 ring-indigo-600'
+                    : 'border-slate-200 hover:border-slate-400'
+                }`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
-                  alt={product.title}
-                  className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
-                />
-              </div>
-              
-              {/* Thumbnails below image */}
-              {productImages.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto p-4 bg-white">
-                  {productImages.map((img: string, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => setSelectedImageIndex(i)}
-                      className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                        selectedImageIndex === i
-                          ? 'border-indigo-600 ring-2 ring-indigo-100 shadow-sm'
-                          : 'border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100'
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT: PRODUCT INFO & ACTION */}
-            <div className="w-full md:w-1/2 flex flex-col p-5 md:p-8">
-              
-              {/* Category */}
-              <div className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2">
-                {product.category}
-              </div>
-              
-              {/* Title */}
-              <h1 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight tracking-tight mb-3">
-                {product.title}
-              </h1>
-
-              {/* Social Proof Row */}
-              <div className="flex flex-wrap items-center gap-3 mb-5">
-                {(reviewsCount > 0) && (
-                  <div className="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                    <Star size={14} className="fill-amber-400 text-amber-400" />
-                    <span className="text-xs font-bold text-amber-900">{rating} ({reviewsCount})</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 text-slate-500 text-xs font-bold">
-                  <TrendingUp size={14} className="text-emerald-500" />
-                  <span>{soldCount} orders completed</span>
-                </div>
-              </div>
-
-              {/* Pricing Block */}
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5 flex flex-col items-start">
-                {finalCompareAt && (
-                   <div className="flex items-center gap-2 mb-1">
-                     <span className="text-slate-400 font-bold line-through text-sm">{finalCompareAt} {currency}</span>
-                     <span className="bg-rose-100 text-rose-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">Save {finalCompareAt - finalPrice} {currency}</span>
-                   </div>
-                )}
-                <div className="text-3xl md:text-4xl font-black text-slate-900 flex items-end gap-1">
-                  {finalPrice} <span className="text-lg text-slate-500 font-bold mb-1">{currency}</span>
-                </div>
-              </div>
-
-              {/* Scarcity / Urgency */}
-              <div className="mb-6">
-                <ScarcityEngine productId={product.id} config={checkoutConfig?.fields?.scarcityConfig} />
-              </div>
-
-              {/* Variants Selector */}
-              {(product as any).variants && (product as any).variants.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">Select Option:</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {(product as any).variants.map((variant: any) => {
-                      const isSelected = selectedVariant?.id === variant.id;
-                      const isOutOfStock = variant.stock <= 0;
-                      // Simple detection to see if variant is a color
-                      const isColor = /color|colour|couleur/i.test(variant.label) || variant.label.match(/^(red|blue|green|black|white|yellow|pink|gray|grey)$/i);
-                      
-                      return (
-                        <button
-                          key={variant.id}
-                          disabled={isOutOfStock}
-                          onClick={() => setSelectedVariant(isSelected ? null : variant)}
-                          style={isSelected && store?.primaryColor && !isColor ? { borderColor: store.primaryColor, backgroundColor: store.primaryColor + '10', color: store.primaryColor } : {}}
-                          className={`relative px-4 py-2 rounded-full border-2 font-bold transition-all flex items-center justify-center gap-2
-                            ${isSelected && !store?.primaryColor && !isColor
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-700' 
-                              : isSelected && store?.primaryColor && !isColor
-                                ? 'shadow-sm'
-                                : isOutOfStock
-                                  ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed'
-                                  : isColor 
-                                    ? `border-slate-300 hover:border-slate-400 ${isSelected ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`
-                                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                            }
-                          `}
-                        >
-                          {isColor && (
-                            <span 
-                               className="w-4 h-4 rounded-full inline-block border border-black/10 shadow-inner" 
-                               style={{ backgroundColor: variant.label.toLowerCase() }}
-                            ></span>
-                          )}
-                          <span className="text-sm">{variant.label}</span>
-                          
-                          {isOutOfStock && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="w-full h-[2px] bg-slate-400 rotate-[-12deg]"></div>
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedVariant && selectedVariant.stock <= 0 && (
-                    <div className="mt-2 flex items-center gap-1 text-rose-600 text-xs font-bold">
-                      <AlertCircle size={14} /> Out of stock
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Call to Action Button */}
-              <div id="buy-button-section" className="mt-2 mb-6">
-                <button 
-                  onClick={handleBuyNow}
-                  disabled={isSoldOut || (selectedVariant && selectedVariant.stock <= 0)}
-                  style={(!isSoldOut && !(selectedVariant && selectedVariant.stock <= 0) && store?.primaryColor) ? { backgroundColor: store.primaryColor } : {}}
-                  className={`w-full transition-all text-white font-black py-4 md:py-5 rounded-2xl flex flex-col items-center justify-center gap-1 ${
-                    isSoldOut || (selectedVariant && selectedVariant.stock <= 0) 
-                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
-                    : (!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 hover:scale-[1.02] shadow-[0_8px_30px_rgb(79,70,229,0.3)]' : 'hover:scale-[1.02] shadow-[0_8px_30px_rgba(0,0,0,0.2)]') + ' active:scale-[0.98]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 text-xl md:text-2xl">
-                    <ShoppingBag size={24} />
-                    {isSoldOut || (selectedVariant && selectedVariant.stock <= 0) ? t('checkout.soldOut', 'SOLD OUT') : t('checkout.orderNow', 'Order Now')}
-                  </div>
-                  <span className="text-xs md:text-sm font-semibold opacity-90">Pay on Delivery</span>
-                </button>
-              </div>
-
-              {/* Inline Trust Bar (Small Grid) */}
-              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                    <Truck size={16} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">Free & Fast Delivery</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <ShieldCheck size={16} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">100% Satisfaction</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-600">
-                    <RefreshCw size={16} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">Easy Returns</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-600">
-                    <HeadphonesIcon size={16} />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">24/7 Support</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        {/* INLINE CHECKOUT SECTION (If enabled) */}
-        {checkoutConfig?.productCheckoutType === 'inline' && (
-          <div id="inline-checkout-section" className="mt-8 mb-8">
-             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-               <div className="bg-indigo-600 p-4 flex flex-col items-center justify-center text-white">
-                 <h2 className="text-lg md:text-xl font-black text-center flex items-center gap-2">
-                   <ShieldCheck size={24} />
-                   Complete Your Order Securely
-                 </h2>
-                 <p className="text-indigo-200 text-xs md:text-sm font-semibold mt-1 text-center">Cash on Delivery - You will not pay until you receive the order.</p>
-               </div>
-               <div className="p-4 md:p-6 bg-slate-50/50">
-                 <CheckoutForm storeSlug={storeSlug} embedded={true} />
-               </div>
-             </div>
+                <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
           </div>
         )}
 
-        {/* DESCRIPTION & FEATURES SECTION */}
-        <div className="mt-8 bg-white rounded-3xl shadow-sm border border-slate-200 p-5 md:p-8">
-          <h2 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-wider flex items-center gap-2">
-            <ThumbsUp className="text-indigo-600" />
-            Product Details
-          </h2>
-          
-          {((product as any).mainDesc || (product as any).description) && (
-            <div className="prose prose-slate prose-lg max-w-none text-slate-700">
-              <RichHtmlContent html={(product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
+        {/* TRUST STRIP */}
+        <div className="grid grid-cols-3 gap-2 mb-8 bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-sm">
+          <div className="flex flex-col items-center text-center gap-1.5">
+            <Truck size={22} className="text-indigo-600" />
+            <span className="text-[10px] md:text-xs font-bold text-slate-700 leading-tight">توصيل سريع</span>
+          </div>
+          <div className="flex flex-col items-center text-center gap-1.5">
+            <ShieldCheck size={22} className="text-indigo-600" />
+            <span className="text-[10px] md:text-xs font-bold text-slate-700 leading-tight">أصلي 100%</span>
+          </div>
+          <div className="flex flex-col items-center text-center gap-1.5">
+             <Headset size={22} className="text-indigo-600" />
+             <span className="text-[10px] md:text-xs font-bold text-slate-700 leading-tight">دعم على مدار الساعة</span>
+          </div>
+        </div>
+
+        {/* TITLE & RATING */}
+        <div className="mb-6 text-center md:text-right">
+          {(((product as any).stars_rate || (product as any).starsRate) > 0 || ((product as any).reviews_count || (product as any).reviewsCount) > 0) && (
+            <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+              <div className="flex text-amber-400">
+                {[...Array(5)].map((_, i) => <Star key={i} size={16} className={i < Math.floor((product as any).stars_rate || (product as any).starsRate || 5) ? "fill-current" : ""} />)}
+              </div>
+              <span className="text-sm font-bold text-slate-600">{(product as any).stars_rate || (product as any).starsRate || 4.9} • ({(product as any).reviews_count || (product as any).reviewsCount || 128} تقييم)</span>
             </div>
           )}
+          <h1 className="text-3xl md:text-4xl font-black text-slate-900 leading-tight mb-3 tracking-tight">
+            {product.title}
+          </h1>
+          <p className="text-slate-500 text-base md:text-lg font-medium leading-relaxed">
+            {(product as any).short_desc || (product as any).shortDesc || "اطلب اليوم وادفع عند الاستلام."}
+          </p>
+        </div>
 
-          {(product as any).blocks && (product as any).blocks.length > 0 && (
-            <div className="space-y-10 mt-10">
-              {(product as any).blocks.map((block: any) => {
-                if (block.type === 'features') {
-                  return (
-                    <div key={block.id} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {(block.features || []).map((f: any, i: number) => (
-                        <div key={i} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex items-start gap-4">
-                          <div className="bg-white shadow-sm p-2 rounded-xl text-indigo-600 shrink-0">
-                            <CheckCircle2 size={20} />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-slate-900 mb-1">{f.title}</h3>
-                            <p className="text-sm font-medium text-slate-500">{f.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                }
-                if (block.type === 'text') {
-                  return (
-                    <div key={block.id} className="text-center px-4 bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
-                      <p className="text-base md:text-lg text-indigo-900 font-bold leading-relaxed">
-                        {block.content}
-                      </p>
-                    </div>
-                  );
-                }
-                if (block.type === 'html') {
-                  return (
-                    <RichHtmlContent key={block.id} html={block.content} region={region} storeSlug={storeSlug} />
-                  );
-                }
-                return null;
+        {/* PRICE BOX */}
+        <div className="bg-indigo-50 border-2 border-indigo-100 rounded-3xl p-5 mb-8 flex items-center justify-between shadow-sm">
+           <div>
+             <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">السعر الحالي</p>
+             <div className="flex items-end gap-2">
+               <span className="text-4xl font-black text-indigo-900 leading-none">{finalPrice}</span>
+               <span className="text-lg font-bold text-indigo-600 pb-1">{currency}</span>
+             </div>
+           </div>
+           {finalCompareAt && (
+             <div className="text-left">
+                <div className="text-slate-400 font-bold line-through mb-1 text-sm md:text-base">{finalCompareAt} {currency}</div>
+                <div className="bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full shadow-sm inline-block">
+                  توفير {Math.round(((finalCompareAt - finalPrice) / finalCompareAt) * 100)}%
+                </div>
+             </div>
+           )}
+        </div>
+
+        <div className="mb-6">
+          <ScarcityEngine productId={product.id} config={checkoutConfig?.fields?.scarcityConfig} />
+        </div>
+
+        {/* Variants Selector */}
+        {(product as any).variants && (product as any).variants.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-sm font-bold text-slate-900 mb-3 uppercase tracking-wider">اختر:</h3>
+            <div className="flex flex-wrap gap-3">
+              {(product as any).variants.map((variant: any) => {
+                const isSelected = selectedVariant?.id === variant.id;
+                const isOutOfStock = variant.stock <= 0;
+                return (
+                  <button
+                    key={variant.id}
+                    disabled={isOutOfStock}
+                    onClick={() => setSelectedVariant(isSelected ? null : variant)}
+                    style={isSelected && store?.primaryColor ? { borderColor: store.primaryColor, backgroundColor: store.primaryColor + '10', color: store.primaryColor } : {}}
+                    className={`relative overflow-hidden px-5 py-3 rounded-xl border-2 font-bold transition-all flex flex-col items-start
+                      ${isSelected && !store?.primaryColor
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(79,70,229,0.1)]' 
+                        : isSelected && store?.primaryColor
+                          ? 'shadow-[0_0_0_4px_rgba(0,0,0,0.05)]'
+                          : isOutOfStock
+                            ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      }
+                    `}
+                  >
+                    <span className="text-sm">{variant.label}</span>
+                    {variant.priceModifier > 0 && variant.priceModifier !== basePrice && (
+                        <span className={`text-xs font-black ${isSelected ? '' : 'text-indigo-600'}`}>
+                          {variant.priceModifier} {currency}
+                        </span>
+                    )}
+                    
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-full h-[2px] bg-slate-400 rotate-[-12deg]"></div>
+                      </div>
+                    )}
+                  </button>
+                );
               })}
             </div>
-          )}
-        </div>
-
-        {/* CUSTOMER REVIEWS SECTION */}
-        <div className="mt-8 bg-white rounded-3xl shadow-sm border border-slate-200 p-5 md:p-8 overflow-hidden">
-          <h2 className="text-xl font-black text-slate-900 mb-6 uppercase tracking-wider flex items-center gap-2">
-            <Star className="text-amber-400 fill-amber-400" />
-            Customer Reviews
-          </h2>
-          
-          <div className="flex flex-col md:flex-row gap-8 mb-8">
-            {/* Summary */}
-            <div className="md:w-1/3 flex flex-col items-center justify-center bg-slate-50 p-6 rounded-2xl border border-slate-100">
-              <div className="text-5xl font-black text-slate-900 mb-2">{rating.toFixed(1)}</div>
-              <div className="flex text-amber-400 mb-2">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={20} className={i < Math.floor(rating) ? "fill-current" : ""} />
-                ))}
+            {selectedVariant && selectedVariant.stock <= 0 && (
+              <div className="mt-3 flex items-center gap-2 text-rose-600 text-sm font-bold">
+                <AlertCircle size={16} /> نفدت الكمية
               </div>
-              <p className="text-sm font-bold text-slate-500">Based on {reviewsCount} reviews</p>
+            )}
+          </div>
+        )}
+
+        {/* Call to Action (If not using inline checkout) */}
+        {checkoutConfig?.productCheckoutType !== 'inline' && (
+          <div id="buy-button-section" className="mb-12">
+            <button 
+              onClick={handleBuyNow}
+              disabled={isSoldOut || (selectedVariant && selectedVariant.stock <= 0)}
+              style={(!isSoldOut && !(selectedVariant && selectedVariant.stock <= 0) && store?.primaryColor) ? { backgroundColor: store.primaryColor } : {}}
+              className={`w-full transition-all text-white font-black text-xl py-5 rounded-2xl flex items-center justify-center gap-3 ${
+                isSoldOut || (selectedVariant && selectedVariant.stock <= 0) 
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
+                : (!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_8px_30px_rgb(79,70,229,0.3)]' : 'hover:opacity-90 shadow-[0_8px_30px_rgba(0,0,0,0.2)]') + ' active:scale-[0.98]'
+              }`}
+            >
+              <ShoppingBag size={24} />
+              {isSoldOut || (selectedVariant && selectedVariant.stock <= 0) ? 'نفدت الكمية' : 'اطلب الآن - وادفع لاحقاً'}
+            </button>
+            <p className="text-center text-xs font-bold text-slate-400 mt-4 uppercase tracking-widest">
+              لا حاجة لبطاقة ائتمان
+            </p>
+          </div>
+        )}
+
+        {/* CHECKOUT FORM INLINE */}
+        {checkoutConfig?.productCheckoutType === 'inline' && (
+          <div id="inline-checkout-section" className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-12">
+            <div className="bg-slate-50 border-b border-slate-100 p-4 text-center">
+               <h2 className="text-lg font-black text-slate-800 flex items-center justify-center gap-2">
+                 <ShoppingBag size={20} className="text-indigo-600"/> معلومات التوصيل
+               </h2>
             </div>
-            
-            {/* Progress Bars */}
-            <div className="md:w-2/3 flex flex-col justify-center space-y-2">
-              {[
-                { stars: 5, pct: 78 },
-                { stars: 4, pct: 15 },
-                { stars: 3, pct: 5 },
-                { stars: 2, pct: 1 },
-                { stars: 1, pct: 1 }
-              ].map(row => (
-                <div key={row.stars} className="flex items-center gap-3 text-sm font-bold text-slate-600">
-                  <span className="w-12 text-right">{row.stars} Stars</span>
-                  <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-amber-400 rounded-full" style={{ width: `${row.pct}%` }}></div>
-                  </div>
-                  <span className="w-8 text-slate-400 text-xs">{row.pct}%</span>
-                </div>
-              ))}
+            <div className="p-4 md:p-6">
+              <CheckoutForm storeSlug={storeSlug} embedded={true} />
+              
+              {/* WHATSAPP BUTTON */}
+              {storeWhatsapp && (
+                <button
+                   onClick={handleWhatsApp}
+                   className="w-full mt-4 bg-[#25d366] hover:bg-[#1ebe5d] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors active:scale-[0.98]"
+                >
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                   الطلب عبر واتساب
+                </button>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Review Cards (Mock) */}
+        {/* WHY CHOOSE US / FEATURES */}
+        <div className="mb-12">
+          <h3 className="text-xl font-black text-slate-900 mb-6 text-center">لماذا تختارنا؟</h3>
           <div className="space-y-4">
-            {[
-              { name: 'Amine K.', city: 'Algiers', review: 'Excellent quality, exactly as described. Delivery was fast within 24 hours.', initials: 'AK', color: 'bg-indigo-100 text-indigo-700' },
-              { name: 'Sarah M.', city: 'Oran', review: 'Very satisfied with the product. Will definitely buy again from this store.', initials: 'SM', color: 'bg-emerald-100 text-emerald-700' },
-              { name: 'Karim D.', city: 'Constantine', review: 'Customer service was very helpful when I had a question. The item is perfect.', initials: 'KD', color: 'bg-rose-100 text-rose-700' }
-            ].map((rv, i) => (
-              <div key={i} className="p-4 rounded-2xl border border-slate-200 bg-slate-50 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex gap-3 items-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black ${rv.color}`}>
-                      {rv.initials}
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-900 text-sm flex items-center gap-1">
-                        {rv.name} <CheckCircle2 size={12} className="text-emerald-500" />
-                      </div>
-                      <div className="text-xs text-slate-500 font-medium">{rv.city}</div>
-                    </div>
-                  </div>
-                  <div className="flex text-amber-400">
-                    <Star size={14} className="fill-current" />
-                    <Star size={14} className="fill-current" />
-                    <Star size={14} className="fill-current" />
-                    <Star size={14} className="fill-current" />
-                    <Star size={14} className="fill-current" />
-                  </div>
+             <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="text-indigo-600 mt-1"><Truck size={24} /></div>
+                <div>
+                  <h4 className="font-bold text-slate-900">توصيل سريع</h4>
+                  <p className="text-sm text-slate-500">توصيل خلال 48-72 ساعة إلى باب منزلك.</p>
                 </div>
-                <p className="text-sm font-medium text-slate-700">{rv.review}</p>
-              </div>
-            ))}
+             </div>
+             <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="text-indigo-600 mt-1"><ShieldCheck size={24} /></div>
+                <div>
+                  <h4 className="font-bold text-slate-900">أصلي 100%</h4>
+                  <p className="text-sm text-slate-500">نضمن جودة كل منتج.</p>
+                </div>
+             </div>
           </div>
         </div>
+
+        {/* REVIEWS SECTION */}
+        <div className="mb-12 border-t border-slate-100 pt-12">
+          <h3 className="text-xl font-black text-slate-900 mb-6 flex justify-between items-center">
+            آراء العملاء
+            <span className="text-sm text-amber-500 font-bold flex items-center gap-1">
+              <Star size={16} className="fill-current"/> {(product as any).stars_rate || (product as any).starsRate || 4.8}
+            </span>
+          </h3>
+          
+          <div className="space-y-4">
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <div className="flex justify-between items-start mb-2">
+                 <div className="flex gap-3">
+                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">YM</div>
+                   <div>
+                     <p className="font-bold text-slate-900 text-sm">Youssef M.</p>
+                   </div>
+                 </div>
+                 <div className="flex text-amber-400">
+                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
+                 </div>
+               </div>
+               <p className="text-sm text-slate-600 mt-2">منتج ممتاز وتوصيل سريع. خيار الدفع عند الاستلام رائع جداً. أنصح به بشدة!</p>
+             </div>
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <div className="flex justify-between items-start mb-2">
+                 <div className="flex gap-3">
+                   <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">SA</div>
+                   <div>
+                     <p className="font-bold text-slate-900 text-sm">Sarah A.</p>
+                   </div>
+                 </div>
+                 <div className="flex text-amber-400">
+                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
+                 </div>
+               </div>
+               <p className="text-sm text-slate-600 mt-2">خدمة العملاء كانت متعاونة جداً على الواتساب. المنتج مطابق للوصف تماماً.</p>
+             </div>
+          </div>
+        </div>
+
+        {/* LONG DESCRIPTION */}
+        {((product as any).main_desc || (product as any).mainDesc || (product as any).description) && (
+          <div className="mt-12 border-t border-slate-100 pt-12 max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
+            <RichHtmlContent html={(product as any).main_desc || (product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
+          </div>
+        )}
+
       </div>
 
-      <div className="h-24"></div> {/* Spacer to prevent sticky button overlap */}
+      <div className="h-32"></div> {/* Spacer to prevent sticky button overlap */}
 
       {/* Image Zoom Lightbox */}
       {isZoomed && (
@@ -586,14 +545,19 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         </div>
       )}
 
-      {/* STICKY MOBILE BUY BUTTON */}
       <StickyBuyButton
         enabled={store?.stickyBuyButton?.enabled ?? true}
-        onBuy={handleBuyNow}
+        onBuy={() => {
+          if (checkoutConfig?.productCheckoutType === 'inline') {
+            document.getElementById('inline-checkout-section')?.scrollIntoView({ behavior: 'smooth' });
+          } else {
+            handleBuyNow();
+          }
+        }}
         price={finalPrice}
         comparePrice={compareAt}
         currency={store?.currency || 'DZD'}
-        buttonText={store?.stickyBuyButton?.text || 'Order Now'}
+        buttonText={store?.stickyBuyButton?.text || 'اطلب الآن'}
         disabled={isSoldOut}
         customCss={store?.stickyBuyButton?.customCss}
       />

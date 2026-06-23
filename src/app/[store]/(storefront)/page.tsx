@@ -21,19 +21,20 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
   const homepageConfig = store ? homepages.find(h => h.storeId === store.id) : undefined;
   
   const [isMounted, setIsMounted] = useState(false);
+  const [isSubdomain, setIsSubdomain] = useState(false);
   
-  const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-  const basePath = isCustomDomain ? '' : `/${storeSlug}`;
-
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    setIsSubdomain(window.location.hostname.startsWith(`${storeSlug.toLowerCase()}.`));
+  }, [storeSlug]);
+
+  const basePath = isSubdomain ? '' : `/${storeSlug}`;
 
   if (!isMounted) return <div className="min-h-screen bg-slate-50" />;
 
   // Default to something visually appealing if no blocks
   const defaultBlocks = [
-    { id: 'b_hero', type: 'hero' as const, content: JSON.stringify({title: t('hero.title', 'Premium Products. Pay on Delivery.'), subtitle: t('hero.subtitle', 'No credit card required. Inspect your order before paying.')}) },
+    { id: 'b_hero', type: 'hero' as const, content: JSON.stringify({title: t('hero.title', 'منتجات متميزة. الدفع عند الاستلام.'), subtitle: t('hero.subtitle', 'لا حاجة لبطاقة ائتمان. افحص طلبك قبل الدفع.')}) },
     { id: 'b_grid', type: 'product_grid' as const, content: '', productIds: [] }
   ];
 
@@ -41,7 +42,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
   const storeProducts = products.filter(p => !store || p.storeId === store.id);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-24">
+    <div className="min-h-screen bg-slate-50 font-sans pb-24" dir="rtl">
       {blocks.map(block => {
         
         if (block.type === 'hero') {
@@ -49,16 +50,16 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
           try { data = JSON.parse(block.content); } catch (e) {}
           return (
             <div key={block.id} className="bg-indigo-950 text-white py-16 px-4 mb-12">
-              <div className="max-w-6xl mx-auto text-center md:text-left md:flex items-center justify-between">
+              <div className="max-w-6xl mx-auto text-center md:text-right md:flex items-center justify-between">
                 <div className="md:w-1/2">
                   <div className="inline-block bg-indigo-500/30 text-indigo-200 font-bold px-3 py-1 rounded-full text-sm mb-4 border border-indigo-400/30">
-                    ⚡ {t('hero.flashDelivery', 'Flash Delivery Available')}
+                    ⚡ {t('hero.flashDelivery', 'توصيل سريع متاح')}
                   </div>
                   <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight tracking-tight">
-                    {data.title}
+                    {data.title || 'منتجات متميزة. الدفع عند الاستلام.'}
                   </h1>
                   <p className="text-indigo-200 text-lg md:text-xl font-medium max-w-md mx-auto md:mx-0">
-                    {data.subtitle}
+                    {data.subtitle || 'لا حاجة لبطاقة ائتمان. افحص طلبك قبل الدفع.'}
                   </p>
                 </div>
               </div>
@@ -75,12 +76,12 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
               <div className="flex justify-between items-end mb-6">
-                <h2 className="text-2xl font-black text-slate-900">{t('store.trending', 'Trending Now')}</h2>
+                <h2 className="text-2xl font-black text-slate-900">{t('store.trending', 'رائج الآن')}</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {gridProducts.map(product => {
                   const priceToDisplay = typeof product.price === 'number' ? product.price : (product.price as any)[region];
-                  const slug = (product as any).seoSlug || product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                  const slug = (product as any).seo_slug || (product as any).seoSlug || product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   return (
                     <Link key={product.id} href={`${basePath}/products/${slug}`} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:border-indigo-300 transition-all duration-300 flex flex-col">
                       <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden">
@@ -90,24 +91,24 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                           alt={product.title} 
                           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                         />
-                        <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                           <Star size={14} className="fill-amber-400 text-amber-400" />
-                          <span className="text-xs font-bold text-slate-800">4.9</span>
+                          <span className="text-xs font-bold text-slate-800">{(product as any).stars_rate || (product as any).starsRate || 4.9}</span>
                         </div>
                       </div>
                       <div className="p-5 flex flex-col flex-grow">
                         <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">
-                          {product.category || 'Product'}
+                          {product.category || 'منتج'}
                         </div>
                         <h3 className="font-bold text-slate-900 leading-snug mb-3 flex-grow line-clamp-2">
                           {product.title}
                         </h3>
                         <div className="flex items-center justify-between mt-auto">
-                          <div className="font-black text-xl text-slate-900">
-                            {priceToDisplay} <span className="text-sm font-bold text-slate-400">{currency}</span>
+                          <div className="font-black text-xl text-slate-900 flex items-center gap-1 flex-row-reverse">
+                            <span className="text-sm font-bold text-slate-400">{currency}</span> {priceToDisplay}
                           </div>
                           <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-slate-400 transition-colors">
-                            <ChevronRight size={20} />
+                            <ChevronRight size={20} className="rotate-180" />
                           </div>
                         </div>
                       </div>
@@ -116,7 +117,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                 })}
                 {gridProducts.length === 0 && (
                   <div className="col-span-full py-12 text-center text-slate-500 font-medium bg-white rounded-2xl border border-slate-200">
-                    {t('store.noProducts', 'No products available at the moment.')}
+                    {t('store.noProducts', 'لا توجد منتجات متاحة في الوقت الحالي.')}
                   </div>
                 )}
               </div>
@@ -130,7 +131,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
               <div className="flex overflow-x-auto pb-4 hide-scrollbar gap-3">
                 <button className="whitespace-nowrap px-6 py-2.5 bg-slate-900 text-white font-bold rounded-full text-sm transition-colors shadow-lg">
-                  {t('store.allProducts', 'All Products')}
+                  {t('store.allProducts', 'جميع المنتجات')}
                 </button>
                 {catsToShow.map((cat, i) => (
                   <button key={i} className="whitespace-nowrap px-6 py-2.5 bg-white text-slate-600 hover:bg-slate-200 font-bold rounded-full text-sm transition-colors border border-slate-200 shadow-sm">

@@ -3,6 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload } from 'lucide-react';
 import DOMPurify from 'dompurify';
+
+const sanitizeHTML = (html: string) => {
+  if (typeof window === 'undefined') return html;
+  const purify = (DOMPurify as any).default || DOMPurify;
+  if (purify && purify.sanitize) return purify.sanitize(html);
+  return html;
+};
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { aiService } from '@/lib/services/aiService';
 
@@ -457,7 +464,7 @@ export default function AgentsHubPage() {
                                     {pd.mainDesc && (
                                       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-3 border border-slate-100 dark:border-slate-700 max-h-32 overflow-y-auto">
                                         <div className="prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100">
-                                          <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(pd.mainDesc) }} />
+                                          <div dangerouslySetInnerHTML={{ __html: sanitizeHTML(pd.mainDesc) }} />
                                         </div>
                                       </div>
                                     )}
