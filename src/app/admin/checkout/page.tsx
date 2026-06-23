@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAdminStore, ShippingZone, CheckoutConfig, ALGERIA_WILAYAS, COUNTRY_DATA } from '@/lib/store/useAdminStore';
+import { ALGERIA_COMMUNES } from '@/lib/algeria-communes';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { Save, Truck, Plus, Trash2, MapPin, Loader2, ShoppingCart, ShieldAlert, ShieldCheck, MessageCircle, Clock, CheckCircle2, Copy, Zap, Flame } from 'lucide-react';
 
@@ -630,10 +631,10 @@ export default function AdminCheckoutEditor() {
           <div className="space-y-4">
             {zones.map((zone) => (
               <div key={zone.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">Wilaya / State</label>
-                    <select value={zone.wilaya} onChange={e => updateZone(zone.id, { wilaya: e.target.value })} required className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm bg-white">
+                    <select value={zone.wilaya} onChange={e => updateZone(zone.id, { wilaya: e.target.value, commune: '' })} required className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-sm bg-white">
                       <option value="">Select Wilaya</option>
                       {ALGERIA_WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
                       <option value="Other">Other / International</option>
@@ -641,11 +642,22 @@ export default function AdminCheckoutEditor() {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">Commune (Optional)</label>
-                    <input type="text" value={zone.commune} onChange={e => updateZone(zone.id, { commune: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. Bab Ezzouar" />
+                    {zone.wilaya && ALGERIA_COMMUNES[zone.wilaya] ? (
+                      <select value={zone.commune} onChange={e => updateZone(zone.id, { commune: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm bg-white">
+                        <option value="">All Communes</option>
+                        {ALGERIA_COMMUNES[zone.wilaya].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <input type="text" value={zone.commune} onChange={e => updateZone(zone.id, { commune: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. Bab Ezzouar" />
+                    )}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Delivery Rate ({activeStore.currency})</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Home Rate ({activeStore.currency})</label>
                     <input type="number" min="0" value={zone.deliveryRate} onChange={e => updateZone(zone.id, { deliveryRate: Number(e.target.value) })} required className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-indigo-600 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Desk Rate ({activeStore.currency})</label>
+                    <input type="number" min="0" value={zone.deskRate || ''} onChange={e => updateZone(zone.id, { deskRate: e.target.value === '' ? undefined : Number(e.target.value) })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-indigo-600 text-sm" placeholder="Same as Home" />
                   </div>
                 </div>
                 <button type="button" onClick={() => removeZone(zone.id)} className="self-start mt-6 p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"><Trash2 size={16} /></button>
