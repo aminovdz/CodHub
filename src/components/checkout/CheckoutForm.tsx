@@ -1184,12 +1184,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     {t('checkout.orderNow', 'تأكيد الطلب')} - {isMounted ? finalTotal : '...'} {currency}
                   </button>
                 </div>
-                <div className="mt-5 flex items-center justify-center gap-2 text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                  <ShieldCheck size={18} className="text-emerald-500" />
-                  <p className="text-xs font-bold text-center">
-                    {t('checkout.trustBadge', 'جودة مضمونة وتوصيل آمن - الدفع فقط عند استلام طلبك')}
-                  </p>
-                </div>
+
               </div>
             )}
 

@@ -9,7 +9,7 @@ export function useTranslation(region: string) {
     const store = resolveStore(availableStores, region);
     return {
       translations: store?.translations || {},
-      language: store?.language || 'en'
+      language: store?.language || 'ar'
     };
   }, [availableStores, region]);
 
