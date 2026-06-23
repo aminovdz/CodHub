@@ -810,7 +810,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                 {quantityOffers.length > 0 && (
                 <div className="mb-6">
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">
-                    {t('checkout.selectOffer', 'Select Your Offer')}
+                    {t('checkout.selectOffer', 'اختر العرض الخاص بك')}
                   </p>
                   <div className="space-y-3">
                     {quantityOffers.map(offer => {
@@ -840,7 +840,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     <div className="flex items-center gap-2 mb-3">
                       <PackagePlus size={15} className="text-amber-500" />
                       <span className="text-xs font-black text-slate-700 uppercase tracking-widest">
-                        ⚡ {t('checkout.upsellTitle', 'Exclusive Add-ons — Limited Offer')}
+                        ⚡ {t('checkout.upsellTitle', 'إضافات حصرية — عرض محدود')}
                       </span>
                     </div>
                     <div className="space-y-3">
@@ -865,7 +865,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                             )}
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-slate-900 text-sm leading-tight truncate">{upsell.name}</p>
-                              <p className="text-xs text-slate-500 font-medium mt-0.5">{t('checkout.upsellItemDesc', 'Highly recommended for best results')}</p>
+                              <p className="text-xs text-slate-500 font-medium mt-0.5">{t('checkout.upsellItemDesc', 'موصى به بشدة للحصول على أفضل النتائج')}</p>
                             </div>
                             <span className="font-black text-indigo-600 text-sm shrink-0">+{upsell.price} {currency}</span>
                           </label>
@@ -878,11 +878,11 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                 {/* ── Contact Info Form ── */}
                 <div className="space-y-4">
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest border-t border-slate-100 pt-4">
-                    {t('checkout.subtitle', '📋 Contact Information')}
+                    {t('checkout.subtitle', '📋 معلومات الاتصال')}
                   </p>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                      {checkoutConfig?.fields?.showLastName ? t('form.firstName', 'First Name') + ' *' : t('form.fullName', 'Full Name') + ' *'}
+                      {checkoutConfig?.fields?.showLastName ? t('form.firstName', 'الاسم الأول') + ' *' : t('form.fullName', 'الاسم الكامل') + ' *'}
                     </label>
                     <div className="relative">
                       <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -896,7 +896,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   </div>
                   {checkoutConfig?.fields?.showLastName && (
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.lastName', 'Last Name')} *</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.lastName', 'اللقب')} *</label>
                       <div className="relative">
                         <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
@@ -909,7 +909,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   {checkoutConfig?.fields?.showEmail && (
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-1.5">
-                        {t('form.email', 'Email')} {checkoutConfig?.fields?.requireEmail ? '*' : '(Optional)'}
+                        {t('form.email', 'البريد الإلكتروني')} {checkoutConfig?.fields?.requireEmail ? '*' : '(اختياري)'}
                       </label>
                       <div className="relative">
                         <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -921,7 +921,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'Phone Number')} *</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('form.phone', 'رقم الهاتف')} *</label>
                     <div className="relative">
                       <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type="tel" value={phone} dir="ltr" maxLength={10}
@@ -934,7 +934,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   </div>
                   {checkoutConfig?.customFields?.map(field => (
                     <div key={field.id}>
-                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{field.label} {field.required ? '*' : '(Optional)'}</label>
+                      <label className="block text-sm font-bold text-slate-700 mb-1.5">{field.label} {field.required ? '*' : '(اختياري)'}</label>
                       <input type="text" value={customFieldsData[field.id] || ''}
                         onChange={(e) => setCustomFieldsData({ ...customFieldsData, [field.id]: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
@@ -988,7 +988,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
                     className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
                   >
-                    {t('checkout.next', 'Continue to Delivery')}
+                    {t('checkout.next', 'متابعة لمعلومات التوصيل')}
                     <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 )}
@@ -1001,49 +1001,22 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
             {(step === 2 || isOneStep) && (
               <div className={`animate-in slide-in-from-right-4 fade-in duration-400 ${isOneStep ? 'mt-8 pt-8 border-t-2 border-slate-100 border-dashed' : ''}`}>
 
-                {/* ── Order Summary Card ── */}
-                <div className="bg-slate-900 rounded-2xl p-4 mb-6 text-white">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">📦 {t('checkout.orderSummary', 'Order Summary')}</p>
-                  <div className="space-y-2">
-                    {cart.map(item => (
-                      <div key={item.id} className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-slate-200 truncate mr-4">{item.name}</span>
-                        <span className="font-black text-white shrink-0">{item.price} {currency}</span>
-                      </div>
-                    ))}
-                    {deliveryRate > 0 && (
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-700">
-                        <span className="text-sm font-bold text-slate-400">{t('checkout.delivery', 'Delivery')}</span>
-                        <span className="font-black text-slate-300">{deliveryRate} {currency}</span>
-                      </div>
-                    )}
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-emerald-400">{t('checkout.discount', 'Discount')}</span>
-                        <span className="font-black text-emerald-400">-{discountAmount} {currency}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-600">
-                    <span className="font-black text-slate-300 text-sm uppercase tracking-wider">{t('checkout.totalDue', 'Total on Delivery')}</span>
-                    <span className={`font-black text-2xl transition-transform ${isAnimatingPrice ? 'scale-110 text-rose-400' : 'text-indigo-400'}`}>{isMounted ? finalTotal : '...'} <span className="text-base">{currency}</span></span>
-                  </div>
-                </div>
+
 
                 {/* ── Address Form ── */}
                 <div className="space-y-4">
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest">
-                    <MapPin size={12} className="inline mr-1" />{t('checkout.deliveryInfo', 'Delivery Address')}
+                    <MapPin size={12} className="inline mr-1" />{t('checkout.deliveryInfo', 'عنوان التوصيل')}
                   </p>
 
                   <div className="flex gap-3 mb-4">
                     <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'home' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
                       <input type="radio" checked={deliveryType === 'home'} onChange={() => setDeliveryType('home')} className="hidden" />
-                      <span className="font-bold text-sm">🏠 {t('checkout.homeDelivery', 'Home Delivery')}</span>
+                      <span className="font-bold text-sm">🏠 {t('checkout.homeDelivery', 'توصيل للمنزل')}</span>
                     </label>
                     <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'desk' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
                       <input type="radio" checked={deliveryType === 'desk'} onChange={() => setDeliveryType('desk')} className="hidden" />
-                      <span className="font-bold text-sm">🏢 {t('checkout.stopDesk', 'Desk of Delivery')}</span>
+                      <span className="font-bold text-sm">🏢 {t('checkout.stopDesk', 'توصيل للمكتب')}</span>
                     </label>
                   </div>
 
@@ -1053,7 +1026,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                         <>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.wilaya', 'Wilaya')} *</label>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.wilaya', 'الولاية')} *</label>
                               <div className="relative">
                                 <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <select value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
@@ -1065,7 +1038,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                               </div>
                             </div>
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'Commune')} *</label>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.commune', 'البلدية')} *</label>
                               <div className="relative">
                                 <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <select value={commune} onChange={(e) => setCommune(e.target.value)}
@@ -1080,7 +1053,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                           {/* Only show detailed address for Home Delivery */}
                           {deliveryType === 'home' && (
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'Detailed Address')} *</label>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.address', 'العنوان بالتفصيل')} *</label>
                               <div className="relative">
                                 <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input 
@@ -1089,7 +1062,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                                   value={detailedAddress} 
                                   onChange={(e) => setDetailedAddress(e.target.value)}
                                   className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.addressPlaceholder', 'e.g. Near the main post office')}
+                                  placeholder={t('checkout.addressPlaceholder', 'مثال: بجوار البريد المركزي')}
                                 />
                               </div>
                             </div>
@@ -1099,26 +1072,26 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                         <div className="space-y-3">
                           {deliveryType === 'home' && (
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'Address')} *</label>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.preciseAddress', 'العنوان بالتفصيل')} *</label>
                               <input ref={addressInputRef} type="text" value={detailedAddress} onChange={(e) => setDetailedAddress(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                placeholder={t('checkout.searchStreet', 'Street, building number...')}
+                                placeholder={t('checkout.searchStreet', 'الشارع، رقم المبنى...')}
                               />
                             </div>
                           )}
                           <div className="grid grid-cols-2 gap-3">
                             {checkoutConfig?.fields?.showCity !== false && (
                               <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.city', 'City')} *</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.city', 'المدينة')} *</label>
                                 <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
                                   className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.city', 'City')}
+                                  placeholder={t('checkout.city', 'المدينة')}
                                 />
                               </div>
                             )}
                             {checkoutConfig?.fields?.showPostalCode !== false && (
                               <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.postalCode', 'Postal Code')}</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.postalCode', 'الرمز البريدي')}</label>
                                 <input type="text" value={postalCode} onChange={(e) => setPostalCode(e.target.value)}
                                   className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
                                   placeholder="Code"
@@ -1128,18 +1101,18 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                           </div>
                           {checkoutConfig?.fields?.showProvince !== false && (
                             <div>
-                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.province', 'Province / State')} *</label>
+                              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t('checkout.province', 'المقاطعة / الولاية')} *</label>
                               {uniqueWilayas.length > 0 ? (
                                 <select value={province} onChange={(e) => setProvince(e.target.value)}
                                   className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white"
                                 >
-                                  <option value="">{t('checkout.selectProvince', 'Select Province')}</option>
+                                  <option value="">{t('checkout.selectProvince', 'اختر الولاية')}</option>
                                   {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
                                 </select>
                               ) : (
                                 <input type="text" value={province} onChange={(e) => setProvince(e.target.value)}
                                   className="w-full px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900"
-                                  placeholder={t('checkout.province', 'Province')}
+                                  placeholder={t('checkout.province', 'الولاية')}
                                 />
                               )}
                             </div>
@@ -1195,12 +1168,12 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                       <input type="checkbox" checked={addingNote} onChange={(e) => setAddingNote(e.target.checked)}
                         className="w-4 h-4 rounded text-indigo-600 border-slate-300"
                       />
-                      <span className="text-sm font-bold text-slate-600">{t('checkout.notes', '📝 Add delivery note')}</span>
+                      <span className="text-sm font-bold text-slate-600">{t('checkout.notes', '📝 إضافة ملاحظة للتوصيل')}</span>
                     </label>
                     {addingNote && (
                       <textarea value={deliveryInstructions} onChange={(e) => setDeliveryInstructions(e.target.value)}
                         rows={2} className="w-full mt-2 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 resize-none text-sm"
-                        placeholder={t('checkout.notesPlaceholder', 'Any special instructions for the delivery driver?')}
+                        placeholder={t('checkout.notesPlaceholder', 'أي تعليمات خاصة لسائق التوصيل؟')}
                       />
                     )}
                   </div>
@@ -1211,7 +1184,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     <button type="button" onClick={() => setStep(1)}
                       className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
                     >
-                      ← {t('checkout.back', 'Back')}
+                      ← {t('checkout.back', 'رجوع')}
                     </button>
                   )}
                   <button
@@ -1229,13 +1202,13 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     className={`flex-1 py-4 px-5 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 ${!store?.primaryColor ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 shadow-[0_8px_30px_rgb(22,163,74,0.3)]' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
                   >
                     <Truck size={20} />
-                    {t('checkout.orderNow', 'CONFIRM ORDER')}
+                    {t('checkout.orderNow', 'تأكيد الطلب')} - {isMounted ? finalTotal : '...'} {currency}
                   </button>
                 </div>
                 <div className="mt-5 flex items-center justify-center gap-2 text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100">
                   <ShieldCheck size={18} className="text-emerald-500" />
                   <p className="text-xs font-bold text-center">
-                    {t('checkout.trustBadge', 'Guaranteed Quality & Secure Delivery - Pay only upon receiving your order')}
+                    {t('checkout.trustBadge', 'جودة مضمونة وتوصيل آمن - الدفع فقط عند استلام طلبك')}
                   </p>
                 </div>
               </div>

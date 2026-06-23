@@ -56,28 +56,18 @@ export default function StickyBuyButton({
           visible ? 'translate-y-0' : 'translate-y-full'
         }`}
       >
-        <div className="sh-sticky-bar-inner max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-baseline gap-2">
-            <span className="sh-sticky-bar-price text-xl font-black text-slate-900">
-              {price.toFixed(0)} {currency}
-            </span>
-            {comparePrice && (
-              <span className="sh-sticky-bar-compare text-sm font-semibold text-slate-400 line-through">
-                {comparePrice.toFixed(0)} {currency}
-              </span>
-            )}
-          </div>
+        <div className="sh-sticky-bar-inner max-w-6xl mx-auto px-4 py-3">
           <button
             onClick={onBuy}
             disabled={disabled}
-            className="sh-sticky-bar-button flex items-center gap-2 px-8 py-3 rounded-xl font-black text-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sh-sticky-bar-button flex justify-center items-center gap-2 px-8 py-4 rounded-xl font-black text-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{
               backgroundColor: disabled ? '#94a3b8' : undefined,
               color: disabled ? '#f1f5f9' : undefined,
             }}
           >
-            <ShoppingBag size={18} />
-            {disabled ? 'SOLD OUT' : buttonText}
+            <ShoppingBag size={20} />
+            {disabled ? 'SOLD OUT' : `${buttonText} - ${price.toFixed(0)} ${currency}`}
           </button>
         </div>
       </div>
