@@ -17,7 +17,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
   const storeSlug = resolvedParams.store;
   const router = useRouter();
 
-  const { customerName, cart, getTotalPrice, email, setEmail, draftOrderId, addressData, addCartItem, buyNow } = useFunnelStore();
+  const { customerName, cart, finalTotal, email, setEmail, draftOrderId, addressData, addCartItem, buyNow } = useFunnelStore();
   const { availableStores, checkoutConfigs, products } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
@@ -25,7 +25,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region === 'ro' ? 'RON' : region === 'co' ? 'COP' : 'DZD');
   const whatsappConfig = store?.whatsappConfig;
   const checkoutConfig = checkoutConfigs.find(c => c.storeId === store?.id);
-  const totalPrice = getTotalPrice();
+  const totalPrice = finalTotal > 0 ? finalTotal : cart.reduce((sum, item) => sum + item.price, 0);
 
   // Track Purchase event
   const cartIds = cart.map(i => i.id);
