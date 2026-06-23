@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts }],
-          generationConfig: { temperature: 0.3 }
+          generationConfig: { temperature: 0.3, maxOutputTokens: 16384 }
         })
       });
 
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 8192,
+          max_tokens: 16384,
           messages: [{ role: 'user', content: contentBlocks }]
         })
       });
@@ -119,6 +119,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'gpt-4o-mini',
+          max_tokens: 16384,
           messages: [{ role: 'user', content: contentBlocks }]
         })
       });
@@ -145,6 +146,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'meta-llama/llama-3.3-70b-instruct:free',
+          max_tokens: 16384,
           messages: [{ role: 'user', content: prompt }]
         })
       });
@@ -186,7 +188,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           model: model || 'meta/llama-3.1-405b-instruct',
           messages: [{ role: 'user', content: contentBlocks }],
-          max_tokens: 8192,
+          max_tokens: 16384,
           temperature: 0.3
         })
       });
