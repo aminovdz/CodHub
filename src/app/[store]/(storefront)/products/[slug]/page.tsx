@@ -172,7 +172,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           <div className="mt-2">
             <p className="font-bold text-slate-700">Available DB Slugs:</p>
             <ul className="list-disc pl-5 mt-1 max-h-32 overflow-y-auto">
-              {products.slice(0, 10).map((p, i) => (
+              {products.slice(0, 10).map((p: any, i) => (
                 <li key={i} className="font-mono">{p.seo_slug || p.seoSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')} <span className="text-xs text-slate-400">({p.title})</span></li>
               ))}
               {products.length > 10 && <li>... and {products.length - 10} more</li>}
@@ -186,7 +186,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const productImages = (product as any).images?.length ? (product as any).images : [product.image];
   const currentImage = productImages[selectedImageIndex] || product.image;
 
-  const storeWhatsapp = store?.whatsappConfig?.enabled ? store.whatsappConfig.phoneNumber : null;
+  const storeWhatsapp = store?.whatsappConfig?.thankYouEnabled ? store.whatsappConfig.thankYouNumber : null;
 
   const handleWhatsApp = () => {
     const num = storeWhatsapp || '';
