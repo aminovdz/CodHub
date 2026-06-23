@@ -258,10 +258,10 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         ⚡ توصيل سريع — الدفع عند الاستلام ✓
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 pt-4 md:pt-8">
-        <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-start">
+      <div className="max-w-3xl mx-auto px-4 pt-4 md:pt-8">
+        <div className="flex flex-col gap-8 items-start">
           {/* IMAGES COLUMN (LEFT IN RTL) */}
-          <div className="w-full lg:w-1/2 lg:sticky lg:top-8 mb-6">
+          <div className="w-full mb-6">
             <div className="flex gap-2 md:gap-3">
               {/* HERO IMAGE (RIGHT IN RTL) */}
               <div className="flex-1 min-w-0">
@@ -312,7 +312,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         </div>
 
           {/* CONTENT COLUMN (RIGHT IN RTL) */}
-          <div className="w-full lg:w-1/2">
+          <div className="w-full">
 
         {/* TRUST STRIP */}
         <div className="grid grid-cols-3 gap-2 mb-8 bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-sm">
