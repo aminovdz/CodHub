@@ -441,8 +441,15 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           </div>
         )}
 
+        {/* LONG DESCRIPTION */}
+        {((product as any).main_desc || (product as any).mainDesc || (product as any).description) && (
+          <div className="mb-12 max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
+            <RichHtmlContent html={(product as any).main_desc || (product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
+          </div>
+        )}
+
         {/* WHY CHOOSE US / FEATURES */}
-        <div className="mb-12">
+        <div className="mb-12 border-t border-slate-100 pt-12">
           <h3 className="text-xl font-black text-slate-900 mb-6 text-center">لماذا تختارنا؟</h3>
           <div className="space-y-4">
              <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
@@ -503,12 +510,24 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           </div>
         </div>
 
-        {/* LONG DESCRIPTION */}
-        {((product as any).main_desc || (product as any).mainDesc || (product as any).description) && (
-          <div className="mt-12 border-t border-slate-100 pt-12 max-w-4xl mx-auto prose prose-slate prose-lg text-slate-700">
-            <RichHtmlContent html={(product as any).main_desc || (product as any).mainDesc || (product as any).description} region={region} storeSlug={storeSlug} />
+        {/* FAQ SECTION */}
+        <div className="mb-12 border-t border-slate-100 pt-12">
+          <h3 className="text-xl font-black text-slate-900 mb-6 text-center">الأسئلة الشائعة</h3>
+          <div className="space-y-4">
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="font-bold text-slate-900 mb-2">متى سأستلم طلبي؟</h4>
+                <p className="text-sm text-slate-600">سيتم توصيل طلبك خلال 48 إلى 72 ساعة عمل من تأكيد الطلب.</p>
+             </div>
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="font-bold text-slate-900 mb-2">هل يمكنني الدفع عند الاستلام؟</h4>
+                <p className="text-sm text-slate-600">نعم، نحن نوفر خدمة الدفع عند الاستلام لجميع عملائنا. لا تحتاج لبطاقة ائتمان.</p>
+             </div>
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <h4 className="font-bold text-slate-900 mb-2">كيف يمكنني تتبع طلبي؟</h4>
+                <p className="text-sm text-slate-600">سيتواصل معك فريق خدمة العملاء لتزويدك بتفاصيل التتبع وموعد وصول المندوب.</p>
+             </div>
           </div>
-        )}
+        </div>
 
       </div>
 
