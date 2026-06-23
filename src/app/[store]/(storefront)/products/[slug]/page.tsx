@@ -261,48 +261,53 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       <div className="max-w-6xl mx-auto px-4 pt-4 md:pt-8">
         <div className="flex flex-col lg:flex-row-reverse gap-8 lg:gap-12 items-start">
           {/* IMAGES COLUMN (LEFT IN RTL) */}
-          <div className="w-full lg:w-1/2 lg:sticky lg:top-8">
-        
-        {/* HERO IMAGE */}
-        <div 
-          className="relative aspect-square md:aspect-[4/3] bg-slate-100 rounded-3xl overflow-hidden mb-4 group cursor-zoom-in shadow-sm"
-          onClick={() => setIsZoomed(true)}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
-            alt={product.title}
-            className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
-          />
-          <div className="absolute top-4 right-4 bg-amber-500 text-slate-900 text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">
-            🔥 الأكثر مبيعاً
-          </div>
-          {checkoutConfig?.fields?.scarcityConfig?.enabled && (
-             <div className="absolute top-4 left-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-lg shadow-sm">
-               ⏱ عرض محدود
-             </div>
-          )}
-        </div>
-        
-        {/* Image Thumbnails */}
-        {productImages.length > 1 && (
-          <div className="flex justify-center gap-2 overflow-x-auto pb-2 mb-6 hide-scrollbar">
-            {productImages.map((img: string, i: number) => (
-              <button
-                key={i}
-                onClick={() => setSelectedImageIndex(i)}
-                className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
-                  selectedImageIndex === i
-                    ? 'border-indigo-600 ring-1 ring-indigo-600'
-                    : 'border-slate-200 hover:border-slate-400'
-                }`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-        )}
+          <div className="w-full lg:w-1/2 lg:sticky lg:top-8 mb-6">
+            <div className="flex gap-2 md:gap-3">
+              {/* HERO IMAGE (RIGHT IN RTL) */}
+              <div className="flex-1 min-w-0">
+                <div 
+                  className="relative w-full aspect-square md:aspect-[4/3] bg-slate-100 rounded-2xl md:rounded-3xl overflow-hidden group cursor-zoom-in shadow-sm"
+                  onClick={() => setIsZoomed(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
+                    alt={product.title}
+                    className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
+                  />
+                  <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-amber-500 text-slate-900 text-[10px] md:text-xs font-black px-2 py-1 md:px-3 md:py-1.5 rounded-lg shadow-sm">
+                    🔥 الأكثر مبيعاً
+                  </div>
+                  {checkoutConfig?.fields?.scarcityConfig?.enabled && (
+                    <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-rose-500 text-white text-[10px] md:text-xs font-black px-2 py-1 md:px-3 md:py-1.5 rounded-lg shadow-sm">
+                      ⏱ عرض محدود
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* THUMBNAILS (LEFT IN RTL) */}
+              {productImages.length > 1 && (
+                <div className="w-14 md:w-20 shrink-0 relative">
+                  <div className="absolute inset-0 flex flex-col gap-2 overflow-y-auto hide-scrollbar pb-2" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                    {productImages.map((img: string, i: number) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedImageIndex(i)}
+                        className={`w-full aspect-square rounded-lg md:rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                          selectedImageIndex === i
+                            ? 'border-indigo-600 ring-1 ring-indigo-600'
+                            : 'border-slate-200 hover:border-slate-400'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
         </div>
 
