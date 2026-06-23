@@ -29,6 +29,7 @@ interface FunnelState {
   // Final state
   email: string;
   status: 'IDLE' | 'DRAFT_SAVING' | 'CONFIRMING' | 'SUCCESS';
+  finalTotal: number;
   
   // Getters
   getTotalPrice: () => number;
@@ -36,6 +37,7 @@ interface FunnelState {
   // Actions
   setLead: (name: string, phone: string) => void;
   setDraftOrderId: (id: string) => void;
+  setFinalTotal: (total: number) => void;
   
   // Cart Actions
   addCartItem: (item: CartItem) => void;
@@ -60,11 +62,13 @@ export const useFunnelStore = create<FunnelState>()(
       deliveryInstructions: '',
       email: '',
       status: 'IDLE',
+      finalTotal: 0,
 
       getTotalPrice: () => get().cart.reduce((sum, item) => sum + item.price, 0),
 
       setLead: (name, phone) => set({ customerName: name, phone }),
       setDraftOrderId: (id) => set({ draftOrderId: id }),
+      setFinalTotal: (total) => set({ finalTotal: total }),
       
       addCartItem: (item) => set((state) => ({ 
         cart: [...state.cart.filter(i => i.id !== item.id), item] // Prevent duplicates

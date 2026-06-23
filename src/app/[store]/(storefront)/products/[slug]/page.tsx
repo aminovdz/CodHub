@@ -92,7 +92,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
 
-  const { buyNow, addCartItem } = useFunnelStore();
+  const { buyNow, addCartItem, finalTotal, cart } = useFunnelStore();
 
   // Resolve cross-sell products from the relatedProducts field
   const crossSellProducts = useMemo(() => {
@@ -591,7 +591,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
             handleBuyNow();
           }
         }}
-        price={finalPrice}
+        price={finalTotal > 0 ? finalTotal : finalPrice}
         comparePrice={compareAt}
         currency={store?.currency || 'DZD'}
         buttonText={store?.stickyBuyButton?.text || 'اطلب الآن'}

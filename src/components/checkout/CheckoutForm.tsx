@@ -25,7 +25,8 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   const { 
     customerName, phone, draftOrderId, cart, getTotalPrice,
     setLead, setDraftOrderId, addCartItem, removeCartItem, buyNow,
-    setAddressData, setDeliveryInstructions, deliveryInstructions, setStatus
+    setAddressData, setDeliveryInstructions, deliveryInstructions, setStatus,
+    setFinalTotal
   } = useFunnelStore();
 
   const router = useRouter();
@@ -226,6 +227,10 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   }, [appliedCoupon, totalPrice]);
 
   const finalTotal = Math.max(0, totalPrice - discountAmount) + deliveryRate;
+
+  useEffect(() => {
+    setFinalTotal(finalTotal);
+  }, [finalTotal, setFinalTotal]);
 
   const couponsDisabled = useMemo(() => {
     return cart.some(item => {
