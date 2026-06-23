@@ -129,7 +129,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
   };
 }
 
-function rowToProduct(row: any): Product {
+export function rowToProduct(row: any): Product {
   return {
     id: row.id,
     storeId: row.store_id,

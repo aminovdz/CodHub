@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../supabase';
-import { Store, Product, ShippingZone, CheckoutConfig, Coupon, HomepageConfig, LegalPage, LandingPage, BlacklistedCustomer, rowToCheckoutConfig } from './useAdminStore';
+import { Store, Product, ShippingZone, CheckoutConfig, Coupon, HomepageConfig, LegalPage, LandingPage, BlacklistedCustomer, rowToCheckoutConfig, rowToProduct } from './useAdminStore';
 import { slugify } from '../utils';
 
 interface StorefrontState {
@@ -16,6 +16,7 @@ interface StorefrontState {
   categories: any[];
   activeStore: Store | null;
   _hasHydrated: boolean;
+  isLoading: boolean;
   
   fetchInitialData: () => Promise<void>;
   setOrders: (updater: any) => void;
@@ -38,6 +39,7 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
   categories: [],
   activeStore: null,
   _hasHydrated: true,
+  isLoading: true,
 
   fetchInitialData: async () => {
     // Only fetch basic public tables
@@ -81,13 +83,14 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
 
     set({ 
       availableStores: mappedStores, 
-      products: products as Product[] || [],
+      products: products ? products.map(rowToProduct) : [],
       shippingZones: zones as ShippingZone[] || [],
       checkoutConfigs: configs ? configs.map(rowToCheckoutConfig) : [],
       landingPages: landingPages as LandingPage[] || [],
       homepages: extractedHomepages,
       legalPages: extractedLegalPages,
-      coupons: extractedCoupons
+      coupons: extractedCoupons,
+      isLoading: false
     });
   },
 

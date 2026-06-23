@@ -22,6 +22,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
   
   const [isMounted, setIsMounted] = useState(false);
   const [isSubdomain, setIsSubdomain] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   
   useEffect(() => {
     setIsMounted(true);
@@ -70,8 +71,8 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
         if (block.type === 'product_grid') {
           // If no specific productIds selected, show all active products for this store
           const gridProducts = block.productIds && block.productIds.length > 0 
-            ? storeProducts.filter(p => (block.productIds as string[]).includes(p.id) && p.active !== false)
-            : storeProducts.filter(p => p.active !== false);
+            ? storeProducts.filter(p => (block.productIds as string[]).includes(p.id) && p.active !== false && (!activeCategory || p.category === activeCategory))
+            : storeProducts.filter(p => p.active !== false && (!activeCategory || p.category === activeCategory));
 
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
@@ -130,11 +131,18 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
               <div className="flex overflow-x-auto pb-4 hide-scrollbar gap-3">
-                <button className="whitespace-nowrap px-6 py-2.5 bg-slate-900 text-white font-bold rounded-full text-sm transition-colors shadow-lg">
+                <button 
+                  onClick={() => setActiveCategory(null)}
+                  className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${!activeCategory ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                >
                   {t('store.allProducts', 'جميع المنتجات')}
                 </button>
                 {catsToShow.map((cat, i) => (
-                  <button key={i} className="whitespace-nowrap px-6 py-2.5 bg-white text-slate-600 hover:bg-slate-200 font-bold rounded-full text-sm transition-colors border border-slate-200 shadow-sm">
+                  <button 
+                    key={i} 
+                    onClick={() => setActiveCategory(cat)}
+                    className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${activeCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                  >
                     {cat}
                   </button>
                 ))}

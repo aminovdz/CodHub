@@ -217,14 +217,26 @@ export default function AdminHomepageEditor() {
 
                     {block.type === 'product_grid' && (
                       <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className="bg-slate-50 p-3 border-b border-slate-200 text-xs font-bold text-slate-500">Select Products</div>
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
-                          {storeProducts.map(p => (
-                            <label key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${block.productIds?.includes(p.id) ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                              <input type="checkbox" checked={block.productIds?.includes(p.id)} onChange={() => toggleProductInGrid(block.id, p.id)} className="w-4 h-4 text-indigo-600" />
-                              <div className="flex-1 font-bold text-sm text-slate-900 truncate">{p.title}</div>
-                            </label>
-                          ))}
+                        <div className="bg-slate-50 p-3 border-b border-slate-200 text-xs font-bold text-slate-500 flex justify-between items-center">
+                          <span>Select Products (Hold Ctrl/Cmd to select multiple)</span>
+                          <span className="text-indigo-500 font-normal">Leave empty to show all products</span>
+                        </div>
+                        <div className="p-4">
+                          <select 
+                            multiple
+                            value={block.productIds || []}
+                            onChange={(e) => {
+                              const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
+                              setBlocks(blocks.map(b => b.id === block.id ? { ...b, productIds: selectedOptions } : b));
+                            }}
+                            className="w-full h-64 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white shadow-inner"
+                          >
+                            {storeProducts.map(p => (
+                              <option key={p.id} value={p.id} className="p-2 border-b border-slate-50 hover:bg-indigo-50 cursor-pointer">
+                                {p.title} {p.category ? `— (${p.category})` : ''}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                     )}

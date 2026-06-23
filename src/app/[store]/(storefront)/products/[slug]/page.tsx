@@ -70,7 +70,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
   const router = useRouter();
-  const { products, availableStores, _hasHydrated, checkoutConfigs } = useStorefrontStore();
+  const { products, availableStores, _hasHydrated, isLoading, checkoutConfigs } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
   const region = store?.region || storeSlug;
@@ -150,7 +150,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
     }
   }, [product, selectedVariant, region, buyNow, checkoutConfig, finalPrice]);
 
-  if (!_hasHydrated) {
+  if (!_hasHydrated || isLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
