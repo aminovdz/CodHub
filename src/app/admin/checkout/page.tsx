@@ -645,7 +645,7 @@ export default function AdminCheckoutEditor() {
                     {zone.wilaya && ALGERIA_COMMUNES[zone.wilaya] ? (
                       <select value={zone.commune} onChange={e => updateZone(zone.id, { commune: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm bg-white">
                         <option value="">All Communes</option>
-                        {ALGERIA_COMMUNES[zone.wilaya].map(c => <option key={c} value={c}>{c}</option>)}
+                        {Array.from(new Set(ALGERIA_COMMUNES[zone.wilaya])).map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     ) : (
                       <input type="text" value={zone.commune} onChange={e => updateZone(zone.id, { commune: e.target.value })} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" placeholder="e.g. Bab Ezzouar" />
