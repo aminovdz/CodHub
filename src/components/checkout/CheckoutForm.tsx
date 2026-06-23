@@ -209,14 +209,14 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
         zone = zones.find(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''));
       }
       if (zone) {
-        return deliveryType === 'desk' && zone.deskRate !== undefined ? zone.deskRate : zone.deliveryRate;
+        return deliveryType === 'desk' && zone.deskRate != null ? zone.deskRate : zone.deliveryRate;
       }
       return 0;
     }
     if (province) {
       const zone = zones.find(z => z.wilaya.trim().toLowerCase() === province.trim().toLowerCase());
       if (zone) {
-        return deliveryType === 'desk' && zone.deskRate !== undefined ? zone.deskRate : zone.deliveryRate;
+        return deliveryType === 'desk' && zone.deskRate != null ? zone.deskRate : zone.deliveryRate;
       }
     }
     return 0;
