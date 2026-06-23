@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, X, Headset } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, PackageX, X, Headset } from 'lucide-react';
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import { useTranslation } from '@/lib/hooks/useTranslation';
@@ -152,30 +152,42 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
 
   if (!_hasHydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-400">
-        <Loader2 className="animate-spin text-indigo-600 mr-2" size={32} />
-        <span className="font-bold text-lg">Loading Product...</span>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
+        <span className="font-bold text-lg text-slate-700">جاري تحميل المنتج...</span>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center font-black text-2xl text-slate-400 p-8" dir="ltr">
-        <div>Product not found</div>
-        <div className="mt-6 text-sm font-normal text-left text-slate-500 bg-slate-50 p-4 rounded-lg w-full max-w-2xl border border-slate-200">
-          <p className="font-bold text-slate-700 mb-2">Diagnostic Info:</p>
-          <p>Requested URL Slug: <span className="font-mono text-blue-600">{slug}</span></p>
-          <p>Decoded Slug: <span className="font-mono text-blue-600">{decodedSlug}</span></p>
-          <p>Store: <span className="font-mono text-blue-600">{storeSlug}</span></p>
-          <p>Products in DB: <span className="font-mono text-blue-600">{products.length}</span></p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+        <div className="text-6xl mb-4 text-slate-300">
+          <PackageX size={64} />
+        </div>
+        <div className="text-2xl font-black text-slate-800 mb-2">لم يتم العثور على المنتج</div>
+        <div className="text-slate-500 mb-8 max-w-md text-center">عذراً، لم نتمكن من العثور على المنتج الذي تبحث عنه. يرجى التحقق من الرابط.</div>
+        
+        {/* Debug info */}
+        <div className="text-left bg-slate-50 p-4 rounded-xl text-sm text-slate-600 border border-slate-200 max-w-2xl w-full">
+          <p className="font-bold text-slate-800 mb-2 border-b border-slate-200 pb-2">معلومات التشخيص:</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <p><span className="font-bold">الرابط المطلوب:</span> {slug}</p>
+              <p><span className="font-bold">الرابط مفكك التشفير:</span> {decodedSlug}</p>
+              <p><span className="font-bold">المتجر:</span> {store?.name || 'غير معروف'}</p>
+            </div>
+            <div>
+              <p><span className="font-bold">المنتجات في قاعدة البيانات:</span> {products.length}</p>
+            </div>
+          </div>
           <div className="mt-2">
-            <p className="font-bold text-slate-700">Available DB Slugs:</p>
+            <p className="font-bold text-slate-700">الروابط المتاحة:</p>
             <ul className="list-disc pl-5 mt-1 max-h-32 overflow-y-auto">
               {products.slice(0, 10).map((p: any, i) => (
                 <li key={i} className="font-mono">{p.seo_slug || p.seoSlug || p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')} <span className="text-xs text-slate-400">({p.title})</span></li>
               ))}
-              {products.length > 10 && <li>... and {products.length - 10} more</li>}
+              {products.length > 10 && <li>... و {products.length - 10} المزيد</li>}
             </ul>
           </div>
         </div>
@@ -196,7 +208,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   };
 
   const handleBuyNow = () => {
-    if ((product as any).variants && (product as any).variants.length > 0 && !selectedVariant) {
+    if ((product as any).enableVariants && (!selectedVariant || selectedVariant.stock <= 0)) {
       alert('الرجاء اختيار خيار أولاً.');
       return;
     }
@@ -448,6 +460,47 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           </div>
         )}
 
+        {/* REVIEWS SECTION */}
+        <div className="mb-12 border-t border-slate-100 pt-12">
+          <h3 className="text-xl font-black text-slate-900 mb-6 flex justify-between items-center">
+            آراء العملاء
+            <span className="text-sm text-amber-500 font-bold flex items-center gap-1">
+              <Star size={16} className="fill-current"/> {(product as any).stars_rate || (product as any).starsRate || 4.8}
+            </span>
+          </h3>
+          
+          <div className="space-y-4">
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <div className="flex justify-between items-start mb-2">
+                 <div className="flex gap-3">
+                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">ي.م</div>
+                   <div>
+                     <p className="font-bold text-slate-900 text-sm">يوسف م.</p>
+                   </div>
+                 </div>
+                 <div className="flex text-amber-400">
+                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
+                 </div>
+               </div>
+               <p className="text-sm text-slate-600 mt-2">منتج ممتاز وتوصيل سريع. خيار الدفع عند الاستلام رائع جداً. أنصح به بشدة!</p>
+             </div>
+             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+               <div className="flex justify-between items-start mb-2">
+                 <div className="flex gap-3">
+                   <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">س.أ</div>
+                   <div>
+                     <p className="font-bold text-slate-900 text-sm">سارة أ.</p>
+                   </div>
+                 </div>
+                 <div className="flex text-amber-400">
+                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
+                 </div>
+               </div>
+               <p className="text-sm text-slate-600 mt-2">خدمة العملاء كانت متعاونة جداً على الواتساب. المنتج مطابق للوصف تماماً.</p>
+             </div>
+          </div>
+        </div>
+
         {/* WHY CHOOSE US / FEATURES */}
         <div className="mb-12 border-t border-slate-100 pt-12">
           <h3 className="text-xl font-black text-slate-900 mb-6 text-center">لماذا تختارنا؟</h3>
@@ -465,47 +518,6 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                   <h4 className="font-bold text-slate-900">أصلي 100%</h4>
                   <p className="text-sm text-slate-500">نضمن جودة كل منتج.</p>
                 </div>
-             </div>
-          </div>
-        </div>
-
-        {/* REVIEWS SECTION */}
-        <div className="mb-12 border-t border-slate-100 pt-12">
-          <h3 className="text-xl font-black text-slate-900 mb-6 flex justify-between items-center">
-            آراء العملاء
-            <span className="text-sm text-amber-500 font-bold flex items-center gap-1">
-              <Star size={16} className="fill-current"/> {(product as any).stars_rate || (product as any).starsRate || 4.8}
-            </span>
-          </h3>
-          
-          <div className="space-y-4">
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <div className="flex justify-between items-start mb-2">
-                 <div className="flex gap-3">
-                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">YM</div>
-                   <div>
-                     <p className="font-bold text-slate-900 text-sm">Youssef M.</p>
-                   </div>
-                 </div>
-                 <div className="flex text-amber-400">
-                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                 </div>
-               </div>
-               <p className="text-sm text-slate-600 mt-2">منتج ممتاز وتوصيل سريع. خيار الدفع عند الاستلام رائع جداً. أنصح به بشدة!</p>
-             </div>
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <div className="flex justify-between items-start mb-2">
-                 <div className="flex gap-3">
-                   <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">SA</div>
-                   <div>
-                     <p className="font-bold text-slate-900 text-sm">Sarah A.</p>
-                   </div>
-                 </div>
-                 <div className="flex text-amber-400">
-                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                 </div>
-               </div>
-               <p className="text-sm text-slate-600 mt-2">خدمة العملاء كانت متعاونة جداً على الواتساب. المنتج مطابق للوصف تماماً.</p>
              </div>
           </div>
         </div>

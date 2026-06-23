@@ -96,7 +96,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     compare_at_price: p.compareAtPrice,
     active: p.active,
     image: p.image,
-    // images: p.images, // Schema does not have this column
+    images: p.images,
     short_desc: p.shortDesc,
     main_desc: p.mainDesc,
     stock: p.stock,
