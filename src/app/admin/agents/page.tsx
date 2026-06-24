@@ -251,7 +251,7 @@ export default function AgentsHubPage() {
         
         await skill.execute(action.previewData, context);
         
-        if (action.type !== 'CREATE_LANDING_PAGE') {
+        if (!action.type.includes('LANDING_PAGE')) {
           // Landing page handles its own alert currently in the modal
           alert(`Successfully applied action: ${skill.name}`);
         }
@@ -428,7 +428,7 @@ export default function AgentsHubPage() {
                           Proposed Action: {msg.action.type.replace(/_/g, ' ')}
                         </div>
                         
-                        {msg.action.type === 'CREATE_LANDING_PAGE' ? (
+                        {msg.action.type.includes('LANDING_PAGE') ? (
                           <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl mb-4 border border-slate-100 dark:border-slate-700">
                             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200 mb-1">{msg.action.previewData.title || 'AI Generated Page'}</h4>
                             <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">Contains custom HTML with high-converting headings optimized for {(activeStore?.region || 'dz').toUpperCase()} market.</p>
@@ -495,23 +495,32 @@ export default function AgentsHubPage() {
                           </div>
                         ) : (
                           <button 
-                            onClick={() => {
-                              if (msg.action.type === 'CREATE_LANDING_PAGE') {
+                            onClick={async () => {
+                              if (msg.action.type.includes('LANDING_PAGE')) {
+                                let html = msg.action.previewData.htmlContent || msg.action.previewData.htmlBody || msg.action.previewData.html;
+                                if (!html) {
+                                  setIsLoading(true);
+                                  const result = await aiService.generateLandingPage(msg.action.previewData.title, activeStore?.region || 'dz', msg.content);
+                                  html = result?.componentCode || '<h1>Failed to generate HTML</h1>';
+                                  setIsLoading(false);
+                                }
                                 setPreviewPageData({
                                   msgId: msg.id,
                                   action: msg.action,
                                   title: msg.action.previewData.title || 'AI Generated Page',
                                   slug: 'promo-' + Math.random().toString(36).substring(7),
                                   productId: msg.action.previewData.productId || '',
-                                  htmlContent: msg.action.previewData.htmlContent || '<h1>Missing HTML</h1>'
+                                  htmlContent: html
                                 });
+                              } else if (msg.action.type === 'CREATE_PRODUCT') {
+                                handleValidateAction(msg.action, msg.id);
                               } else {
                                 handleValidateAction(msg.action, msg.id);
                               }
                             }}
                             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm"
                           >
-                            <CheckCircle size={16} /> {msg.action.type === 'CREATE_LANDING_PAGE' ? 'Preview & Confirm' : msg.action.type === 'CREATE_PRODUCT' ? 'Add to Store' : 'Validate & Apply'}
+                            <CheckCircle size={16} /> {msg.action.type.includes('LANDING_PAGE') ? 'Preview & Confirm' : msg.action.type === 'CREATE_PRODUCT' ? 'Add to Store' : 'Validate & Apply'}
                           </button>
                         )}
                       </div>

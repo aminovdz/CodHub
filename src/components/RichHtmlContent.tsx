@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import DOMPurify from 'dompurify';
+import Script from 'next/script';
 
 interface Props {
   html: string;
@@ -71,6 +72,7 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
 
   return (
     <div className="w-full">
+      <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
       {segments.map((seg, i) => {
         if (seg.type === 'checkout') {
           return (

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useAdminStore, Order } from '@/lib/store/useAdminStore';
-import { supabase } from '@/lib/supabase';
+import { adminDbUpdate } from '@/lib/actions/adminDb';
 import { DndContext, DragEndEvent, closestCenter, useSensor, useSensors, PointerSensor, TouchSensor } from '@dnd-kit/core';
 import { useDroppable } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
@@ -141,7 +141,7 @@ export default function KanbanBoard({
         if (updatedConfirmedBy) {
           payload.confirmed_by = updatedConfirmedBy;
         }
-        await supabase.from('orders').update(payload).eq('id', orderId);
+        await adminDbUpdate('orders', { id: orderId }, payload);
         addActivityLog({ 
           storeId: activeStore.id, 
           user: sessionUser || 'Admin', 

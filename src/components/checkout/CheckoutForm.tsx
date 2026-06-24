@@ -41,7 +41,15 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   const currency = store ? t(`currency.${store.currency.toLowerCase()}`, store.currency) : (region.toLowerCase() === 'ro' ? 'RON' : region.toLowerCase() === 'co' ? 'COP' : 'DZD');
   const zones = store ? shippingZones.filter(z => z.storeId === store.id) : [];
   const checkoutConfig = store ? checkoutConfigs.find(c => c.storeId === store.id) : undefined;
-  const prefix = store?.phonePrefix || (region.toLowerCase() === 'dz' ? '+213' : region.toLowerCase() === 'ro' ? '+40' : '+57');
+  let fallbackPrefix = '+57';
+  if (['dz', 'algeria'].includes(region)) fallbackPrefix = '+213';
+  else if (['ro', 'romania'].includes(region)) fallbackPrefix = '+40';
+  else if (['sa', 'saudi arabia'].includes(region)) fallbackPrefix = '+966';
+  else if (['ae', 'uae', 'dubai'].includes(region)) fallbackPrefix = '+971';
+  else if (['ma', 'morocco'].includes(region)) fallbackPrefix = '+212';
+  else if (['eg', 'egypt'].includes(region)) fallbackPrefix = '+20';
+
+  const prefix = (store?.phonePrefix && store.phonePrefix.trim() !== '') ? store.phonePrefix : fallbackPrefix;
   const isOneStep = checkoutConfig?.layout === '1-step';
 
   // Track InitiateCheckout
@@ -185,8 +193,22 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
 
   // Derive unique Wilayas and their Communes from admin config
   let uniqueWilayas = Array.from(new Set(zones.map(z => z.wilaya).filter(w => w && w.trim() !== '')));
-  const communesByWilaya = (w: string) => zones.filter(z => z.wilaya === w).map(z => z.commune);
-
+  // Determine which communes to show based on shipping zones configuration
+  const availableCommunes = useMemo(() => {
+    if (region !== 'dz' || !wilaya) return [];
+    if (zones.length === 0) return getCommunesForWilaya(wilaya);
+    
+    // If the wilaya has a generic zone (empty commune), all communes are valid
+    const hasGenericZone = zones.some(z => z.wilaya === wilaya && (!z.commune || z.commune.trim() === ''));
+    if (hasGenericZone) return getCommunesForWilaya(wilaya);
+    
+    // Otherwise, only return the specific communes configured in shipping zones
+    const configuredCommunes = zones
+      .filter(z => z.wilaya === wilaya && z.commune && z.commune.trim() !== '')
+      .map(z => z.commune);
+      
+    return Array.from(new Set(configuredCommunes)).sort();
+  }, [wilaya, zones, region]);
   // If no shipping zones are configured, auto-generate states based on the country
   if (uniqueWilayas.length === 0) {
     if (region === 'dz') {
@@ -882,7 +904,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                         type="text" value={customerName}
                         onChange={(e) => setLead(e.target.value, phone)}
                         className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
-                        placeholder={checkoutConfig?.fields?.showLastName ? 'e.g. John' : 'e.g. John Doe'}
+                        placeholder={checkoutConfig?.fields?.showLastName ? t('checkout.placeholderFirst', 'الاسم') : t('checkout.placeholderFull', 'الاسم الكامل')}
                       />
                     </div>
                   </div>
@@ -893,7 +915,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                         <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input type="text" value={lastName} onChange={(e) => setLastName(e.target.value)}
                           className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900"
-                          placeholder="e.g. Doe"
+                          placeholder={t('checkout.placeholderLast', 'اللقب')}
                         />
                       </div>
                     </div>
@@ -918,6 +940,14 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                       <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input type="tel" value={phone} dir="ltr" maxLength={10}
                         onChange={(e) => setLead(customerName, e.target.value.replace(/\D/g, ''))}
+                        onBlur={() => {
+                          const valid = phone && (phone.startsWith('0') ? phone.length >= 10 : phone.length >= 9);
+                          if (isOneStep && valid && customerName.length > 2) {
+                            // Instantly capture draft on blur
+                            handleProceedToAddress();
+                            setStep(1); // Keep them on step 1 visually
+                          }
+                        }}
                         className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 tracking-wide text-left"
                         placeholder="0555 55 55 55"
                       />
@@ -1038,7 +1068,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
                                   >
                                     <option value="" disabled>Select</option>
-                                    {getCommunesForWilaya(wilaya).map(c => <option key={c} value={c}>{c}</option>)}
+                                    {availableCommunes.map(c => <option key={c} value={c}>{c}</option>)}
                                   </select>
                                 </div>
                               </div>
@@ -1173,6 +1203,27 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   </div>
                 </div>
 
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mt-6 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
+                    <span>{t('checkout.subtotal', 'المجموع الفرعي')}</span>
+                    <span>{totalPrice.toLocaleString()} {currency}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-sm font-bold text-emerald-600">
+                      <span>{t('checkout.discount', 'الخصم')}</span>
+                      <span>-{discountAmount.toLocaleString()} {currency}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm font-bold text-slate-600 dark:text-slate-400">
+                    <span>{t('checkout.delivery', 'التوصيل')}</span>
+                    <span>{deliveryRate > 0 ? `+${deliveryRate.toLocaleString()} ${currency}` : t('checkout.free', 'مجاني')}</span>
+                  </div>
+                  <div className="border-t border-slate-200 dark:border-slate-700 my-2 pt-2 flex justify-between items-center text-lg font-black text-slate-900 dark:text-white">
+                    <span>{t('checkout.totalDue', 'الإجمالي')}</span>
+                    <span className="text-indigo-600 dark:text-indigo-400">{finalTotal.toLocaleString()} {currency}</span>
+                  </div>
+                </div>
+
                 <div className="flex gap-3 mt-6">
                   {!isOneStep && (
                     <button type="button" onClick={() => setStep(1)}
@@ -1198,6 +1249,17 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     <Truck size={20} />
                     {t('checkout.orderNow', 'تأكيد الطلب')} - {isMounted ? finalTotal : '...'} {currency}
                   </button>
+                </div>
+
+                {/* Trust Badge / Guarantee */}
+                <div className="mt-5 flex flex-col items-center justify-center text-center gap-1.5 opacity-90">
+                  <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider">
+                    <ShieldCheck size={16} className="text-emerald-500 shrink-0" />
+                    {t('checkout.guaranteeTitle', 'جودة مضمونة وتوصيل آمن')}
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 font-bold text-[10px] uppercase tracking-wider">
+                    {t('checkout.guaranteeSubtitle', 'الدفع عند الاستلام متوفر')}
+                  </div>
                 </div>
 
               </div>

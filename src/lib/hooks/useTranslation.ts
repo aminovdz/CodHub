@@ -1,17 +1,25 @@
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import { useMemo } from 'react';
 import { DEFAULT_TRANSLATIONS } from '../translations';
 
 export function useTranslation(region: string) {
-  const { availableStores } = useAdminStore();
+  const { availableStores: adminStores } = useAdminStore();
+  const { availableStores: storefrontStores } = useStorefrontStore();
   
   const { translations, language } = useMemo(() => {
-    const store = resolveStore(availableStores, region);
+    // Check storefront stores first, then fallback to admin stores
+    const allStores = [...storefrontStores, ...adminStores];
+    const store = resolveStore(allStores, region);
+    
+    // If region is an Arabic country, strongly hint at Arabic if no store language is set
+    const isArabicRegion = ['dz', 'sa', 'ae', 'ma', 'eg', 'ar'].includes((store?.region || region).toLowerCase());
+    
     return {
       translations: store?.translations || {},
-      language: store?.language || 'ar'
+      language: store?.language || (isArabicRegion ? 'ar' : 'en')
     };
-  }, [availableStores, region]);
+  }, [adminStores, storefrontStores, region]);
 
   const t = (key: string, fallback: string) => {
     // 1. Check custom store translations

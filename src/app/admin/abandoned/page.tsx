@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
-import { supabase } from '@/lib/supabase';
+import { adminDbDelete } from '@/lib/actions/adminDb';
 import { Ghost, PhoneCall, MessageCircle, Trash2, RefreshCw, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -39,7 +39,7 @@ export default function AdminAbandonedCartsPage() {
   const handleRemove = async (id: string) => {
     if (confirm('Are you sure you want to delete this abandoned cart?')) {
       try {
-        const { error } = await supabase.from('orders').delete().eq('id', id);
+        const { error } = await adminDbDelete('orders', { id });
         if (error) throw error;
         setAbandonedCarts(prev => prev.filter(c => c.id !== id));
         addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Cart Deleted', detail: `Abandoned cart ${id} deleted` });

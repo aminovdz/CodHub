@@ -6,9 +6,9 @@ import bcrypt from 'bcryptjs';
 import { checkRateLimit } from '@/lib/rateLimit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 const ADMIN_PIN = process.env.ADMIN_PIN;
 if (!ADMIN_PIN) {
   console.warn('ADMIN_PIN environment variable is not set. Super Admin login may fail.');

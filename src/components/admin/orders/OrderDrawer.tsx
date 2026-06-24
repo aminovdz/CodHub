@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Phone, MessageSquare, CheckCircle2, XCircle, PhoneCall, ChevronDown, ChevronUp, Package, MapPin, User, Clock, Edit2, PhoneMissed, Calendar, List } from 'lucide-react';
 import { useAdminStore, Order, CallLog } from '@/lib/store/useAdminStore';
-import { supabase } from '@/lib/supabase';
+import { adminDbUpdate, adminDbInsert } from '@/lib/actions/adminDb';
 import { getShortOrderId } from '@/lib/idHelper';
 
 const CALL_RESULTS = [
@@ -90,21 +90,21 @@ export default function OrderDrawer({
     try {
       const p: any = { notes: updatedNotes, status: newStatus, custom_fields: updatedCustomFields };
       if (newConfirmedBy) p.confirmed_by = newConfirmedBy;
-      const { error } = await supabase.from('orders').update(p).eq('id', orderId);
+      const { error } = await adminDbUpdate('orders', { id: orderId }, p);
       if (error) {
         console.error("Supabase error:", error);
-        alert("Failed to save order: " + error.message);
+        alert("Failed to save order: " + error);
       }
 
       // Save call log to Supabase
-      const { error: callError } = await supabase.from('call_logs').insert([{
+      const { error: callError } = await adminDbInsert('call_logs', {
         order_id: orderId,
         store_id: activeStore.id,
         agent_name: sessionUser,
         result: result,
         note: callNote,
         called_at: entry.calledAt
-      }]);
+      });
       
       if (callError) {
         console.error("Supabase call log error:", callError);
@@ -154,7 +154,7 @@ export default function OrderDrawer({
       if (confirmedByVal) {
         payload.confirmed_by = confirmedByVal;
       }
-      const { error } = await supabase.from('orders').update(payload).eq('id', finalForm.id);
+      const { error } = await adminDbUpdate('orders', { id: finalForm.id }, payload);
       if (error) throw error;
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Updated', detail: `Updated ${getShortOrderId(finalForm.id)}` });
       setShowEditForm(false);
@@ -182,7 +182,7 @@ export default function OrderDrawer({
       return;
     }
     try {
-      const { error } = await supabase.from('orders').update({ claimed_by: sessionUser }).eq('id', order.id);
+      const { error } = await adminDbUpdate('orders', { id: order.id }, { claimed_by: sessionUser });
       if (error) throw error;
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, claimedBy: sessionUser } : o));
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Claimed', detail: `Agent ${sessionUser} claimed order ${order.id} inside Drawer` });
@@ -191,7 +191,7 @@ export default function OrderDrawer({
 
   const unclaimAction = async () => {
     try {
-      const { error } = await supabase.from('orders').update({ claimed_by: null }).eq('id', order.id);
+      const { error } = await adminDbUpdate('orders', { id: order.id }, { claimed_by: null });
       if (error) throw error;
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, claimedBy: undefined } : o));
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Unclaimed', detail: `Admin ${sessionUser} force unclaimed order ${order.id}` });

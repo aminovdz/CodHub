@@ -10,6 +10,11 @@ export interface Block {
   id: string;
   type: BlockType;
   content: any;
+  settings?: {
+    padding?: string;
+    margin?: string;
+    gap?: string;
+  };
 }
 
 interface BlockBuilderProps {
@@ -61,8 +66,8 @@ const DEFAULT_BLOCKS: Record<BlockType, any> = {
   },
   faq: {
     items: [
-      { question: 'Is it safe to pay on delivery?', answer: 'Yes, you only pay when you receive and inspect your item.' },
-      { question: 'How long does shipping take?', answer: 'Orders are dispatched within 24 hours and delivered within 2-3 days.' }
+      { question: 'Common Question 1?', answer: 'Answer goes here.' },
+      { question: 'Common Question 2?', answer: 'Answer goes here.' }
     ],
     bgColor: 'bg-white',
     textColor: 'text-slate-900'
@@ -73,30 +78,32 @@ function generateHtmlFromBlocks(blocks: Block[]): string {
   let html = '';
   
   blocks.forEach(block => {
+    const spacingClasses = `${block.settings?.padding || ''} ${block.settings?.margin || ''}`.trim();
+    
     switch (block.type) {
       case 'hero':
-        html += `\n<!-- Block: Hero -->\n<div class="py-16 text-center ${block.content.bgColor || 'bg-slate-50'}">\n  <h1 class="text-5xl font-black ${block.content.textColor || 'text-slate-900'} mb-4">${block.content.headline}</h1>\n  <p class="text-xl ${block.content.textColor ? block.content.textColor.replace('900', '600') : 'text-slate-600'} mb-8">${block.content.subheadline}</p>\n  ${block.content.imageUrl ? `<img src="${block.content.imageUrl}" alt="Hero" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover aspect-video">` : ''}\n</div>\n`;
+        html += `\n<!-- Block: Hero -->\n<div class="${spacingClasses || 'py-16'} text-center ${block.content.bgColor || 'bg-slate-50'}">\n  <h1 class="text-5xl font-black ${block.content.textColor || 'text-slate-900'} mb-4">${block.content.headline}</h1>\n  <p class="text-xl ${block.content.textColor ? block.content.textColor.replace('900', '600') : 'text-slate-600'} mb-8">${block.content.subheadline}</p>\n  ${block.content.imageUrl ? `<img src="${block.content.imageUrl}" alt="Hero" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover aspect-video">` : ''}\n</div>\n`;
         break;
       case 'features':
-        html += `\n<!-- Block: Features -->\n<div class="${block.content.bgColor || 'bg-white'} ${block.content.textColor || 'text-slate-900'} grid grid-cols-1 md:grid-cols-3 gap-6 py-12 px-4">\n${block.content.items.map((item: any) => `  <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">${item.title}</h3>\n    <p class="opacity-80 text-sm">${item.description}</p>\n  </div>`).join('\n')}\n</div>\n`;
+        html += `\n<!-- Block: Features -->\n<div class="${block.content.bgColor || 'bg-white'} ${block.content.textColor || 'text-slate-900'} grid grid-cols-1 md:grid-cols-3 ${block.settings?.gap || 'gap-6'} ${spacingClasses || 'py-12 px-4'}">\n${block.content.items.map((item: any) => `  <div class="bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-sm border border-slate-100 text-center">\n    <h3 class="font-black text-lg mb-2">${item.title}</h3>\n    <p class="opacity-80 text-sm">${item.description}</p>\n  </div>`).join('\n')}\n</div>\n`;
         break;
       case 'image':
-        html += `\n<!-- Block: Image -->\n<div class="max-w-4xl mx-auto py-6 px-4 text-center">\n  <img src="${block.content.url}" alt="${block.content.alt}" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
+        html += `\n<!-- Block: Image -->\n<div class="max-w-4xl mx-auto ${spacingClasses || 'py-6 px-4'} text-center">\n  <img src="${block.content.url}" alt="${block.content.alt}" class="mx-auto rounded-3xl shadow-xl w-full max-w-2xl object-cover">\n</div>\n`;
         break;
       case 'checkout':
-        html += `\n<!-- Block: Checkout -->\n<div id="checkout"></div>\n<!-- Inline Checkout Form renders a live order form here -->\n[CHECKOUT_FORM:${block.content.productId || '[PRODUCT_ID]'}]\n`;
+        html += `\n<!-- Block: Checkout -->\n<div id="checkout" class="${spacingClasses}"></div>\n<!-- Inline Checkout Form renders a live order form here -->\n[CHECKOUT_FORM:${block.content.productId || '[PRODUCT_ID]'}]\n`;
         break;
       case 'social_proof':
-        html += `\n<!-- Block: Social Proof -->\n<div class="py-12 px-4 ${block.content.bgColor || 'bg-slate-50'}">\n  <h2 class="text-3xl font-black text-center mb-8 ${block.content.textColor || 'text-slate-900'}">What Our Customers Say</h2>\n  <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">\n${block.content.reviews.map((r: any) => `    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">\n      <div class="text-amber-400 mb-2">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>\n      <p class="text-slate-700 italic mb-4">"${r.text}"</p>\n      <p class="font-bold text-slate-900">- ${r.name}</p>\n    </div>`).join('\n')}\n  </div>\n</div>\n`;
+        html += `\n<!-- Block: Social Proof -->\n<div class="${spacingClasses || 'py-12 px-4'} ${block.content.bgColor || 'bg-slate-50'}">\n  <h2 class="text-3xl font-black text-center mb-8 ${block.content.textColor || 'text-slate-900'}">What Our Customers Say</h2>\n  <div class="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 ${block.settings?.gap || 'gap-6'}">\n${block.content.reviews.map((r: any) => `    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">\n      <div class="text-amber-400 mb-2">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>\n      <p class="text-slate-700 italic mb-4">"${r.text}"</p>\n      <p class="font-bold text-slate-900">- ${r.name}</p>\n    </div>`).join('\n')}\n  </div>\n</div>\n`;
         break;
       case 'button':
-        html += `\n<!-- Block: Button -->\n<div class="py-8 text-center">\n  <a href="${block.content.link || '#checkout'}" class="inline-block px-8 py-4 ${block.content.color || 'bg-indigo-600'} ${block.content.textColor || 'text-white'} font-black text-lg rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">${block.content.text}</a>\n</div>\n`;
+        html += `\n<!-- Block: Button -->\n<div class="${spacingClasses || 'py-8'} text-center">\n  <a href="${block.content.link || '#checkout'}" class="inline-block px-8 py-4 ${block.content.color || 'bg-indigo-600'} ${block.content.textColor || 'text-white'} font-black text-lg rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">${block.content.text}</a>\n</div>\n`;
         break;
       case 'faq':
-        html += `\n<!-- Block: FAQ -->\n<div class="py-12 px-4 ${block.content.bgColor || 'bg-white'}">\n  <h2 class="text-3xl font-black text-center mb-8 ${block.content.textColor || 'text-slate-900'}">Frequently Asked Questions</h2>\n  <div class="max-w-3xl mx-auto space-y-4">\n${block.content.items.map((item: any) => `    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">\n      <h3 class="font-bold text-lg mb-2 text-slate-900">${item.question}</h3>\n      <p class="text-slate-600">${item.answer}</p>\n    </div>`).join('\n')}\n  </div>\n</div>\n`;
+        html += `\n<!-- Block: FAQ -->\n<div class="${spacingClasses || 'py-12 px-4'} ${block.content.bgColor || 'bg-white'}">\n  <h2 class="text-3xl font-black text-center mb-8 ${block.content.textColor || 'text-slate-900'}">Frequently Asked Questions</h2>\n  <div class="max-w-3xl mx-auto space-y-4">\n${block.content.items.map((item: any) => `    <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">\n      <h3 class="font-bold text-lg mb-2 text-slate-900">${item.question}</h3>\n      <p class="text-slate-600">${item.answer}</p>\n    </div>`).join('\n')}\n  </div>\n</div>\n`;
         break;
       case 'raw':
-        html += `\n<!-- Block: Raw HTML -->\n${block.content.html}\n`;
+        html += `\n<!-- Block: Raw HTML -->\n<div class="${spacingClasses}">\n${block.content.html}\n</div>\n`;
         break;
     }
   });
@@ -152,8 +159,8 @@ export function BlockBuilder({ initialHtml, onChange }: BlockBuilderProps) {
     onChange(generateHtmlFromBlocks(newBlocks));
   };
 
-  const updateBlock = (id: string, newContent: any) => {
-    const newBlocks = blocks.map(b => b.id === id ? { ...b, content: newContent } : b);
+  const updateBlock = (id: string, newContent: any, newSettings?: any) => {
+    const newBlocks = blocks.map(b => b.id === id ? { ...b, content: newContent, ...(newSettings ? { settings: newSettings } : {}) } : b);
     setBlocks(newBlocks);
     onChange(generateHtmlFromBlocks(newBlocks));
   };
@@ -432,6 +439,35 @@ export function BlockBuilder({ initialHtml, onChange }: BlockBuilderProps) {
                   />
                 </div>
               )}
+
+              {/* Spacing & Layout Settings */}
+              <div className="mt-6 pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <Settings size={14} className="text-slate-400" />
+                  <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">Spacing & Layout</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Padding (e.g. py-16 px-4)</label>
+                    <input type="text" value={block.settings?.padding || ''} placeholder="Default padding" 
+                      onChange={e => updateBlock(block.id, block.content, { ...block.settings, padding: e.target.value })} 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Margin (e.g. my-8 mx-auto)</label>
+                    <input type="text" value={block.settings?.margin || ''} placeholder="Default margin" 
+                      onChange={e => updateBlock(block.id, block.content, { ...block.settings, margin: e.target.value })} 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Gap (if grid, e.g. gap-6)</label>
+                    <input type="text" value={block.settings?.gap || ''} placeholder="Default gap" 
+                      onChange={e => updateBlock(block.id, block.content, { ...block.settings, gap: e.target.value })} 
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         ))}

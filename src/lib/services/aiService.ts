@@ -78,13 +78,17 @@ export const aiService = {
   /**
    * Generates a high-converting Next.js React component for a landing page.
    */
-  async generateLandingPage(title: string, region: string): Promise<{ componentCode: string; metadata: any } | null> {
+  async generateLandingPage(title: string, region: string, contentStr?: string): Promise<{ componentCode: string; metadata: any } | null> {
     const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
     const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
     
-    const prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.
+    let prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.`;
+    
+    if (contentStr) {
+      prompt += `\n\nHere is the strategy/content proposed by the CRO specialist: ${contentStr}`;
+    }
 
-You will receive raw product text/data and a list of direct, external Image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
+    prompt += `\n\nYou will receive raw product text/data and a list of direct, external Image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
 
 ### 1. Copywriting Requirements
 - Language: Write ALL copy in **${languageStr}**.
@@ -99,14 +103,24 @@ You will receive raw product text/data and a list of direct, external Image URLs
 - **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. Use tight tracking for large headlines (\`tracking-tight\`) and relaxed leading for body text (\`leading-relaxed\`).
 - **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile. Alternate section backgrounds (e.g., white -> very light gray -> brand color) to create visual rhythm.
 
-### 3. Page Structure Requirements
-1. **The Hero Section (The Hook)**
-   - Striking, full-width or split layout with a prominent product image.
-   - Primary Headline: Focus on the ultimate desired result (< 8 words).
-   - Sub-headline: Explain how the product achieves the promise.
-   - Trust Badges: A row of icons/text beneath the CTA (e.g., "🚚 Free Shipping | 💰 Pay on Delivery | ⭐ 4.9/5 Rating").
-   - Action: Include a compelling CTA button that anchors to the checkout form.
-2. **The Problem & Solution (PAS) Block**
+### 1. Aesthetic and Design System
+- The page MUST feel extremely premium, similar to Apple or high-end D2C brands.
+- Use ultra-clean typography: Tailwind \`font-sans\`, \`tracking-tight\` for headings, generous \`leading-relaxed\` for body text.
+- Use sophisticated color palettes: soft gradients (e.g., \`bg-gradient-to-r from-slate-900 to-slate-800\` for dark sections), stark contrast, and highly polished buttons (\`bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-500/30\`).
+- Apply deep \`shadow-2xl\` on product images and cards to make them float. Use \`rounded-3xl\` for soft, modern corners.
+
+### 2. Localization Requirements
+- The target market region is: ${region.toUpperCase()}.
+- The language is: ${languageStr}. All copy MUST be highly localized and culturally persuasive.
+${isArabic ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate.' : ''}
+
+### 3. CRO Page Structure (MANDATORY)
+1. **The Hook (Hero Section)**
+   - High-contrast, full-width section.
+   - Headline: A massive, emotion-driven promise addressing the core desire.
+   - Subheadline: Logical justification of the promise.
+   - Primary Call-to-Action (CTA) button: Massive, glowing, action-oriented text (e.g., "Claim Your 50% Discount Now").
+2. **The Agitation (Problem Section)**
    - Identify the user's frustration and introduce the product as the definitive solution. Use contrasting colors (e.g., a dark section) to make this stand out.
 3. **Feature & Benefit Grid**
    - Extract 3-4 top features and display them in a visually appealing grid (e.g., using cards with icons or emojis).
@@ -118,7 +132,6 @@ You will receive raw product text/data and a list of direct, external Image URLs
    - Add a beautifully styled FAQ accordion or list addressing the top 3 objections.
 
 ### 4. Technical Execution
-${isArabic ? '- **RTL Support**: The language is Arabic. You MUST rely entirely on `text-right` and logical flex reversals (or `rtl:` tailwind prefixes) manually to ensure the page flows correctly from right to left.' : ''}
 - IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
 - No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
 - Mobile-First: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
@@ -134,14 +147,15 @@ Begin your response with a brief JSON block wrapped in standard markdown comment
 }
 Immediately following this commented block, provide the complete raw HTML code starting with a \`<div>\`.
 
-Create this for the product: "${title}" in the region: "${region}".`;
+Create this for the product: "${title}" in the region: "${region}".
+`;
 
     try {
       const { provider, apiKey, model } = this.getProviderAndKey();
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, type: 'text', provider, apiKey, model })
+        body: JSON.stringify({ prompt, images: [], type: 'text', provider, apiKey, model })
       });
       
       if (!response.ok) throw new Error('AI API Error');
@@ -372,11 +386,11 @@ Create this for the product: "${title}" in the region: "${region}".`;
       
       You must return a JSON response adhering exactly to this structure:
       {
-        "message": "Your text response or explanation to the user.",
         "proposedAction": {
           "type": ${allowedActionTypes.map(t => `"${t}"`).join(' | ')},
           "previewData": { ... }
-        }
+        },
+        "message": "Your text response or explanation to the user."
       }
       
       ${previewDataInstructions}
@@ -405,8 +419,9 @@ Create this for the product: "${title}" in the region: "${region}".`;
       
       const data = await response.json();
       const result = data.result;
-      if (result?.proposedAction?.type === 'CREATE_LANDING_PAGE' && result.proposedAction.previewData?.htmlContent) {
-        let content = result.proposedAction.previewData.htmlContent;
+      const htmlRaw = result?.proposedAction?.previewData?.htmlContent || result?.proposedAction?.previewData?.htmlBody || result?.proposedAction?.previewData?.html;
+      if (result?.proposedAction?.type?.includes('LANDING_PAGE') && htmlRaw) {
+        let content = htmlRaw;
         content = content.replace(/^```[a-z]*\n/i, '').replace(/```$/i, '').trim();
         if (content.includes('return')) {
           const returnMatch = content.match(/return\s*\(\s*([\s\S]*?)\s*\)\s*;?/);

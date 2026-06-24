@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { slugify } from '../utils';
 
 import { DEFAULT_TRANSLATIONS } from '../translations';
-import { supabase } from '../supabase';
+
 import { useNotificationStore } from './useNotificationStore';
+import { adminDbSelect, adminDbInsert, adminDbUpdate, adminDbDelete, adminDbUpsert } from '../actions/adminDb';
 
 export const ALGERIA_WILAYAS = [
   "Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger", "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma", "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh", "Illizi", "Bordj Bou Arreridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal", "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"
@@ -918,14 +919,11 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const row = storeToRow(storeWithTrans);
         console.log("Inserting store row:", row);
 
-        const { data, error } = await supabase
-          .from('stores')
-          .insert(row)
-          .select('id');
+        const { data, error } = await adminDbInsert('stores', row);
         
         if (error) {
           console.error("Supabase Add Store Error:", error);
-          useNotificationStore.getState().notify(`Failed to add store: ${error.message || 'Check console'}`, 'error');
+          useNotificationStore.getState().notify(`Failed to add store: ${error || 'Check console'}`, 'error');
           return;
         }
 
@@ -950,9 +948,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           deliveryRate: 0
         }));
 
-        const { error: zonesError } = await supabase
-          .from('shipping_zones')
-          .insert(defaultZones.map(shippingZoneToRow));
+        const { error: zonesError } = await adminDbInsert('shipping_zones', defaultZones.map(shippingZoneToRow));
 
         if (zonesError) {
           console.error("Failed to auto-populate shipping zones:", zonesError);
@@ -998,7 +994,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           ...(latestStore?.translations ? { translations: latestStore.translations } : {})
         } as Partial<Store>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
-        const { error } = await supabase.from('stores').update(cleanRow).eq('id', storeId);
+        const { error } = await adminDbUpdate('stores', { id: storeId }, cleanRow);
         if (error) console.error("Failed to update store in Supabase", error);
       },
       removeStore: async (storeId) => {
@@ -1009,9 +1005,9 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             activeStore: state.activeStore.id === storeId ? updated[0] : state.activeStore
           };
         });
-        const { error } = await supabase.from('stores').delete().eq('id', storeId);
+        const { error } = await adminDbDelete('stores', { id: storeId });
         if (error) {
-          console.error("Failed to delete store from Supabase:", error.message, error.details, error.hint);
+          console.error("Failed to delete store from Supabase:", error);
         }
       },
       
@@ -1036,17 +1032,13 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         // Insert to Supabase first (let DB generate UUID)
         const row = productToRow(product);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined && v !== null));
-        const { data, error } = await supabase
-          .from('products')
-          .insert(cleanRow)
-          .select('id')
-          .single();
+        const { data, error } = await adminDbInsert('products', cleanRow);
         if (error) {
           console.error("Failed to add product to Supabase", error);
           return;
         }
         // Add to local state with real UUID from DB
-        const finalProduct = { ...product, id: data.id };
+        const finalProduct = { ...product, id: data?.[0]?.id };
         set((state) => ({ products: [...state.products, finalProduct] }));
       },
       updateProduct: async (productId, data) => {
@@ -1057,14 +1049,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         // Map to snake_case and strip undefined
         const row = productToRow(data as Partial<Product>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
-        const { error } = await supabase.from('products').update(cleanRow).eq('id', productId);
-        if (error) console.error("Failed to update product in Supabase", error.message || error);
+        const { error } = await adminDbUpdate('products', { id: productId }, cleanRow);
+        if (error) console.error("Failed to update product in Supabase", error);
       },
       deleteProduct: async (productId) => {
         set((state) => ({
           products: state.products.filter(p => p.id !== productId)
         }));
-        const { error } = await supabase.from('products').delete().eq('id', productId);
+        const { error } = await adminDbDelete('products', { id: productId });
         if (error) console.error("Failed to delete product from Supabase", error);
       },
 
@@ -1102,10 +1094,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
         // Run background DB operations
         deleted.forEach(async (p) => {
-          const { error } = await supabase
-            .from('landing_pages')
-            .delete()
-            .eq('id', p.id);
+          const { error } = await adminDbDelete('landing_pages', { id: p.id });
           if (error) console.error("Failed to delete landing page from Supabase:", error);
         });
 
@@ -1118,9 +1107,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             html_content: p.htmlContent,
             published: p.published
           };
-          const { error } = await supabase
-            .from('landing_pages')
-            .upsert(row);
+          const { error } = await adminDbUpsert('landing_pages', row);
           if (error) console.error("Failed to save landing page to Supabase:", error);
         });
 
@@ -1205,14 +1192,11 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const row = staffToRow({ ...account, pin: finalPin });
         console.log("Inserting staff row:", row);
 
-        const { data, error } = await supabase
-          .from('staff_accounts')
-          .insert(row)
-          .select('id');
+        const { data, error } = await adminDbInsert('staff_accounts', row);
 
         if (error) {
           console.error("Supabase Add Staff Error:", error);
-          useNotificationStore.getState().notify(`Failed to add staff: ${error.message || 'Check console'}`, 'error');
+          useNotificationStore.getState().notify(`Failed to add staff: ${error || 'Check console'}`, 'error');
           return;
         }
 
@@ -1239,7 +1223,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
               staffPermissions: { ...currentPermissions, [newId]: finalAccount.permissions || { canExport: true, canEditTotals: true, canDeleteNotes: true, canAssignOrders: true } },
               staffEmails: { ...currentEmails, [newId]: finalAccount.email || '' }
             };
-            supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
+            adminDbUpdate('stores', { id: activeStore.id }, { translations: updatedTranslations }).then();
             set(st => ({
               availableStores: st.availableStores.map(s => s.id === activeStore.id ? { ...s, translations: updatedTranslations } : s),
               activeStore: st.activeStore?.id === activeStore.id ? { ...st.activeStore, translations: updatedTranslations } : st.activeStore
@@ -1272,10 +1256,10 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const row = staffToRow({ ...data, pin: finalPin } as Partial<StaffAccount>);
         const cleanRow = Object.fromEntries(Object.entries(row).filter(([_, v]) => v !== undefined));
         if (Object.keys(cleanRow).length > 0) {
-          const { error } = await supabase.from('staff_accounts').update(cleanRow).eq('id', id);
+          const { error } = await adminDbUpdate('staff_accounts', { id }, cleanRow);
           if (error) {
             console.error("Failed to update staff account", error);
-            useNotificationStore.getState().notify(`Failed to update staff: ${error.message || 'Check console'}`, 'error');
+            useNotificationStore.getState().notify(`Failed to update staff: ${error || 'Check console'}`, 'error');
           }
         }
 
@@ -1309,7 +1293,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
               };
             }
 
-            supabase.from('stores').update({ translations: updatedTranslations }).eq('id', activeStore.id).then();
+            adminDbUpdate('stores', { id: activeStore.id }, { translations: updatedTranslations }).then();
             set(st => ({
               availableStores: st.availableStores.map(s => s.id === activeStore.id ? { ...s, translations: updatedTranslations } : s),
               activeStore: st.activeStore?.id === activeStore.id ? { ...st.activeStore, translations: updatedTranslations } : st.activeStore
@@ -1321,7 +1305,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         set((state) => ({
           staffAccounts: state.staffAccounts.filter(a => a.id !== id)
         }));
-        const { error } = await supabase.from('staff_accounts').delete().eq('id', id);
+        const { error } = await adminDbDelete('staff_accounts', { id });
         if (error) console.error("Failed to delete staff account", error);
       },
 
@@ -1372,9 +1356,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         // Try persisting to Supabase activity_logs table (handles errors gracefully if table does not exist yet)
         (async () => {
           try {
-            const { error } = await supabase
-              .from('activity_logs')
-              .insert({
+            const { error } = await adminDbInsert('activity_logs', {
                 store_id: log.storeId,
                 user: log.user,
                 action: log.action,
@@ -1382,7 +1364,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
                 timestamp: newLog.timestamp
               });
             if (error) {
-              console.warn("Failed to save activity log to Supabase:", error.message);
+              console.warn("Failed to save activity log to Supabase:", error);
             }
           } catch (err) {
             console.warn("Error inserting activity log:", err);
@@ -1401,9 +1383,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
       saveCheckoutConfig: async (config) => {
         const row = checkoutConfigToRow(config);
-        const { error } = await supabase
-          .from('checkout_configs')
-          .upsert(row, { onConflict: 'store_id' });
+        const { error } = await adminDbUpsert('checkout_configs', row, { onConflict: 'store_id' });
         
         if (error) {
           console.error("Error saving checkout config:", error);
@@ -1420,25 +1400,20 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
       saveShippingZones: async (storeId, zones) => {
         // 1. Delete existing zones for this store
-        const { error: deleteError } = await supabase
-          .from('shipping_zones')
-          .delete()
-          .eq('store_id', storeId);
+        const { error: deleteError } = await adminDbDelete('shipping_zones', { store_id: storeId });
         
         if (deleteError) {
-          console.error("Error clearing shipping zones:", deleteError.message, deleteError.code);
+          console.error("Error clearing shipping zones:", deleteError);
           throw deleteError;
         }
 
         // 2. Insert new zones (if any)
         if (zones.length > 0) {
-          const { error: insertError } = await supabase
-            .from('shipping_zones')
-            .insert(zones.map(shippingZoneToRow));
+          const { error: insertError } = await adminDbInsert('shipping_zones', zones.map(shippingZoneToRow));
 
           if (insertError) {
-            console.error("Error inserting shipping zones:", insertError.message, insertError.code, insertError.details);
-            useNotificationStore.getState().notify(`Failed to save shipping zones: ${insertError.message}`, "error");
+            console.error("Error inserting shipping zones:", insertError);
+            useNotificationStore.getState().notify(`Failed to save shipping zones: ${insertError}`, "error");
             throw insertError;
           }
         }
@@ -1467,7 +1442,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             ...(store.translations as any || {}),
             coupons: storeCoupons
           };
-          supabase.from('stores').update({ translations: updatedTranslations }).eq('id', store.id).then();
+          adminDbUpdate('stores', { id: store.id }, { translations: updatedTranslations }).then();
         });
 
         const nextStores = state.availableStores.map(store => ({
@@ -1575,7 +1550,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
           let resolvedStoreId = currentStoreId;
           
           if (!isAdmin && !resolvedStoreId && typeof window !== 'undefined') {
-            const { data: stores } = await supabase.from('stores').select('*');
+            const { data: stores } = await adminDbSelect('stores');
             if (stores) {
               const host = window.location.hostname.replace('www.', '').split(':')[0].toLowerCase();
               let foundStore = stores.find(s => s.custom_domain && s.custom_domain.replace('www.', '').toLowerCase() === host);
@@ -1593,20 +1568,19 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             }
           }
 
-          // Base data needed for both storefront and admin
           const basePromises = [
-            supabase.from('stores').select('*'),
-            resolvedStoreId ? supabase.from('products').select('*').eq('store_id', resolvedStoreId) : supabase.from('products').select('*'),
-            resolvedStoreId ? supabase.from('shipping_zones').select('*').eq('store_id', resolvedStoreId) : supabase.from('shipping_zones').select('*'),
-            resolvedStoreId ? supabase.from('checkout_configs').select('*').eq('store_id', resolvedStoreId) : supabase.from('checkout_configs').select('*'),
-            resolvedStoreId ? supabase.from('landing_pages').select('*').eq('store_id', resolvedStoreId) : supabase.from('landing_pages').select('*')
+            adminDbSelect('stores'),
+            adminDbSelect('products', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
+            adminDbSelect('shipping_zones', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
+            adminDbSelect('checkout_configs', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
+            adminDbSelect('landing_pages', resolvedStoreId ? { store_id: resolvedStoreId } : undefined)
           ];
 
           // Heavy data only needed for admin
           const adminPromises = isAdmin ? [
-            supabase.from('orders').select('*').order('date', { ascending: false }),
-            supabase.from('staff_accounts').select('*'),
-            supabase.from('call_logs').select('*').order('called_at', { ascending: false })
+            adminDbSelect('orders', undefined, { orderColumn: 'date', ascending: false }),
+            adminDbSelect('staff_accounts'),
+            adminDbSelect('call_logs', undefined, { orderColumn: 'called_at', ascending: false })
           ] : [
             Promise.resolve({ data: [] }), // dummy orders
             Promise.resolve({ data: [] }), // dummy staff
@@ -1722,11 +1696,10 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             const ninetyDaysAgo = new Date();
             ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
             
-            const { data: logsData, error: logsError } = await supabase
-              .from('activity_logs')
-              .select('*')
-              .gte('timestamp', ninetyDaysAgo.toISOString())
-              .order('timestamp', { ascending: false });
+            const { data: logsData, error: logsError } = await adminDbSelect('activity_logs', 
+              { store_id: resolvedStoreId }, 
+              { orderColumn: 'timestamp', ascending: false, limit: 50 }
+            );
             if (!logsError && logsData) {
               const fetchedLogs = logsData.map(row => ({
                 id: row.id,

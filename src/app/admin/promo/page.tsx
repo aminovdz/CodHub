@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
@@ -36,9 +36,21 @@ export default function AdminPromoPage() {
   const storePages = landingPages.filter(p => p.storeId === activeStore.id && !p.htmlContent?.includes('"isAbTest":true'));
   const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
 
+  const firstMatch = storePages.find(p => p.slug === originalSlug);
   const existingPage = selectedPageId 
     ? storePages.find(p => p.id === selectedPageId) 
-    : storePages.find(p => p.slug === originalSlug);
+    : (firstMatch || (storePages.length > 0 ? storePages[storePages.length - 1] : undefined));
+
+  // Sync state if existingPage is found but we haven't selected it yet
+  useEffect(() => {
+    if (existingPage && existingPage.id !== selectedPageId) {
+      setTitle(existingPage.title || '');
+      setSlug(existingPage.slug);
+      setOriginalSlug(existingPage.slug);
+      setHtmlContent(existingPage.htmlContent);
+      setSelectedPageId(existingPage.id);
+    }
+  }, [existingPage, selectedPageId]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();

@@ -307,6 +307,8 @@ export const DEFAULT_TRANSLATIONS: Record<string, Record<string, string>> = {
     'checkout.remove': 'إزالة',
     'checkout.homeDelivery': 'توصيل للمنزل',
     'checkout.stopDesk': 'مكتب التوصيل',
+    'checkout.guaranteeTitle': 'جودة مضمونة وتوصيل آمن',
+    'checkout.guaranteeSubtitle': 'الدفع عند الاستلام متوفر',
     'thankyou.orderConfirmed': 'تم تأكيد الطلب!',
     'thankyou.thankYou': 'شكراً لك',
     'thankyou.orderProcessed': 'طلبك قيد المعالجة الآن.',

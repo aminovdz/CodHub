@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAdminStore, HomepageConfig, HomepageBlock } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
-import { Save, PlusSquare, Trash2, AlignLeft, LayoutTemplate, Package, GripVertical, Star, Globe, Layout, Code, FileText } from 'lucide-react';
+import { Save, PlusSquare, Trash2, AlignLeft, LayoutTemplate, Package, GripVertical, Star, Globe, Layout, Code, FileText, ChevronRight } from 'lucide-react';
 import { PREDEFINED_KEYS } from '@/lib/translations';
 
 export default function AdminHomepageEditor() {
@@ -218,25 +218,38 @@ export default function AdminHomepageEditor() {
                     {block.type === 'product_grid' && (
                       <div className="border border-slate-200 rounded-xl overflow-hidden">
                         <div className="bg-slate-50 p-3 border-b border-slate-200 text-xs font-bold text-slate-500 flex justify-between items-center">
-                          <span>Select Products (Hold Ctrl/Cmd to select multiple)</span>
+                          <span>Select Products</span>
                           <span className="text-indigo-500 font-normal">Leave empty to show all products</span>
                         </div>
                         <div className="p-4">
-                          <select 
-                            multiple
-                            value={block.productIds || []}
-                            onChange={(e) => {
-                              const selectedOptions = Array.from(e.target.selectedOptions, option => option.value);
-                              setBlocks(blocks.map(b => b.id === block.id ? { ...b, productIds: selectedOptions } : b));
-                            }}
-                            className="w-full h-64 px-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium bg-white shadow-inner"
-                          >
-                            {storeProducts.map(p => (
-                              <option key={p.id} value={p.id} className="p-2 border-b border-slate-50 hover:bg-indigo-50 cursor-pointer">
-                                {p.title} {p.category ? `— (${p.category})` : ''}
-                              </option>
-                            ))}
-                          </select>
+                          <details className="group border border-slate-300 rounded-xl bg-white cursor-pointer relative">
+                            <summary className="p-3 font-medium text-slate-700 list-none flex justify-between items-center">
+                              <span>{(block.productIds?.length || 0) > 0 ? `${block.productIds?.length} products selected` : 'Select products...'}</span>
+                              <ChevronRight size={16} className="group-open:rotate-90 transition-transform" />
+                            </summary>
+                            <div className="border-t border-slate-200 p-3 max-h-64 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50">
+                              {storeProducts.map(p => (
+                                <label key={p.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${block.productIds?.includes(p.id) ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 hover:bg-white bg-white'}`}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={block.productIds?.includes(p.id) || false} 
+                                    onChange={(e) => {
+                                      const currentIds = block.productIds || [];
+                                      const newIds = e.target.checked 
+                                        ? [...currentIds, p.id] 
+                                        : currentIds.filter((id: string) => id !== p.id);
+                                      setBlocks(blocks.map(b => b.id === block.id ? { ...b, productIds: newIds } : b));
+                                    }} 
+                                    className="w-4 h-4 text-indigo-600" 
+                                  />
+                                  <span className="font-medium text-sm text-slate-700">{p.title} {p.category ? <span className="text-slate-400 text-xs ml-1">({p.category})</span> : ''}</span>
+                                </label>
+                              ))}
+                              {storeProducts.length === 0 && (
+                                <div className="col-span-full text-center p-4 text-slate-500 text-sm">No products found for this store.</div>
+                              )}
+                            </div>
+                          </details>
                         </div>
                       </div>
                     )}

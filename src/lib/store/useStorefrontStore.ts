@@ -81,15 +81,26 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
       }
     });
 
+    const mappedProducts = products ? products.map(rowToProduct) : [];
+    const categories = Array.from(new Set(mappedProducts.map(p => p.category).filter(Boolean)));
+
     set({ 
       availableStores: mappedStores, 
-      products: products ? products.map(rowToProduct) : [],
+      products: mappedProducts,
       shippingZones: zones ? zones.map(rowToShippingZone) : [],
       checkoutConfigs: configs ? configs.map(rowToCheckoutConfig) : [],
-      landingPages: landingPages as LandingPage[] || [],
+      landingPages: landingPages ? landingPages.map((row: any) => ({
+        id: row.id,
+        storeId: row.store_id,
+        title: row.title,
+        slug: row.slug,
+        htmlContent: row.html_content,
+        published: row.published
+      })) as LandingPage[] : [],
       homepages: extractedHomepages,
       legalPages: extractedLegalPages,
       coupons: extractedCoupons,
+      categories: categories,
       isLoading: false
     });
   },

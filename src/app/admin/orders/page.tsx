@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Edit2, Plus, RefreshCw, Trash2, Send, Download, Phone, CheckCircle, XCircle, Clock, PhoneCall, PhoneMissed, MessageSquare, UserCheck, Calendar, ShieldCheck, MapPin, LayoutGrid, List } from 'lucide-react';
 import { useAdminStore, Order } from '@/lib/store/useAdminStore';
-import { supabase } from '@/lib/supabase';
+import { adminDbDelete, adminDbUpdate } from '@/lib/actions/adminDb';
 import { sendMetaConfirmation } from '@/lib/actions/funnelActions';
 import { syncDeliveryStatuses } from '@/lib/actions/syncDelivery';
 import { getShortOrderId } from '@/lib/idHelper';
@@ -87,7 +87,7 @@ export default function AdminOrdersPage() {
     if (!isAdmin) { alert("Staff accounts cannot delete orders."); return; }
     if (confirm('Are you sure you want to delete this order?')) {
       try {
-        const { error } = await supabase.from('orders').delete().eq('id', id);
+        const { error } = await adminDbDelete('orders', { id });
         if (error) throw error;
         setOrders(prev => prev.filter(o => o.id !== id));
         addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Deleted', detail: `Order ${id} deleted` });
@@ -98,7 +98,7 @@ export default function AdminOrdersPage() {
 
   const handleClaimOrder = async (id: string) => {
     try {
-      const { error } = await supabase.from('orders').update({ claimed_by: sessionUser }).eq('id', id);
+      const { error } = await adminDbUpdate('orders', { id }, { claimed_by: sessionUser });
       if (error) throw error;
       setOrders(prev => prev.map(o => o.id === id ? { ...o, claimedBy: sessionUser } : o));
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Claimed', detail: `Agent ${sessionUser} claimed order ${id}` });
@@ -107,7 +107,7 @@ export default function AdminOrdersPage() {
 
   const handleUnclaimOrder = async (id: string) => {
     try {
-      const { error } = await supabase.from('orders').update({ claimed_by: null }).eq('id', id);
+      const { error } = await adminDbUpdate('orders', { id }, { claimed_by: null });
       if (error) throw error;
       setOrders(prev => prev.map(o => o.id === id ? { ...o, claimedBy: undefined } : o));
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Unclaimed', detail: `Agent ${sessionUser} unclaimed order ${id}` });
@@ -128,7 +128,7 @@ export default function AdminOrdersPage() {
     if (selectedIds.size === 0) return;
     if (confirm(`Are you sure you want to delete ${selectedIds.size} orders?`)) {
       try {
-        const { error } = await supabase.from('orders').delete().in('id', Array.from(selectedIds));
+        const { error } = await adminDbDelete('orders', { id: Array.from(selectedIds) });
         if (error) throw error;
         setOrders(prev => prev.filter(o => !selectedIds.has(o.id)));
         addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Delete', detail: `${selectedIds.size} orders deleted` });
@@ -142,7 +142,7 @@ export default function AdminOrdersPage() {
     const idsArray = Array.from(selectedIds);
     setOrders(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, status } : o));
     try {
-      const { error } = await supabase.from('orders').update({ status }).in('id', idsArray);
+      const { error } = await adminDbUpdate('orders', { id: idsArray }, { status });
       if (error) throw error;
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Status Update', detail: `${selectedIds.size} orders marked as ${status}` });
       setSelectedIds(new Set());
@@ -155,7 +155,7 @@ export default function AdminOrdersPage() {
     const idsArray = Array.from(selectedIds);
     setOrders(prev => prev.map(o => selectedIds.has(o.id) ? { ...o, fulfillmentProvider: provider } : o));
     try {
-      const { error } = await supabase.from('orders').update({ fulfillment_provider: provider }).in('id', idsArray);
+      const { error } = await adminDbUpdate('orders', { id: idsArray }, { fulfillment_provider: provider });
       if (error) throw error;
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Bulk Delivery Update', detail: `${selectedIds.size} orders assigned to ${provider || 'Unassigned'}` });
       setSelectedIds(new Set());

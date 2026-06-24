@@ -19,24 +19,21 @@ export const CreateLandingPageSkill: AgentSkill = {
   3. The specific copywriting tone, localized terminology, and pricing presentation (local currency, regional payment expectations).
   4. Output this strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED CRO STRATEGY" within your JSON "message" field.
 
-  ### PHASE 2: PRODUCTION-READY HTML (Put this inside your JSON "previewData.htmlContent" field)
-  Generate a complete, fully coded, direct-response landing page using pure HTML and Tailwind CSS classes.
-  Mandatory Page Requirements:
-  1. No Global Navigation or Footer Leaks: Remove standard headers/footers. The user has only two choices: convert or leave.
-  2. Perfect Message Match: The Hero headline must mirror the exact hook from the marketing angle.
-  3. Localized Social Proof: Testimonials, review names, and cities must reflect realistic profiles from the target region.
-  4. Hyper-Visual Value Proposition: Include a pain vs. solution feature grid, clear pricing cards showing the local currency, a device compatibility section, and a conversion-focused FAQ.
-  5. Absolute Friction Reduction: CTAs must be sticky, high-contrast, and action-driven. Use "[CHECKOUT_FORM]" as the placeholder for the order form.
+  ### PHASE 2: LAUNCH PROPOSAL (Trigger the "CREATE_LANDING_PAGE" action)
+  You MUST trigger the "CREATE_LANDING_PAGE" action to pass your strategy to the background HTML generator.
+  The background system will read your generated CRO STRATEGY from Phase 1 and automatically generate the perfect HTML landing page.
+  All you need to do is provide a catchy "title" and the "productId" in the action's previewData.
   
   General Rules:
-  - Return ONLY pure HTML div structures for the htmlContent. NO <html>, <head>, or <body> tags. NO markdown wrappers inside htmlContent.
-  - IF AN IMAGE IS PROVIDED: Analyze the image carefully to determine the product, colors, and key features. Use this visual context to generate a highly tailored, visually consistent landing page.
+  - Return ONLY the "title" and "productId" in previewData.
+  - DO NOT ATTEMPT TO GENERATE ANY HTML. The background process will do it for you using your strategy.
+  - IF AN IMAGE IS PROVIDED: Analyze the image carefully to determine the product, colors, and key features. Put this analysis in your "message" field so the HTML generator can use it.
   `,
   previewDataInstructions: `
   For "CREATE_LANDING_PAGE": "previewData" MUST include:
     - "title": string (the page title)
     - "productId": string (the product ID from context)
-    - "htmlContent": string (complete mobile-first HTML landing page with Tailwind CSS classes, including hero section, pricing, benefits, and CTA button)
+    - DO NOT include "htmlContent" or any HTML inside the JSON. The HTML will be generated in a separate background process to avoid truncation limits. Output ONLY "title" and "productId".
   `,
   execute: (data, context) => {
     // Execution handled by the frontend preview modal in this specific case, 

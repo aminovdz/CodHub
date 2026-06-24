@@ -212,70 +212,60 @@ export async function POST(req: Request) {
     if (type === 'json') {
       try {
         let jsonString = textOutput;
-
-        // Find the first '{' and last '}' to extract just the JSON object
         const firstBrace = jsonString.indexOf('{');
-        const lastBrace = jsonString.lastIndexOf('}');
-        if (firstBrace !== -1 && lastBrace > firstBrace) {
-          jsonString = jsonString.slice(firstBrace, lastBrace + 1);
+        if (firstBrace !== -1) {
+          jsonString = jsonString.slice(firstBrace);
         }
 
-        // Try to fix common JSON issues: trailing commas before closing brace
-        jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
-
-        // Fix unescaped newlines inside strings
         let inString = false;
         let escapedJson = "";
+        let openBraces = 0;
+        let openBrackets = 0;
+        
         for (let i = 0; i < jsonString.length; i++) {
           const char = jsonString[i];
           if (char === '"' && (i === 0 || jsonString[i - 1] !== '\\')) {
             inString = !inString;
           }
+          
           if (inString) {
             if (char === '\n') escapedJson += '\\n';
             else if (char === '\r') escapedJson += '\\r';
             else if (char === '\t') escapedJson += '\\t';
             else escapedJson += char;
           } else {
+            if (char === '{') openBraces++;
+            else if (char === '}') openBraces--;
+            else if (char === '[') openBrackets++;
+            else if (char === ']') openBrackets--;
+            
             escapedJson += char;
+
+            if (openBraces === 0 && openBrackets === 0) {
+              break;
+            }
           }
         }
-        jsonString = escapedJson;
 
-        const parsed = JSON.parse(jsonString);
+        if (inString) {
+          escapedJson += '"';
+        }
+
+        while (openBrackets > 0) {
+          escapedJson += ']';
+          openBrackets--;
+        }
+        while (openBraces > 0) {
+          escapedJson += '}';
+          openBraces--;
+        }
+
+        escapedJson = escapedJson.replace(/,(\s*[}\]])/g, '$1');
+
+        const parsed = JSON.parse(escapedJson);
         return NextResponse.json({ result: parsed });
       } catch (e) {
         console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
-        // Fallback: Use regex to extract ```json blocks
-        const jsonMatch = textOutput.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-        if (jsonMatch && jsonMatch[1]) {
-           try {
-             let fallbackStr = jsonMatch[1].replace(/,(\s*[}\]])/g, '$1');
-             
-             let inFallbackString = false;
-             let escapedFallback = "";
-             for (let i = 0; i < fallbackStr.length; i++) {
-               const char = fallbackStr[i];
-               if (char === '"' && (i === 0 || fallbackStr[i - 1] !== '\\')) {
-                 inFallbackString = !inFallbackString;
-               }
-               if (inFallbackString) {
-                 if (char === '\n') escapedFallback += '\\n';
-                 else if (char === '\r') escapedFallback += '\\r';
-                 else if (char === '\t') escapedFallback += '\\t';
-                 else escapedFallback += char;
-               } else {
-                 escapedFallback += char;
-               }
-             }
-             fallbackStr = escapedFallback;
-
-             const fallbackParse = JSON.parse(fallbackStr);
-             return NextResponse.json({ result: fallbackParse });
-           } catch (fallbackErr) {
-             console.error("Fallback JSON parse also failed:", fallbackErr);
-           }
-        }
         return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput}` }, { status: 500 });
       }
     }
