@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload } from 'lucide-react';
+import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload, Trash2, Copy, Check } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 const sanitizeHTML = (html: string) => {
@@ -51,6 +51,16 @@ export default function AgentsHubPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const skillUploadRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const STARTER_PROMPTS: Record<string, string[]> = {
+    'product': ['Write a compelling product description for my new item.', 'Suggest 5 SEO-friendly titles for my product.', 'What features should I highlight for higher conversions?'],
+    'cro': ['How can I optimize my checkout page?', 'Analyze my current product layout.', 'Suggest an A/B test for the add-to-cart button.'],
+    'copywriter': ['Write a catchy Facebook ad copy.', 'Generate a short promotional email.', 'Create an urgency-driven headline.'],
+    'social': ['Give me 3 Instagram post ideas.', 'Write a viral TikTok script for my product.', 'Suggest a 7-day content calendar.'],
+    'default': ['How can you help me today?', 'What is your main expertise?']
+  };
 
   const selectedAgent = AGENTS.find(a => a.id === selectedAgentId)!;
   const chatKey = `${activeStore.id}_${selectedAgentId}`;
@@ -61,6 +71,27 @@ export default function AgentsHubPage() {
       setAgentChat(activeStore.id, selectedAgentId, newMessages(messages));
     } else {
       setAgentChat(activeStore.id, selectedAgentId, newMessages);
+    }
+  };
+
+  const handleClearChat = () => {
+    if (confirm('Are you sure you want to clear this conversation?')) {
+      setMessages([]);
+    }
+  };
+
+  const handleCopy = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '48px';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.min(scrollHeight, 200) + 'px';
     }
   };
 
@@ -364,17 +395,44 @@ export default function AgentsHubPage() {
                 return <IconComponent size={20} />;
               })()}
             </div>
-            <div>
+            <div className="flex-1">
               <h2 className="font-bold text-slate-900 dark:text-white">{selectedAgent.name}</h2>
               <p className="text-xs text-slate-500">Ready to assist with {activeStore.name}</p>
             </div>
+            {messages.length > 0 && (
+              <button
+                onClick={handleClearChat}
+                className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+                title="Clear conversation"
+              >
+                <Trash2 size={16} />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-                <Bot size={48} className="text-slate-200 dark:text-slate-700" />
-                <p>Start a conversation with the {selectedAgent.name}</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-6 max-w-lg mx-auto w-full">
+                <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center text-indigo-500 shadow-sm border border-indigo-100 dark:border-indigo-900/50">
+                  <Bot size={40} />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-xl font-black text-slate-800 dark:text-slate-200 mb-2">Chat with {selectedAgent.name}</h3>
+                  <p className="text-sm">Select a starter prompt or type your own message below.</p>
+                </div>
+                
+                <div className="w-full grid grid-cols-1 gap-2 mt-4">
+                  {(STARTER_PROMPTS[selectedAgent.id] || STARTER_PROMPTS['default']).map((prompt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setInput(prompt)}
+                      className="text-left p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all text-sm text-slate-700 dark:text-slate-300 shadow-sm hover:shadow-md"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               messages.map(msg => (
@@ -393,12 +451,21 @@ export default function AgentsHubPage() {
                     </div>
                   )}
                   
-                  <div className={`max-w-[80%] ${msg.role === 'user' ? 'items-end flex flex-col' : 'items-start flex flex-col'}`}>
-                    <div className={`p-4 rounded-2xl ${
+                  <div className={`max-w-[80%] ${msg.role === 'user' ? 'items-end flex flex-col' : 'items-start flex flex-col group relative'}`}>
+                    <div className={`p-4 rounded-2xl relative ${
                       msg.role === 'user' 
-                        ? 'bg-indigo-600 text-white rounded-tr-none' 
-                        : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-none'
+                        ? 'bg-indigo-600 text-white rounded-tr-none shadow-md shadow-indigo-600/20' 
+                        : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-none shadow-sm'
                     }`}>
+                      {msg.role === 'agent' && (
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="absolute -right-10 top-2 p-1.5 text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700 shadow-sm"
+                          title="Copy message"
+                        >
+                          {copiedId === msg.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                        </button>
+                      )}
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                       
                       {/* Render User Attachments */}
@@ -584,16 +651,17 @@ export default function AgentsHubPage() {
                 <Paperclip size={20} />
               </button>
               <textarea
+                ref={textareaRef}
                 value={input}
-                onChange={e => setInput(e.target.value)}
+                onChange={handleInput}
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSend();
                   }
                 }}
-                placeholder={`Ask the ${selectedAgent.name} to do something...`}
-                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-900 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-600 dark:text-white resize-none min-h-[44px] max-h-[120px]"
+                placeholder={`Ask the ${selectedAgent.name}... (Shift+Enter for new line)`}
+                className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-indigo-600 focus:border-transparent dark:text-white resize-none min-h-[48px] max-h-[200px] transition-all"
                 disabled={isLoading}
                 rows={1}
               />
