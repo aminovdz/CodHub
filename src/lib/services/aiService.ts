@@ -114,19 +114,35 @@ export const aiService = {
 - The language is: ${languageStr}. All copy MUST be highly localized and culturally persuasive.
 ${isArabic ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate.' : ''}
 
-### 3. CRO Page Structure (MANDATORY)
-1. **The Hook (Hero Section)**: High-contrast, full-width section with a massive, emotion-driven headline, GIF/Video media, Trust Badge (Pay on Delivery), and Anchor CTA.
-2. **The Agitation (Problem Section)**: Advertorial setup of the problem and the product as the solution with bolded benefit bullets.
-3. **Visual Proof & Authority**: Demonstration media (Before/After) and expert authority.
-4. **Aggressive Social Proof**: Photo reviews with local location tags.
-5. **Risk Reversal & Scarcity**: Stock indicators and absolute guarantees.
-6. **The Embedded COD Form (MANDATORY)**: You MUST include the exact string \`[CHECKOUT_FORM]\` at the bottom of the page where the lead form should be rendered. This replaces standard checkouts.
+### 3. Comprehensive CRO Page Structure (MANDATORY - DO NOT SKIP SECTIONS)
+You MUST generate a long, highly detailed, single-page funnel. Do not output a short stub. Follow this strict top-to-bottom structure exactly:
+1. **The Above-the-Fold Hook**
+   - Headline: State the primary benefit, not the product name. (e.g., "Eliminate Back Pain in 10 Minutes").
+   - Media: A prominent product image or placeholder for a GIF showing the product in action.
+   - Trust Badge: A prominent "Pay on Delivery / الدفع عند الاستلام" badge immediately visible.
+   - Primary CTA: A massive button that anchors down to the form at the bottom of the page.
+2. **The Agitation & Solution (Advertorial Style)**
+   - The Problem: 2-3 sentences agitating the user's current issue.
+   - The Solution: Introduce the product as the exact fix.
+   - Benefit Bullets: 3 to 4 punchy bullet points detailing what the user gets, heavily bolding the key outcomes.
+3. **Visual Proof & Authority**
+   - Demonstration: Before/After visuals or demonstration images showing the mechanism working.
+   - Authority Elements: "As seen on" logos, or a doctor/expert quote if applicable.
+4. **Aggressive Social Proof**
+   - Use photo reviews (if images provided) showing the product in actual customers' hands.
+   - Include location tags (e.g., "Verified Buyer - Algiers") to increase local relevance and trust.
+5. **Risk Reversal & Scarcity**
+   - Scarcity: A believable stock indicator (e.g., "Only 14 left in the Algiers warehouse") or a time-bound discount.
+   - Guarantee: Emphasize free returns, easy exchanges, or a 100% satisfaction guarantee.
+6. **The Embedded COD Form (The Closer)**
+   - You MUST include the exact string \`[CHECKOUT_FORM]\` where the simplified lead form should be rendered. Place it prominently at the bottom of the page.
+   - Offer Summary: Clearly state the final price, including shipping, right above the submit button area.
+   - Final CTA text: Use action-oriented text like "Confirm Order Now - Pay at the Door."
 
-### 4. Technical Execution & Anti-Abbreviation (CRITICAL)
-- **NO ABBREVIATIONS**: You are strictly forbidden from using placeholders like "<!-- Add more content here -->", "...", or "Rest of the code". You MUST generate every single section in FULL detail. This is a production deployment.
-- **HTML/CSS Rules**: Use standard HTML attribute \`class\` (NOT \`className\`). No Next.js components. Use standard HTML \`<img>\` tags with \`loading="lazy"\`.
-- **Image Injection**: If the CRO strategy provides specific image URLs, you MUST use them in \`<img>\` tags in Steps 1, 3, and 4.
-- **Mobile-First**: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
+### 4. Technical Execution
+- IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
+- No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
+- Mobile-First: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
 
 ### 5. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
