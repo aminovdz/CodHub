@@ -118,10 +118,8 @@ export async function middleware(req: NextRequest) {
 
   // Custom domain resolution logic moved to the application layer (React Server Components)
   // to avoid runtime database fetches in the Edge Middleware.
-  // We pass the resolved host via headers so the layout/page can use standard caching.
-  const response = NextResponse.next();
+  // We rewrite the URL to /host/path so the [store] route segment catches it.
+  const response = NextResponse.rewrite(new URL(`/${host}${url.pathname}`, req.url));
   response.headers.set('x-cod-domain', host);
   return response;
-
-  return NextResponse.next();
 }

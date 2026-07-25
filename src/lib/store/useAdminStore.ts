@@ -33,7 +33,11 @@ export function resolveStore(availableStores: Store[], storeSlugOrRegion: string
   
   if (!storeSlugOrRegion) return undefined;
   const lowerQuery = storeSlugOrRegion.toLowerCase();
-  return availableStores.find(s => slugify(s.name) === lowerQuery || s.region.toLowerCase() === lowerQuery);
+  return availableStores.find(s => 
+    slugify(s.name) === lowerQuery || 
+    s.region.toLowerCase() === lowerQuery ||
+    (s.customDomain && s.customDomain.replace('www.', '').toLowerCase() === lowerQuery)
+  );
 }
 
 // --- Mappers: camelCase Store ↔ snake_case Supabase row ---
