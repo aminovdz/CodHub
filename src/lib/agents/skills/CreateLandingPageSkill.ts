@@ -13,11 +13,12 @@ export const CreateLandingPageSkill: AgentSkill = {
 
   ### PHASE 1: STRATEGIC ANALYSIS (Put this inside your JSON "message" field)
   Analyze the target country's cultural nuances, local purchasing behavior, trust triggers, and the specific psychological hook of the product.
-  Explicitly define:
-  1. The psychological profile of the target consumer.
-  2. The mandatory structural blocks needed to maximize CRO.
-  3. The specific copywriting tone, localized terminology, and pricing presentation (local currency, regional payment expectations).
-  4. Output this strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED CRO STRATEGY" within your JSON "message" field.
+  Explicitly define the strategy using the **AIDA Framework (Attention, Interest, Desire, Action)**:
+  1. **Attention**: The psychological hook, massive promise, and hero section strategy.
+  2. **Interest**: How to agitate the problem and introduce the product as the definitive solution.
+  3. **Desire**: The core benefits, trust triggers, social proof, and emotional payoffs.
+  4. **Action**: The specific Call-to-Action (CTA), pricing presentation, and urgency elements.
+  Output this AIDA strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED AIDA CRO STRATEGY" within your JSON "message" field.
 
   ### PHASE 2: LAUNCH PROPOSAL (Trigger the "CREATE_LANDING_PAGE" action)
   You MUST trigger the "CREATE_LANDING_PAGE" action to pass your strategy to the background HTML generator.
