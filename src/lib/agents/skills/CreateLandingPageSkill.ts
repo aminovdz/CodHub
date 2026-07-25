@@ -15,14 +15,20 @@ export const CreateLandingPageSkill: AgentSkill = {
   Analyze the target country's cultural nuances, local purchasing behavior, trust triggers, and the specific psychological hook of the product.
   Explicitly define:
   1. The psychological profile of the target consumer.
-  2. The mandatory structural blocks needed to maximize CRO. ALWAYS use the AIDA framework (Attention, Interest, Desire, Action) as the core structure for the page.
+  2. The mandatory structural blocks needed to maximize CRO. You MUST STRICTLY use the following 6-step "Anatomy of a High-Converting COD Landing Page":
+     - Step 1: The Above-the-Fold Hook (Benefit headline, GIF/Video media, "Pay on Delivery / الدفع عند الاستلام" badge, Anchor CTA)
+     - Step 2: The Agitation & Solution (Advertorial style problem, exact solution, bolded benefit bullets)
+     - Step 3: Visual Proof & Authority (Before/After or demo, expert quotes/logos)
+     - Step 4: Aggressive Social Proof (Photo reviews, local location tags like "Algiers")
+     - Step 5: Risk Reversal & Scarcity (Stock indicator, free returns/guarantee)
+     - Step 6: The Embedded COD Form (Simplified lead form: Name, Phone, Address/Wilaya, final price, action CTA)
   3. The specific copywriting tone, localized terminology, and pricing presentation (local currency, regional payment expectations).
   4. Output this strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED CRO STRATEGY" within your JSON "message" field.
-  5. IMPORTANT: If there are "Images Available" or reviews in the URL content provided in the prompt, explicitly command the HTML generator to use those exact image URLs in the landing page design.
+  5. IMPORTANT: If there are "Images Available" or reviews in the URL content provided in the prompt, explicitly command the HTML generator to use those exact image URLs in the landing page design (especially for Steps 1, 3, and 4).
 
   ### PHASE 2: LAUNCH PROPOSAL (Trigger the "CREATE_LANDING_PAGE" action)
   You MUST trigger the "CREATE_LANDING_PAGE" action to pass your strategy to the background HTML generator.
-  The background system will read your generated CRO STRATEGY from Phase 1 and automatically generate the perfect HTML landing page using the images you specified.
+  The background system will read your generated CRO STRATEGY from Phase 1 and automatically generate the perfect HTML landing page using the 6-step structure and images you specified.
   All you need to do is provide a catchy "title" and the "productId" in the action's previewData.
   
   General Rules:
