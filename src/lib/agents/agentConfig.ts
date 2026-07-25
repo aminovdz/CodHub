@@ -7,7 +7,7 @@ export const AGENTS: AgentConfig[] = [
     iconName: 'Presentation', 
     description: 'Builds high-converting landing pages', 
     promptRole: 'Conversion Rate Optimization (CRO) Expert',
-    skills: ['CREATE_LANDING_PAGE']
+    skills: ['CREATE_LANDING_PAGE', 'FETCH_URL']
   },
   { 
     id: 'copywriter', 
