@@ -443,9 +443,12 @@ Create this for the product: "${title}" in the region: "${region}".
         result.proposedAction.previewData.htmlContent = content;
       }
       return result;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to chat with agent:', error);
-      return null;
+      return {
+        message: `⚠️ **System Error:**\n${error.message || 'Unknown error occurred during AI processing.'}`,
+        proposedAction: { type: 'NONE', previewData: {} }
+      };
     }
   }
 };

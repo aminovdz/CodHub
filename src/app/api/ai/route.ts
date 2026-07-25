@@ -235,7 +235,13 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
-        return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput}` }, { status: 500 });
+        // If it completely fails to parse as JSON, gracefully return the raw text as a message
+        return NextResponse.json({ 
+          result: {
+            proposedAction: { type: 'NONE', previewData: {} },
+            message: textOutput
+          }
+        });
       }
     }
 
