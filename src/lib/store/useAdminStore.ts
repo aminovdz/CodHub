@@ -1505,7 +1505,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         set({ nvidiaModel: model });
       },
 
-      geminiModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-gemini-model') || 'gemini-2.5-flash' : 'gemini-2.5-flash',
+      geminiModel: typeof window !== 'undefined' ? localStorage.getItem('codadmin-gemini-model') || 'gemini-1.5-flash' : 'gemini-1.5-flash',
       setGeminiModel: (model) => {
         if (typeof window !== 'undefined') localStorage.setItem('codadmin-gemini-model', model);
         set({ geminiModel: model });

@@ -15,7 +15,7 @@ export const aiService = {
     let apiKey = state.globalApiKey;
     let model = undefined;
     if (provider === 'gemini') {
-      model = state.geminiModel || 'gemini-2.5-flash';
+      model = state.geminiModel || 'gemini-1.5-flash';
     }
     if (provider === 'claude') {
       apiKey = state.claudeApiKey;
