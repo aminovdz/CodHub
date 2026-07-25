@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Sparkles, CheckCircle, Search, Target, Megaphone, Presentation, FileText, ShoppingBag, X, Paperclip, ImageIcon, Upload, Trash2, Copy, Check } from 'lucide-react';
 import DOMPurify from 'dompurify';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const sanitizeHTML = (html: string) => {
   if (typeof window === 'undefined') return html;
@@ -55,10 +57,31 @@ export default function AgentsHubPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const STARTER_PROMPTS: Record<string, string[]> = {
-    'product': ['Write a compelling product description for my new item.', 'Suggest 5 SEO-friendly titles for my product.', 'What features should I highlight for higher conversions?'],
-    'cro': ['How can I optimize my checkout page?', 'Analyze my current product layout.', 'Suggest an A/B test for the add-to-cart button.'],
-    'copywriter': ['Write a catchy Facebook ad copy.', 'Generate a short promotional email.', 'Create an urgency-driven headline.'],
-    'social': ['Give me 3 Instagram post ideas.', 'Write a viral TikTok script for my product.', 'Suggest a 7-day content calendar.'],
+    'cro': [
+      'Analyze this AliExpress product and build a landing page: [paste URL here]',
+      'Build a high-converting COD landing page for a posture corrector belt targeting Algerian women',
+      'What are the top 5 conversion killers in COD landing pages?'
+    ],
+    'copywriter': [
+      'Write product copy for this AliExpress product: [paste URL here]',
+      'Write 3 Facebook ad copy variations for a kitchen blender targeting Algerian households',
+      'Create a product listing with SEO title, description, and features for a smart watch'
+    ],
+    'product': [
+      'Analyze this product margin: cost 1200 DZD, selling at 3500 DZD, 15% RTO rate',
+      'Evaluate this AliExpress product for the Algerian market: [paste URL]',
+      'Compare pricing strategies for a posture corrector: 2900 vs 3500 vs 4500 DZD'
+    ],
+    'market': [
+      'What are the top 5 trending COD products in Algeria right now?',
+      'Find underserved niches in the Algerian health & beauty market',
+      'What seasonal products should I prepare for Ramadan?'
+    ],
+    'social': [
+      'Write 3 TikTok hook scripts for a portable blender',
+      'Create a Facebook ad campaign plan with targeting for kitchen gadgets in Algeria',
+      'What is the optimal daily test budget for a new COD product launch?'
+    ],
     'default': ['How can you help me today?', 'What is your main expertise?']
   };
 
@@ -342,7 +365,6 @@ export default function AgentsHubPage() {
               key={agent.id}
               onClick={() => {
                 setSelectedAgentId(agent.id);
-                setMessages([]); // Clear chat on switch
               }}
               className={`p-4 rounded-2xl text-left transition-all border ${
                 selectedAgentId === agent.id 
@@ -466,7 +488,13 @@ export default function AgentsHubPage() {
                           {copiedId === msg.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                         </button>
                       )}
-                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                      {msg.role === 'agent' ? (
+                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-inherit">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                      )}
                       
                       {/* Render User Attachments */}
                       {msg.attachments && msg.attachments.length > 0 && (

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
-    const { prompt, type, productData, images, provider = 'gemini', apiKey: reqApiKey, model } = await req.json();
+    const { prompt, type, productData, images, provider = 'gemini', apiKey: reqApiKey, model, messages: incomingMessages, systemPrompt } = await req.json();
 
     const apiKey = reqApiKey || (
       provider === 'gemini' ? process.env.GEMINI_API_KEY :
@@ -23,25 +23,53 @@ export async function POST(req: Request) {
     if (provider === 'gemini') {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:generateContent?key=${encodeURIComponent(apiKey)}`;
       
-      const parts: any[] = [{ text: prompt }];
-      if (images && images.length > 0) {
-        images.forEach((imgObj: { data: string, mimeType: string }) => {
-          parts.push({
-            inlineData: {
-              data: imgObj.data.split(',')[1] || imgObj.data, // remove data:image/jpeg;base64, prefix if present
-              mimeType: imgObj.mimeType || 'image/jpeg'
-            }
+      // Build multi-turn contents array
+      const contents: any[] = [];
+
+      if (incomingMessages && incomingMessages.length > 0) {
+        for (const msg of incomingMessages) {
+          const role = msg.role === 'assistant' ? 'model' : 'user';
+          const parts: any[] = [{ text: msg.content }];
+          if (role === 'user' && msg === incomingMessages[incomingMessages.length - 1] && images && images.length > 0) {
+            images.forEach((imgObj: { data: string, mimeType: string }) => {
+              parts.push({
+                inlineData: {
+                  data: imgObj.data.split(',')[1] || imgObj.data,
+                  mimeType: imgObj.mimeType || 'image/jpeg'
+                }
+              });
+            });
+          }
+          contents.push({ role, parts });
+        }
+      } else {
+        const parts: any[] = [{ text: prompt }];
+        if (images && images.length > 0) {
+          images.forEach((imgObj: { data: string, mimeType: string }) => {
+            parts.push({
+              inlineData: {
+                data: imgObj.data.split(',')[1] || imgObj.data,
+                mimeType: imgObj.mimeType || 'image/jpeg'
+              }
+            });
           });
-        });
+        }
+        contents.push({ role: 'user', parts });
+      }
+
+      const requestBody: any = {
+        contents,
+        generationConfig: { temperature: 0.4, maxOutputTokens: 65536 }
+      };
+
+      if (systemPrompt) {
+        requestBody.systemInstruction = { parts: [{ text: systemPrompt }] };
       }
 
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 16384 }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -55,22 +83,53 @@ export async function POST(req: Request) {
       textOutput = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     } 
     else if (provider === 'claude') {
-      const contentBlocks: any[] = [];
-      
-      if (images && images.length > 0) {
-        images.forEach((imgObj: { data: string, mimeType: string }) => {
-          contentBlocks.push({
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: imgObj.mimeType || 'image/jpeg',
-              data: imgObj.data.split(',')[1] || imgObj.data
-            }
+      const claudeMessages: any[] = [];
+
+      if (incomingMessages && incomingMessages.length > 0) {
+        for (const msg of incomingMessages) {
+          const contentBlocks: any[] = [];
+          if (msg.role === 'user' && msg === incomingMessages[incomingMessages.length - 1] && images && images.length > 0) {
+            images.forEach((imgObj: { data: string, mimeType: string }) => {
+              contentBlocks.push({
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: imgObj.mimeType || 'image/jpeg',
+                  data: imgObj.data.split(',')[1] || imgObj.data
+                }
+              });
+            });
+          }
+          contentBlocks.push({ type: "text", text: msg.content });
+          claudeMessages.push({ role: msg.role, content: contentBlocks });
+        }
+      } else {
+        const contentBlocks: any[] = [];
+        if (images && images.length > 0) {
+          images.forEach((imgObj: { data: string, mimeType: string }) => {
+            contentBlocks.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: imgObj.mimeType || 'image/jpeg',
+                data: imgObj.data.split(',')[1] || imgObj.data
+              }
+            });
           });
-        });
+        }
+        contentBlocks.push({ type: "text", text: prompt });
+        claudeMessages.push({ role: 'user', content: contentBlocks });
       }
-      
-      contentBlocks.push({ type: "text", text: prompt });
+
+      const claudeBody: any = {
+        model: model || 'claude-3-5-sonnet-20241022',
+        max_tokens: 32768,
+        messages: claudeMessages
+      };
+
+      if (systemPrompt) {
+        claudeBody.system = systemPrompt;
+      }
 
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -81,11 +140,7 @@ export async function POST(req: Request) {
           'anthropic-dangerous-direct-browser-access': 'true',
           'anthropic-beta': 'max-tokens-3-5-sonnet-2024-07-15'
         },
-        body: JSON.stringify({
-          model: model || 'claude-3-5-sonnet-20241022',
-          max_tokens: 16384,
-          messages: [{ role: 'user', content: contentBlocks }]
-        })
+        body: JSON.stringify(claudeBody)
       });
 
       if (!response.ok) {
@@ -99,16 +154,32 @@ export async function POST(req: Request) {
       textOutput = data.content?.[0]?.text || '';
     }
     else if (provider === 'openai') {
-      const contentBlocks: any[] = [{ type: "text", text: prompt }];
+      const openaiMessages: any[] = [];
 
-      if (images && images.length > 0) {
-        images.forEach((imgObj: { data: string, mimeType: string }) => {
-          const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
-          contentBlocks.push({
-            type: "image_url",
-            image_url: { url: base64Data }
+      if (systemPrompt) {
+        openaiMessages.push({ role: 'system', content: systemPrompt });
+      }
+
+      if (incomingMessages && incomingMessages.length > 0) {
+        for (const msg of incomingMessages) {
+          const contentBlocks: any[] = [{ type: "text", text: msg.content }];
+          if (msg.role === 'user' && msg === incomingMessages[incomingMessages.length - 1] && images && images.length > 0) {
+            images.forEach((imgObj: { data: string, mimeType: string }) => {
+              const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
+              contentBlocks.push({ type: "image_url", image_url: { url: base64Data } });
+            });
+          }
+          openaiMessages.push({ role: msg.role, content: contentBlocks });
+        }
+      } else {
+        const contentBlocks: any[] = [{ type: "text", text: prompt }];
+        if (images && images.length > 0) {
+          images.forEach((imgObj: { data: string, mimeType: string }) => {
+            const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
+            contentBlocks.push({ type: "image_url", image_url: { url: base64Data } });
           });
-        });
+        }
+        openaiMessages.push({ role: 'user', content: contentBlocks });
       }
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -119,8 +190,8 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'gpt-4o-mini',
-          max_tokens: 16384,
-          messages: [{ role: 'user', content: contentBlocks }]
+          max_tokens: 32768,
+          messages: openaiMessages
         })
       });
 
@@ -135,7 +206,20 @@ export async function POST(req: Request) {
       textOutput = data.choices?.[0]?.message?.content || '';
     }
     else if (provider === 'openrouter') {
-      // OpenRouter free models don't support image input — send text only
+      const openRouterMessages: any[] = [];
+
+      if (systemPrompt) {
+        openRouterMessages.push({ role: 'system', content: systemPrompt });
+      }
+
+      if (incomingMessages && incomingMessages.length > 0) {
+        for (const msg of incomingMessages) {
+          openRouterMessages.push({ role: msg.role, content: msg.content });
+        }
+      } else {
+        openRouterMessages.push({ role: 'user', content: prompt });
+      }
+
       const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -146,8 +230,8 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'meta-llama/llama-3.3-70b-instruct:free',
-          max_tokens: 16384,
-          messages: [{ role: 'user', content: prompt }]
+          max_tokens: 32768,
+          messages: openRouterMessages
         })
       });
 
@@ -166,16 +250,32 @@ export async function POST(req: Request) {
       textOutput = data.choices?.[0]?.message?.content || '';
     }
     else if (provider === 'nvidia') {
-      const contentBlocks: any[] = [{ type: "text", text: prompt }];
+      const nvidiaMessages: any[] = [];
 
-      if (images && images.length > 0) {
-        images.forEach((imgObj: { data: string, mimeType: string }) => {
-          const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
-          contentBlocks.push({
-            type: "image_url",
-            image_url: { url: base64Data }
+      if (systemPrompt) {
+        nvidiaMessages.push({ role: 'system', content: systemPrompt });
+      }
+
+      if (incomingMessages && incomingMessages.length > 0) {
+        for (const msg of incomingMessages) {
+          const contentBlocks: any[] = [{ type: "text", text: msg.content }];
+          if (msg.role === 'user' && msg === incomingMessages[incomingMessages.length - 1] && images && images.length > 0) {
+            images.forEach((imgObj: { data: string, mimeType: string }) => {
+              const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
+              contentBlocks.push({ type: "image_url", image_url: { url: base64Data } });
+            });
+          }
+          nvidiaMessages.push({ role: msg.role, content: contentBlocks });
+        }
+      } else {
+        const contentBlocks: any[] = [{ type: "text", text: prompt }];
+        if (images && images.length > 0) {
+          images.forEach((imgObj: { data: string, mimeType: string }) => {
+            const base64Data = imgObj.data.includes(',') ? imgObj.data : `data:${imgObj.mimeType || 'image/jpeg'};base64,${imgObj.data}`;
+            contentBlocks.push({ type: "image_url", image_url: { url: base64Data } });
           });
-        });
+        }
+        nvidiaMessages.push({ role: 'user', content: contentBlocks });
       }
 
       const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
@@ -187,8 +287,8 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           model: model || 'meta/llama-3.1-405b-instruct',
-          messages: [{ role: 'user', content: contentBlocks }],
-          max_tokens: 16384,
+          messages: nvidiaMessages,
+          max_tokens: 32768,
           temperature: 0.3
         })
       });
@@ -222,14 +322,10 @@ export async function POST(req: Request) {
           const parsed = JSON.parse(jsonString);
           return NextResponse.json({ result: parsed });
         } catch (initialError) {
-          // Fallback: Fix unescaped newlines inside strings (common LLM issue)
           const fixedJson = jsonString.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
             return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
           });
-          
-          // Also strip trailing commas which break JSON.parse
           const noTrailingCommas = fixedJson.replace(/,(\s*[}\]])/g, '$1');
-          
           const parsed = JSON.parse(noTrailingCommas);
           return NextResponse.json({ result: parsed });
         }
@@ -239,11 +335,9 @@ export async function POST(req: Request) {
         let proposedAction = { type: 'NONE', previewData: {} };
         let message = textOutput;
 
-        // Try aggressive regex extraction for the action block
         try {
           const actionMatch = textOutput.match(/"proposedAction"\s*:\s*({[\s\S]*?(?:}|"})\s*})/);
           if (actionMatch && actionMatch[1]) {
-            // Fix common trailing comma issues in the extracted block
             let actionStr = actionMatch[1].replace(/,(\s*[}\]])/g, '$1');
             proposedAction = JSON.parse(actionStr);
           }
@@ -256,7 +350,6 @@ export async function POST(req: Request) {
           console.error("Regex fallback also failed", regexError);
         }
 
-        // Return whatever we managed to salvage
         return NextResponse.json({ 
           result: {
             proposedAction,
@@ -273,3 +366,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+

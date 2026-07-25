@@ -12,8 +12,9 @@ export interface AgentSkill {
 export interface AgentConfig {
   id: string;
   name: string;
-  iconName?: string; // string identifier to map to lucide-react icons in the UI
+  iconName?: string;
   description: string;
   promptRole: string;
+  systemPrompt?: string;
   skills: string[];
 }

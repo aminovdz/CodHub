@@ -82,69 +82,43 @@ export const aiService = {
     const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
     const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
     
-    let prompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.`;
-    
-    if (contentStr) {
-      prompt += `\n\nHere is the strategy/content proposed by the CRO specialist: ${contentStr}`;
-    }
+    const systemPrompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.
 
-    prompt += `\n\nYou will receive raw product text/data and a list of direct, external Image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
+You will receive a CRO strategy containing product data and direct image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
 
 ### 1. Copywriting Requirements
 - Language: Write ALL copy in **${languageStr}**.
-- Framework: Use the AIDA framework (Attention, Interest, Desire, Action) layered over the PAS (Problem-Agitate-Solution) formula.
-- COD Optimization: The store uses Cash on Delivery. Emphasize "Pay Only When You Receive It," "Free Delivery," and "100% Satisfaction Guarantee."
+- Framework: Use the AIDA framework (Attention, Interest, Desire, Action) layered over the PAS formula.
+- COD Optimization: Emphasize "Pay Only When You Receive It," "Free Delivery," and "100% Satisfaction Guarantee."
 - Feature-to-Benefit Translation: Never list a technical feature without its real-world payoff.
 - Formatting: Use short, punchy sentences, active voice, and rich formatting (bold text, bullet points with emojis).
 
 ### 2. Premium UI/UX Design Aesthetics (CRITICAL)
-- **Visual Excellence**: The design MUST NOT be basic. Use rich, modern tailwind styling. Incorporate vibrant but professional color palettes, sleek dark modes (if appropriate), or clean, highly polished light modes.
-- **Micro-aesthetics**: Use soft drop shadows (\`shadow-xl\`, \`shadow-2xl\`), rounded corners (\`rounded-2xl\`, \`rounded-3xl\`), and subtle background gradients (\`bg-gradient-to-br from-gray-50 to-gray-100\`) to create depth.
-- **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. Use tight tracking for large headlines (\`tracking-tight\`) and relaxed leading for body text (\`leading-relaxed\`).
-- **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile. Alternate section backgrounds (e.g., white -> very light gray -> brand color) to create visual rhythm.
+- **Visual Excellence**: The design MUST NOT be basic. Use rich, modern tailwind styling. Incorporate vibrant but professional color palettes.
+- **Micro-aesthetics**: Use soft drop shadows (\`shadow-xl\`), rounded corners (\`rounded-2xl\`), and subtle background gradients to create depth.
+- **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. 
+- **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile.
 
-### 1. Aesthetic and Design System
-- The page MUST feel extremely premium, similar to Apple or high-end D2C brands.
-- Use ultra-clean typography: Tailwind \`font-sans\`, \`tracking-tight\` for headings, generous \`leading-relaxed\` for body text.
-- Use sophisticated color palettes: soft gradients (e.g., \`bg-gradient-to-r from-slate-900 to-slate-800\` for dark sections), stark contrast, and highly polished buttons (\`bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-500/30\`).
-- Apply deep \`shadow-2xl\` on product images and cards to make them float. Use \`rounded-3xl\` for soft, modern corners.
-
-### 2. Localization Requirements
+### 3. Localization Requirements
 - The target market region is: ${region.toUpperCase()}.
 - The language is: ${languageStr}. All copy MUST be highly localized and culturally persuasive.
 ${isArabic ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate.' : ''}
 
-### 3. Comprehensive CRO Page Structure (MANDATORY - DO NOT SKIP SECTIONS)
-You MUST generate a long, highly detailed, single-page funnel. Do not output a short stub. Follow this strict top-to-bottom structure exactly:
-1. **The Above-the-Fold Hook**
-   - Headline: State the primary benefit, not the product name. (e.g., "Eliminate Back Pain in 10 Minutes").
-   - Media: A prominent product image or placeholder for a GIF showing the product in action.
-   - Trust Badge: A prominent "Pay on Delivery / الدفع عند الاستلام" badge immediately visible.
-   - Primary CTA: A massive button that anchors down to the form at the bottom of the page.
-2. **The Agitation & Solution (Advertorial Style)**
-   - The Problem: 2-3 sentences agitating the user's current issue.
-   - The Solution: Introduce the product as the exact fix.
-   - Benefit Bullets: 3 to 4 punchy bullet points detailing what the user gets, heavily bolding the key outcomes.
-3. **Visual Proof & Authority**
-   - Demonstration: Before/After visuals or demonstration images showing the mechanism working.
-   - Authority Elements: "As seen on" logos, or a doctor/expert quote if applicable.
-4. **Aggressive Social Proof**
-   - Use photo reviews (if images provided) showing the product in actual customers' hands.
-   - Include location tags (e.g., "Verified Buyer - Algiers") to increase local relevance and trust.
-5. **Risk Reversal & Scarcity**
-   - Scarcity: A believable stock indicator (e.g., "Only 14 left in the Algiers warehouse") or a time-bound discount.
-   - Guarantee: Emphasize free returns, easy exchanges, or a 100% satisfaction guarantee.
-6. **The Embedded COD Form (The Closer)**
-   - You MUST include the exact string \`[CHECKOUT_FORM]\` where the simplified lead form should be rendered. Place it prominently at the bottom of the page.
-   - Offer Summary: Clearly state the final price, including shipping, right above the submit button area.
-   - Final CTA text: Use action-oriented text like "Confirm Order Now - Pay at the Door."
+### 4. Comprehensive CRO Page Structure (MANDATORY)
+Follow this strict top-to-bottom structure exactly:
+1. **The Above-the-Fold Hook**: Headline, main product image, trust badges, and anchor CTA.
+2. **The Agitation & Solution**: Problem, solution, and benefit bullets.
+3. **Visual Proof & Authority**: Demonstration images or before/afters.
+4. **Aggressive Social Proof**: Photo reviews and testimonials.
+5. **Risk Reversal & Scarcity**: Stock indicator or countdown timer, plus guarantee.
+6. **The Embedded COD Form**: Include the exact string \`[CHECKOUT_FORM]\` at the bottom, surrounded by an offer summary.
 
-### 4. Technical Execution
+### 5. Technical Execution
 - IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
 - No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
-- Mobile-First: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
+- Mobile-First: All buttons must have a minimum touch target of \`h-14\`.
 
-### 5. Output Structure
+### 6. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
 {
   "core_value_proposition": "A single sentence explaining the main benefit",
@@ -153,17 +127,26 @@ Begin your response with a brief JSON block wrapped in standard markdown comment
   "seoTitle": "Optimized meta title",
   "seoDescription": "Optimized meta description"
 }
-Immediately following this commented block, provide the complete raw HTML code starting with a \`<div>\`.
+Immediately following this commented block, provide the complete raw HTML code starting with a \`<div>\`.`;
 
-Create this for the product: "${title}" in the region: "${region}".
-`;
+    const userPrompt = `Create this landing page for the product: "${title}" in the region: "${region}".
+
+Here is the strategy/content proposed by the CRO specialist (including image URLs to embed):
+${contentStr || 'No specific strategy provided. Create a best-in-class generic template for this product type.'}`;
 
     try {
       const { provider, apiKey, model } = this.getProviderAndKey();
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, images: [], type: 'text', provider, apiKey, model })
+        body: JSON.stringify({ 
+          messages: [{ role: 'user', content: userPrompt }], 
+          systemPrompt,
+          type: 'text', 
+          provider, 
+          apiKey, 
+          model 
+        })
       });
       
       if (!response.ok) throw new Error('AI API Error');
@@ -293,12 +276,12 @@ Create this for the product: "${title}" in the region: "${region}".
     }
   },
 
-  async chatWithAgent(agentId: string, prompt: string, storeContext: any, images?: any[], chatHistory: any[] = []): Promise<{ message: string, proposedAction: any } | null> {
+  async chatWithAgent(agentRole: string, prompt: string, storeContext: any, images?: any[], chatHistory: any[] = []): Promise<{ message: string, proposedAction: any } | null> {
     try {
       const { AGENTS } = require('../agents/agentConfig');
       const { SkillRegistry } = require('../agents/skills/registry');
-      const agentConfig = AGENTS.find((a: any) => a.id === agentId);
-      const agentType = agentConfig ? agentConfig.promptRole : agentId;
+      const agentConfig = AGENTS.find((a: any) => a.promptRole === agentRole || a.id === agentRole);
+      const agentType = agentConfig ? agentConfig.promptRole : agentRole;
       let skills = agentConfig ? SkillRegistry.getSkills(agentConfig.skills) : [];
 
       const state = useAdminStore.getState();
@@ -367,57 +350,71 @@ Create this for the product: "${title}" in the region: "${region}".
         console.warn("Could not stringify store context");
       }
 
-      let chatHistoryText = '';
+      // Use deep system prompt from agentConfig if available, otherwise build default
+      const agentSystemPrompt = agentConfig?.systemPrompt || '';
+
+      // Build the SYSTEM PROMPT (separated from user messages)
+      const systemPromptText = `You are a highly skilled AI Agent acting as a ${agentType} for an e-commerce COD store.
+      
+${agentSystemPrompt}
+      
+${localizationInstructions}
+${roleSpecificInstructions}
+      
+Here is the current store context (data you might need):
+${stringifiedContext}
+      
+You must return a JSON response adhering exactly to this structure:
+{
+  "proposedAction": {
+    "type": ${allowedActionTypes.map(t => `"${t}"`).join(' | ')},
+    "previewData": { ... }
+  },
+  "message": "Your text response or explanation to the user."
+}
+      
+${previewDataInstructions}
+      
+If the user attached images, analyze them to inform your response. For landing pages, design the HTML to match the product shown in the images.
+      
+MISSING INFORMATION RULE:
+If the user asks you to perform a task (e.g. create a landing page, write product copy, run an analysis) but does not provide enough details (like the product name, features, or context), DO NOT hallucinate or guess. Instead, set the proposedAction to "NONE" and ask the user clarifying questions in the "message" field. Only proceed with the action once you have the required information.
+
+RESPONSE FORMAT RULES:
+1. The "message" field MUST be formatted as beautiful, highly readable text with emojis and line breaks (unless the specific role instructions ask for HTML snippets).
+2. DO NOT dump raw JSON into the "message" field.
+3. CRITICAL: You MUST use proper JSON escaping for line breaks in the "message" field (use \\n instead of actual physical line breaks).
+4. Return ONLY valid JSON. No markdown wrappers. No extra text before or after.`;
+
+      // Build proper multi-turn messages array
+      const apiMessages: { role: string; content: string }[] = [];
+
       if (chatHistory && chatHistory.length > 0) {
-        try {
-          const recentHistory = chatHistory.slice(-10);
-          chatHistoryText = "Recent conversation history:\n" + recentHistory.map(msg => 
-            `[${msg.role === 'user' ? 'User' : 'Agent'}]: ${typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}`
-          ).join('\n');
-        } catch {
-          console.warn("Could not format chat history");
+        const recentHistory = chatHistory.slice(-10);
+        for (const msg of recentHistory) {
+          apiMessages.push({
+            role: msg.role === 'agent' ? 'assistant' : 'user',
+            content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+          });
         }
       }
 
-      const fullPrompt = `You are a highly skilled AI Agent acting as a ${agentType} for an e-commerce COD store.
-      
-      ${localizationInstructions}
-      ${roleSpecificInstructions}
-      
-      Here is the current store context (data you might need):
-      ${stringifiedContext}
-      
-      ${chatHistoryText}
-      
-      The user is asking:
-      "${prompt}"
-      
-      You must return a JSON response adhering exactly to this structure:
-      {
-        "proposedAction": {
-          "type": ${allowedActionTypes.map(t => `"${t}"`).join(' | ')},
-          "previewData": { ... }
-        },
-        "message": "Your text response or explanation to the user."
-      }
-      
-      ${previewDataInstructions}
-      
-      If the user attached images, analyze them to inform your response. For landing pages, design the HTML to match the product shown in the images.
-      
-      MISSING INFORMATION RULE:
-      If the user asks you to perform a task (e.g. create a landing page, write product copy, run an analysis) but does not provide enough details (like the product name, features, or context), DO NOT hallucinate or guess. Instead, set the proposedAction to "NONE" and ask the user clarifying questions in the "message" field. Only proceed with the action once you have the required information.
-      
-      IMPORTANT: The "message" field MUST be formatted as beautiful, highly readable plain text with emojis and line breaks (unless the specific role instructions ask for HTML snippets like the Copywriter). DO NOT dump raw JSON into the "message" field.
-      CRITICAL: You MUST use proper JSON escaping for line breaks in the "message" field (use \\n instead of actual physical line breaks). If you output unescaped physical line breaks inside the JSON string, the parsing will fail.
-
-      Return ONLY valid JSON. No markdown wrappers. No extra text before or after.`;
+      // Add the current user message
+      apiMessages.push({ role: 'user', content: prompt });
 
       const { provider, apiKey, model } = this.getProviderAndKey();
       const response = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: fullPrompt, images, type: 'json', provider, apiKey, model })
+        body: JSON.stringify({ 
+          messages: apiMessages,
+          systemPrompt: systemPromptText,
+          images, 
+          type: 'json', 
+          provider, 
+          apiKey, 
+          model 
+        })
       });
       
       if (!response.ok) {
@@ -443,9 +440,9 @@ Create this for the product: "${title}" in the region: "${region}".
           }
         }
         if (content.includes('export default') || content.includes('function') || content.includes('import')) {
-          const divMatch = content.match(/(<div[\s\S]*<\/div>)/);
-          if (divMatch && divMatch[1]) {
-            content = divMatch[1];
+          const divMatch = content.match(/<div[\s\S]*<\/div>/);
+          if (divMatch && divMatch[0]) {
+            content = divMatch[0];
           }
         }
         result.proposedAction.previewData.htmlContent = content;
@@ -460,3 +457,4 @@ Create this for the product: "${title}" in the region: "${region}".
     }
   }
 };
+
