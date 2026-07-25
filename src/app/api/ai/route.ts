@@ -211,59 +211,28 @@ export async function POST(req: Request) {
     // If the expected output is JSON, try to parse it
     if (type === 'json') {
       try {
-        let jsonString = textOutput;
+        let jsonString = textOutput.replace(/```[a-zA-Z]*\n?/g, '').replace(/```/g, '').trim();
         const firstBrace = jsonString.indexOf('{');
-        if (firstBrace !== -1) {
-          jsonString = jsonString.slice(firstBrace);
+        const lastBrace = jsonString.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace >= firstBrace) {
+          jsonString = jsonString.slice(firstBrace, lastBrace + 1);
         }
 
-        let inString = false;
-        let escapedJson = "";
-        let openBraces = 0;
-        let openBrackets = 0;
-        
-        for (let i = 0; i < jsonString.length; i++) {
-          const char = jsonString[i];
-          if (char === '"' && (i === 0 || jsonString[i - 1] !== '\\')) {
-            inString = !inString;
-          }
+        try {
+          const parsed = JSON.parse(jsonString);
+          return NextResponse.json({ result: parsed });
+        } catch (initialError) {
+          // Fallback: Fix unescaped newlines inside strings (common LLM issue)
+          const fixedJson = jsonString.replace(/"(?:[^"\\]|\\.)*"/g, (match) => {
+            return match.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+          });
           
-          if (inString) {
-            if (char === '\n') escapedJson += '\\n';
-            else if (char === '\r') escapedJson += '\\r';
-            else if (char === '\t') escapedJson += '\\t';
-            else escapedJson += char;
-          } else {
-            if (char === '{') openBraces++;
-            else if (char === '}') openBraces--;
-            else if (char === '[') openBrackets++;
-            else if (char === ']') openBrackets--;
-            
-            escapedJson += char;
-
-            if (openBraces === 0 && openBrackets === 0) {
-              break;
-            }
-          }
+          // Also strip trailing commas which break JSON.parse
+          const noTrailingCommas = fixedJson.replace(/,(\s*[}\]])/g, '$1');
+          
+          const parsed = JSON.parse(noTrailingCommas);
+          return NextResponse.json({ result: parsed });
         }
-
-        if (inString) {
-          escapedJson += '"';
-        }
-
-        while (openBrackets > 0) {
-          escapedJson += ']';
-          openBrackets--;
-        }
-        while (openBraces > 0) {
-          escapedJson += '}';
-          openBraces--;
-        }
-
-        escapedJson = escapedJson.replace(/,(\s*[}\]])/g, '$1');
-
-        const parsed = JSON.parse(escapedJson);
-        return NextResponse.json({ result: parsed });
       } catch (e) {
         console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
         return NextResponse.json({ error: `AI returned invalid JSON format. Try a more specific prompt.\n\nRaw Output:\n${textOutput}` }, { status: 500 });
