@@ -103,13 +103,11 @@ export const aiService = {
 - **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. Use tight tracking for large headlines (\`tracking-tight\`) and relaxed leading for body text (\`leading-relaxed\`).
 - **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile. Alternate section backgrounds (e.g., white -> very light gray -> brand color) to create visual rhythm.
 
-### 1. Aesthetic and Design System (WOW FACTOR REQUIRED)
-- The page MUST feel extremely premium, similar to Apple, high-end D2C brands, or modern SaaS startups. If it looks basic, you have failed.
-- **Glassmorphism & Gradients**: Liberally use glassmorphism (\`bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border border-white/20\`). Use gradient text for main headlines (\`bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600\`).
-- **Micro-Animations**: All interactive elements MUST have micro-animations: \`transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1\`.
-- **Shadows & Depth**: Use deep colored shadows (\`shadow-[0_20px_50px_-12px_rgba(79,70,229,0.25)]\`) to make product cards and CTAs float off the page.
-- **Icons & Visuals**: Embed beautiful SVG icons inline to illustrate features. Use vibrant, full-width background sections to separate content gracefully.
+### 1. Aesthetic and Design System
+- The page MUST feel extremely premium, similar to Apple or high-end D2C brands.
 - Use ultra-clean typography: Tailwind \`font-sans\`, \`tracking-tight\` for headings, generous \`leading-relaxed\` for body text.
+- Use sophisticated color palettes: soft gradients (e.g., \`bg-gradient-to-r from-slate-900 to-slate-800\` for dark sections), stark contrast, and highly polished buttons (\`bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-500/30\`).
+- Apply deep \`shadow-2xl\` on product images and cards to make them float. Use \`rounded-3xl\` for soft, modern corners.
 
 ### 2. Localization Requirements
 - The target market region is: ${region.toUpperCase()}.
@@ -117,26 +115,18 @@ export const aiService = {
 ${isArabic ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate.' : ''}
 
 ### 3. CRO Page Structure (MANDATORY)
-1. **The Hook (Hero Section)**
-   - High-contrast, full-width section with a subtle animated gradient or beautiful background image overlay.
-   - Headline: A massive, emotion-driven promise addressing the core desire (use gradient text).
-   - Subheadline: Logical justification of the promise.
-   - Primary Call-to-Action (CTA) button: Massive, glowing, action-oriented text with a bouncing or pulsing animation (\`animate-pulse\` or \`animate-bounce\` on an inner element).
-2. **The Agitation (Problem Section)**
-   - Identify the user's frustration. Use a dark, sleek section (\`bg-slate-900 text-white\`) to visually represent the "problem", making the "solution" (next section) feel brighter.
-3. **Feature & Benefit Grid (Bento Box Layout)**
-   - Display features using a modern "Bento Box" grid layout. Use glassmorphic cards (\`backdrop-blur-md bg-white/50\`) with embedded inline SVG icons, soft borders, and floating hover effects.
-4. **Social Proof & Validation**
-   - Synthesize 3 realistic customer reviews formatted as beautiful, floating testimonial cards with star ratings (⭐⭐⭐⭐⭐) and avatar placeholders.
-5. **Interactive Checkout Placement (MANDATORY)**
-   - You MUST include the exact string \`[CHECKOUT_FORM]\` where the order form should be rendered. Place it prominently, ideally near the bottom or in a dedicated sticky/floating container on desktop.
-6. **FAQ Section**
-   - Add a beautifully styled FAQ accordion or list addressing the top 3 objections.
+1. **The Hook (Hero Section)**: High-contrast, full-width section with a massive, emotion-driven headline, GIF/Video media, Trust Badge (Pay on Delivery), and Anchor CTA.
+2. **The Agitation (Problem Section)**: Advertorial setup of the problem and the product as the solution with bolded benefit bullets.
+3. **Visual Proof & Authority**: Demonstration media (Before/After) and expert authority.
+4. **Aggressive Social Proof**: Photo reviews with local location tags.
+5. **Risk Reversal & Scarcity**: Stock indicators and absolute guarantees.
+6. **The Embedded COD Form (MANDATORY)**: You MUST include the exact string \`[CHECKOUT_FORM]\` at the bottom of the page where the lead form should be rendered. This replaces standard checkouts.
 
-### 4. Technical Execution
-- IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
-- No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
-- Mobile-First: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
+### 4. Technical Execution & Anti-Abbreviation (CRITICAL)
+- **NO ABBREVIATIONS**: You are strictly forbidden from using placeholders like "<!-- Add more content here -->", "...", or "Rest of the code". You MUST generate every single section in FULL detail. This is a production deployment.
+- **HTML/CSS Rules**: Use standard HTML attribute \`class\` (NOT \`className\`). No Next.js components. Use standard HTML \`<img>\` tags with \`loading="lazy"\`.
+- **Image Injection**: If the CRO strategy provides specific image URLs, you MUST use them in \`<img>\` tags in Steps 1, 3, and 4.
+- **Mobile-First**: All buttons must have a minimum touch target of \`h-14\` (56px) and use pulsing or scaling animations on hover (\`hover:scale-105 transition-transform\`).
 
 ### 5. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:
