@@ -17,6 +17,26 @@ export async function POST(req: Request) {
     const html = await res.text();
 
     const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] || '';
+    
+    // Extract images (e.g. from meta og:image or standard img tags)
+    const images: string[] = [];
+    const ogImageMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i);
+    if (ogImageMatch && ogImageMatch[1]) images.push(ogImageMatch[1]);
+    
+    // Match standard img tags
+    const imgRegex = /<img[^>]+src=["']([^"']+)["']/gi;
+    let imgMatch;
+    let imgCount = 0;
+    while ((imgMatch = imgRegex.exec(html)) !== null && imgCount < 10) {
+      const src = imgMatch[1];
+      if (src.startsWith('http') && !src.includes('icon') && !src.includes('logo') && !src.includes('pixel')) {
+        if (!images.includes(src)) {
+          images.push(src);
+          imgCount++;
+        }
+      }
+    }
+
     const bodyText = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
@@ -35,6 +55,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       title,
       description,
+      images: images.slice(0, 5), // Return top 5 images
       text: bodyText,
       url,
     });

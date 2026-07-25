@@ -27,7 +27,8 @@ export const FetchUrlSkill: AgentSkill = {
           
           if (res.ok) {
             const data = await res.json();
-            const snippet = `[Content from ${url}]\nTitle: ${data.title || 'N/A'}\nDescription: ${data.description || 'N/A'}\nText: ${(data.text || '').slice(0, 3000)}\n[/Content]`;
+            const imageList = data.images && data.images.length > 0 ? `\nImages Available:\n${data.images.map((url: string) => `- ${url}`).join('\n')}` : '';
+            const snippet = `[Content from ${url}]\nTitle: ${data.title || 'N/A'}\nDescription: ${data.description || 'N/A'}${imageList}\nText: ${(data.text || '').slice(0, 3000)}\n[/Content]`;
             fetchedTexts.push(snippet);
           }
         } catch (error) {

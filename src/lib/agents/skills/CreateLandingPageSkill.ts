@@ -13,16 +13,16 @@ export const CreateLandingPageSkill: AgentSkill = {
 
   ### PHASE 1: STRATEGIC ANALYSIS (Put this inside your JSON "message" field)
   Analyze the target country's cultural nuances, local purchasing behavior, trust triggers, and the specific psychological hook of the product.
-  Explicitly define the strategy using the **AIDA Framework (Attention, Interest, Desire, Action)**:
-  1. **Attention**: The psychological hook, massive promise, and hero section strategy.
-  2. **Interest**: How to agitate the problem and introduce the product as the definitive solution.
-  3. **Desire**: The core benefits, trust triggers, social proof, and emotional payoffs.
-  4. **Action**: The specific Call-to-Action (CTA), pricing presentation, and urgency elements.
-  Output this AIDA strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED AIDA CRO STRATEGY" within your JSON "message" field.
+  Explicitly define:
+  1. The psychological profile of the target consumer.
+  2. The mandatory structural blocks needed to maximize CRO. ALWAYS use the AIDA framework (Attention, Interest, Desire, Action) as the core structure for the page.
+  3. The specific copywriting tone, localized terminology, and pricing presentation (local currency, regional payment expectations).
+  4. Output this strategy clearly inside a markdown block labeled "### PHASE 1 EXECUTION: GENERATED CRO STRATEGY" within your JSON "message" field.
+  5. IMPORTANT: If there are "Images Available" or reviews in the URL content provided in the prompt, explicitly command the HTML generator to use those exact image URLs in the landing page design.
 
   ### PHASE 2: LAUNCH PROPOSAL (Trigger the "CREATE_LANDING_PAGE" action)
   You MUST trigger the "CREATE_LANDING_PAGE" action to pass your strategy to the background HTML generator.
-  The background system will read your generated CRO STRATEGY from Phase 1 and automatically generate the perfect HTML landing page.
+  The background system will read your generated CRO STRATEGY from Phase 1 and automatically generate the perfect HTML landing page using the images you specified.
   All you need to do is provide a catchy "title" and the "productId" in the action's previewData.
   
   General Rules:
