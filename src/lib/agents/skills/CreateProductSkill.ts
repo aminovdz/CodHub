@@ -76,7 +76,7 @@ export const CreateProductSkill: AgentSkill = {
   ━━━━━━━━━━━━━━━━━━━━━━━━
   `,
   previewDataInstructions: `
-  CRITICAL: For "CREATE_PRODUCT" you MUST return "previewData" with this EXACT schema:
+  CRITICAL: For "CREATE_PRODUCT" you MUST return "previewData" with this EXACT schema and YOU MUST FILL OUT EVERY SINGLE FIELD. Do NOT leave any field missing or blank:
   {
     "title": "Product display name",
     "price": 2999.00,
@@ -84,7 +84,7 @@ export const CreateProductSkill: AgentSkill = {
     "costPrice": 1500.00,
     "category": "Electronics",
     "shortDesc": "A short punchy 2-sentence description highlighting the main benefit — PLAIN TEXT ONLY, no HTML tags",
-    "mainDesc": "<h3>✦ Why Choose This Product</h3>\\n<p>...</p>",
+    "mainDesc": "<h3>✦ Why Choose This Product</h3>\\n<p>...</p> (INCLUDE ALL SECTIONS)",
     "seoTitle": "SEO-optimized title under 60 chars",
     "seoDescription": "SEO meta description under 155 chars",
     "seoSlug": "seo-friendly-url-slug-separated-by-hyphens",
@@ -115,6 +115,8 @@ export const CreateProductSkill: AgentSkill = {
     } = context;
 
     const pd = data || {};
+    const fallbackSlug = pd.title ? pd.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : ('product-' + Date.now());
+    
     const newProduct = {
       id: '',
       storeId: activeStoreId,
@@ -130,7 +132,7 @@ export const CreateProductSkill: AgentSkill = {
       stock: typeof pd.stock === 'number' ? pd.stock : 999,
       seoTitle: pd.seoTitle || '',
       seoDescription: pd.seoDescription || '',
-      seoSlug: pd.seoSlug || (pd.title ? pd.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : ''),
+      seoSlug: pd.seoSlug ? pd.seoSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : fallbackSlug,
       lowStockThreshold: 5,
       disableOutOfStockPurchases: false,
       disableCoupons: false,

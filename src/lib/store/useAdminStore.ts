@@ -113,7 +113,7 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     blocks: p.blocks,
     seo_title: p.seoTitle,
     seo_description: p.seoDescription,
-    seo_slug: p.seoSlug || null,
+    seo_slug: p.seoSlug || (p.title ? p.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : null),
     stars_rate: p.starsRate,
     reviews_count: p.reviewsCount,
     oto_product_id: p.otoProductId || null,
