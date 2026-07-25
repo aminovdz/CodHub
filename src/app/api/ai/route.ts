@@ -235,11 +235,32 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error("Failed to parse AI JSON output. Raw text:", textOutput, "Error:", e);
-        // If it completely fails to parse as JSON, gracefully return the raw text as a message
+        
+        let proposedAction = { type: 'NONE', previewData: {} };
+        let message = textOutput;
+
+        // Try aggressive regex extraction for the action block
+        try {
+          const actionMatch = textOutput.match(/"proposedAction"\s*:\s*({[\s\S]*?(?:}|"})\s*})/);
+          if (actionMatch && actionMatch[1]) {
+            // Fix common trailing comma issues in the extracted block
+            let actionStr = actionMatch[1].replace(/,(\s*[}\]])/g, '$1');
+            proposedAction = JSON.parse(actionStr);
+          }
+          
+          const messageMatch = textOutput.match(/"message"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"proposedAction"|})/);
+          if (messageMatch && messageMatch[1]) {
+            message = messageMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+          }
+        } catch (regexError) {
+          console.error("Regex fallback also failed", regexError);
+        }
+
+        // Return whatever we managed to salvage
         return NextResponse.json({ 
           result: {
-            proposedAction: { type: 'NONE', previewData: {} },
-            message: textOutput
+            proposedAction,
+            message
           }
         });
       }
