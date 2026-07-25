@@ -40,7 +40,7 @@ export default function AdminSettingsPage() {
   const [localOpenRouterModel, setLocalOpenRouterModel] = useState(openRouterModel || 'meta-llama/llama-3.3-70b-instruct:free');
   const [localNvidiaKey, setLocalNvidiaKey] = useState(nvidiaApiKey || '');
   const [localNvidiaModel, setLocalNvidiaModel] = useState(nvidiaModel || 'meta/llama-3.1-405b-instruct');
-  const [localGeminiModel, setLocalGeminiModel] = useState(geminiModel || 'gemini-1.5-flash');
+  const [localGeminiModel, setLocalGeminiModel] = useState(geminiModel || 'gemini-2.0-flash');
   const [localClaudeModel, setLocalClaudeModel] = useState(claudeModel || 'claude-3-5-sonnet-20241022');
   const [localOpenAiModel, setLocalOpenAiModel] = useState(openAiModel || 'gpt-4o-mini');
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
@@ -227,7 +227,7 @@ export default function AdminSettingsPage() {
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
     setCustomDomain(activeStore.customDomain || '');
-    setLocalGeminiModel(geminiModel || 'gemini-1.5-flash');
+    setLocalGeminiModel(geminiModel || 'gemini-2.0-flash');
     setLocalClaudeModel(claudeModel || 'claude-3-5-sonnet-20241022');
     setLocalOpenAiModel(openAiModel || 'gpt-4o-mini');
   }, [activeStore.id, activeStore.translations, activeStore.resendApiKey, activeStore.notifyEmail, activeStore.analytics, activeStore.yalidineApiKey, activeStore.yalidineApiToken, activeStore.genericWebhookUrl, activeStore.dzFulfillment, activeStore.whatsappConfig, globalApiKey, claudeApiKey, openAiApiKey, openRouterApiKey, openRouterModel, aiProvider, activeStore.primaryColor, activeStore.customDomain, activeStore.name, geminiModel, claudeModel, openAiModel]);
@@ -488,8 +488,8 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setLocalGeminiModel(e.target.value)} 
                 className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white"
               >
-                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Default - Fast & Cost-effective)</option>
-                <option value="gemini-1.5-pro">Gemini 1.5 Pro (High Intelligence)</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Default - Fast & Cost-effective)</option>
+                <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro Experimental (High Intelligence)</option>
               </select>
             </div>
           </div>

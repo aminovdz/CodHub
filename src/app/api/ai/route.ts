@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     let textOutput = '';
 
     if (provider === 'gemini') {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:generateContent?key=${encodeURIComponent(apiKey)}`;
       
       const parts: any[] = [{ text: prompt }];
       if (images && images.length > 0) {
