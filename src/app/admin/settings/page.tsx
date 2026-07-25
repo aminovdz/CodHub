@@ -483,14 +483,13 @@ export default function AdminSettingsPage() {
             
             <div className="mt-4">
               <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Gemini Model</label>
-              <select 
+              <input 
+                type="text"
                 value={localGeminiModel} 
                 onChange={(e) => setLocalGeminiModel(e.target.value)} 
+                placeholder="e.g. gemini-2.0-flash or gemini-2.0-pro-exp-02-05"
                 className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-slate-900 dark:text-white bg-white"
-              >
-                <option value="gemini-2.0-flash">Gemini 2.0 Flash (Default - Fast & Cost-effective)</option>
-                <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro Experimental (High Intelligence)</option>
-              </select>
+              />
             </div>
           </div>
 
