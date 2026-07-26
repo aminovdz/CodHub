@@ -91,7 +91,13 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
           <div
             key={`html-${i}`}
             className="w-full"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(seg.content) }}
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(seg.content, { 
+                ADD_TAGS: ['style', 'iframe', 'video', 'source', 'audio'],
+                ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'controls', 'autoplay', 'muted', 'loop', 'target'],
+                FORCE_BODY: true
+              }) 
+            }}
           />
         );
       })}
