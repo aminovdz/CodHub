@@ -17,7 +17,6 @@ export default function StoreProvider({ children }: { children: React.ReactNode 
     
     if (isAdmin && !fetchedAdmin.current) {
       fetchedAdmin.current = true;
-      fetchedPublic.current = true;
       fetchAdminData(true);
     } else if (!isAdmin && !fetchedPublic.current) {
       fetchedPublic.current = true;

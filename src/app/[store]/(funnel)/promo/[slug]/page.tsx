@@ -11,7 +11,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   const resolvedParams = use(params);
   const storeSlug = resolvedParams.store;
   const slug = resolvedParams.slug;
-  const { availableStores, landingPages, _hasHydrated } = useStorefrontStore();
+  const { availableStores, landingPages, _hasHydrated, isLoading } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;
   const searchParams = useSearchParams();
@@ -66,7 +66,7 @@ export default function PromoLandingPage({ params }: { params: Promise<{ store: 
   }, [matchedPages, activeVariant, slug, store]);
 
   // Show spinner while data is still loading from Supabase
-  if (!_hasHydrated || (matchedPages.length > 0 && !activeVariant)) {
+  if (!_hasHydrated || isLoading || (matchedPages.length > 0 && !activeVariant)) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-4 text-slate-400">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={32} />
