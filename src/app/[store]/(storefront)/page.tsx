@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronRight, Star, ShoppingBag, CheckCircle2 } from 'lucide-react';
 import { resolveStore } from '@/lib/store/useAdminStore';
 import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
@@ -86,11 +87,11 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                   return (
                     <Link key={product.id} href={`${basePath}/products/${slug}`} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:border-indigo-300 transition-all duration-300 flex flex-col">
                       <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img 
+                        <Image 
                           src={product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'} 
                           alt={product.title} 
-                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                          fill
+                          className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
                         />
                         <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
                           <Star size={14} className="fill-amber-400 text-amber-400" />

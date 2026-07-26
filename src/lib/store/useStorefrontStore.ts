@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { supabase } from '../supabase';
 import { Store, Product, ShippingZone, CheckoutConfig, Coupon, HomepageConfig, LegalPage, LandingPage, BlacklistedCustomer, rowToCheckoutConfig, rowToProduct, rowToShippingZone } from './useAdminStore';
 import { slugify } from '../utils';
@@ -18,7 +19,8 @@ interface StorefrontState {
   _hasHydrated: boolean;
   isLoading: boolean;
   
-  fetchInitialData: () => Promise<void>;
+  setHasHydrated: (state: boolean) => void;
+  fetchInitialData: (storeId?: string) => Promise<void>;
   setOrders: (updater: any) => void;
   setAbandonedCarts: (updater: any) => void;
   setProducts: (updater: any) => void;
@@ -26,35 +28,54 @@ interface StorefrontState {
   addActivityLog: (log: any) => void;
 }
 
-export const useStorefrontStore = create<StorefrontState>((set, get) => ({
-  availableStores: [],
-  shippingZones: [],
-  checkoutConfigs: [],
-  products: [],
-  coupons: [],
-  customerBlacklist: [],
-  homepages: [],
-  legalPages: [],
-  landingPages: [],
-  categories: [],
-  activeStore: null,
-  _hasHydrated: true,
-  isLoading: true,
+export const useStorefrontStore = create<StorefrontState>()(
+  persist(
+    (set, get) => ({
+      availableStores: [],
+      shippingZones: [],
+      checkoutConfigs: [],
+      products: [],
+      coupons: [],
+      customerBlacklist: [],
+      homepages: [],
+      legalPages: [],
+      landingPages: [],
+      categories: [],
+      activeStore: null,
+      _hasHydrated: false,
+      isLoading: true,
+      
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
 
-  fetchInitialData: async () => {
+      fetchInitialData: async (storeSlug?: string) => {
+    // Fetch stores first to find the ID
+    const { data: stores } = await supabase.from('stores').select('*');
+    const store = storeSlug ? stores?.find((s: any) => s.region.toLowerCase() === storeSlug.toLowerCase() || s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === storeSlug.toLowerCase()) : null;
+    const storeId = store?.id;
+
     // Only fetch basic public tables
+    let productsQuery = supabase.from('products').select('*').eq('active', true);
+    let zonesQuery = supabase.from('shipping_zones').select('*');
+    let configsQuery = supabase.from('checkout_configs').select('*');
+    let landingPagesQuery = supabase.from('landing_pages').select('*');
+
+    if (storeId) {
+      productsQuery = productsQuery.eq('store_id', storeId);
+      zonesQuery = zonesQuery.eq('store_id', storeId);
+      configsQuery = configsQuery.eq('store_id', storeId);
+      landingPagesQuery = landingPagesQuery.eq('store_id', storeId);
+    }
+
     const [
-      { data: stores },
       { data: products },
       { data: zones },
       { data: configs },
       { data: landingPages }
     ] = await Promise.all([
-      supabase.from('stores').select('*'),
-      supabase.from('products').select('*').eq('active', true),
-      supabase.from('shipping_zones').select('*'),
-      supabase.from('checkout_configs').select('*'),
-      supabase.from('landing_pages').select('*')
+      productsQuery,
+      zonesQuery,
+      configsQuery,
+      landingPagesQuery
     ]);
 
     // Format simple row to types here
@@ -110,4 +131,14 @@ export const useStorefrontStore = create<StorefrontState>((set, get) => ({
   setProducts: () => {},
   setCoupons: () => {},
   addActivityLog: () => {},
-}));
+    }),
+    {
+      name: 'storefront-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.setHasHydrated(true);
+        }
+      },
+    }
+  )
+);

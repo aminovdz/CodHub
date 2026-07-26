@@ -6,6 +6,7 @@ import { useFunnelStore } from '@/lib/store/useFunnelStore';
 import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, PackageX, X, Headset } from 'lucide-react';
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 import { resolveStore } from '@/lib/store/useAdminStore';
 import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
@@ -266,11 +267,11 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
               <div className="w-full relative aspect-square md:aspect-[4/3] bg-slate-100 rounded-2xl md:rounded-3xl overflow-hidden group cursor-zoom-in shadow-sm"
                 onClick={() => setIsZoomed(true)}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
                   alt={product.title}
-                  className="w-full h-full object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
+                  fill
+                  className="object-cover object-center transition-opacity duration-300 group-hover:opacity-90"
                 />
                 <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-amber-500 text-slate-900 text-[10px] md:text-xs font-black px-2 py-1 md:px-3 md:py-1.5 rounded-lg shadow-sm">
                   🔥 الأكثر مبيعاً
@@ -289,14 +290,13 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                     <button
                       key={i}
                       onClick={() => setSelectedImageIndex(i)}
-                      className={`w-16 md:w-20 aspect-square rounded-lg md:rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
+                      className={`relative w-16 md:w-20 aspect-square rounded-lg md:rounded-xl overflow-hidden shrink-0 border-2 transition-all ${
                         selectedImageIndex === i
                           ? 'border-indigo-600 ring-1 ring-indigo-600'
                           : 'border-slate-200 hover:border-slate-400'
                       }`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img} alt={`${product.title} ${i + 1}`} className="w-full h-full object-cover" />
+                      <Image src={img} alt={`${product.title} ${i + 1}`} fill className="object-cover" />
                     </button>
                   ))}
                 </div>
@@ -550,10 +550,11 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 cursor-zoom-out"
           onClick={() => setIsZoomed(false)}
         >
-          <img
+          <Image
             src={currentImage || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'}
             alt={product.title}
-            className="max-w-full max-h-full object-contain pointer-events-none"
+            fill
+            className="object-contain pointer-events-none"
           />
           <button className="absolute top-6 right-6 text-white/70 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
             <X size={32} />
