@@ -289,7 +289,15 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
       skills = [...skills, ...dynamicSkills];
 
       const region = state.activeStore?.region || 'dz';
-      const explicitLanguage = storeContext?.storeLanguage;
+      const rawLang = storeContext?.storeLanguage || state.activeStore?.language;
+      const langMap: Record<string, string> = {
+        'ar': 'Arabic',
+        'fr': 'French',
+        'en': 'English',
+        'es': 'Spanish',
+        'ro': 'Romanian'
+      };
+      const explicitLanguage = rawLang ? (langMap[rawLang.toLowerCase()] || rawLang) : null;
       
       let localizationInstructions = '';
       if (region === 'dz') {
@@ -321,7 +329,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - Target country/region: ${region.toUpperCase()}.
   - Currency: ${storeContext?.storeCurrency || 'USD'}.
-  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'en'}.
+  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'English'}.
   - Always optimize all sales copy, landing pages, and suggestions specifically for this local region, its language, dialect, and cultural preferences.
   `;
       }

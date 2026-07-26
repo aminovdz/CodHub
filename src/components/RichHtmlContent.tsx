@@ -1,9 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import DOMPurify from 'dompurify';
-import Script from 'next/script';
 
 interface Props {
   html: string;
@@ -70,9 +69,19 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
     return result;
   }, [html]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const scriptId = 'tailwind-play-cdn';
+    if (!document.getElementById(scriptId)) {
+      const script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://cdn.tailwindcss.com';
+      document.head.appendChild(script);
+    }
+  }, [html]);
+
   return (
     <div className="w-full">
-      <Script src="https://cdn.tailwindcss.com" strategy="afterInteractive" />
       {segments.map((seg, i) => {
         if (seg.type === 'checkout') {
           return (
