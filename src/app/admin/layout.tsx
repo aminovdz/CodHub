@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, ShoppingCart, Users, Package, Settings, Store as StoreIcon, BarChart2, Tag, Home, CreditCard, FileText, Bot, X, HelpCircle, Activity, Globe, Ghost, Megaphone, Boxes, Calculator, MonitorPlay, SplitSquareHorizontal, Sun, Moon, Menu, LogOut
+  LayoutDashboard, ShoppingCart, Users, Package, Settings, Store as StoreIcon, BarChart2, Tag, Home, CreditCard, FileText, Bot, X, HelpCircle, Activity, Globe, Ghost, Megaphone, Boxes, Calculator, MonitorPlay, SplitSquareHorizontal, Sun, Moon, Menu, LogOut, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useAdminStore } from '@/lib/store/useAdminStore';
@@ -20,6 +20,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [error, setError] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDark, setIsDark] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isSuperAdminRoute, setIsSuperAdminRoute] = useState(false);
 
   const pathname = usePathname();
@@ -57,6 +58,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const saved = localStorage.getItem('codadmin-dark');
     if (saved === 'true') setIsDark(true);
+    
+    const savedCollapsed = localStorage.getItem('codadmin-collapsed');
+    if (savedCollapsed === 'true') setIsCollapsed(true);
 
     const isLogin = pathname === '/admin/login' || pathname === '/superadmin/login';
     const targetLogin = superRoute ? '/superadmin/login' : '/admin/login';
@@ -142,9 +146,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const basePath = isSuperAdminRoute ? '/superadmin' : '/admin';
 
   const toggleDark = () => {
-    const next = !isDark;
-    setIsDark(next);
-    localStorage.setItem('codadmin-dark', String(next));
+    setIsDark(!isDark);
+    localStorage.setItem('codadmin-dark', String(!isDark));
+  };
+
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+    localStorage.setItem('codadmin-collapsed', String(!isCollapsed));
   };
 
   const handleLogout = async () => {
@@ -210,7 +218,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       {/* SIDEBAR */}
-      <aside className={`w-64 flex-col sticky top-0 h-screen z-50 transition-all duration-300 border-r absolute md:relative ${
+      <aside className={`${isCollapsed ? 'w-20' : 'w-64'} flex-col sticky top-0 h-screen z-50 transition-all duration-300 border-r absolute md:relative ${
         isMobileMenuOpen ? 'translate-x-0 flex' : '-translate-x-full md:translate-x-0 hidden md:flex'
       } ${isDark
         ? 'bg-slate-950 border-slate-800'
@@ -218,17 +226,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       }`}>
 
         {/* Logo */}
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center">
-          <div className="font-black text-xl tracking-tighter text-white flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+        <div className={`p-5 border-b border-slate-800 flex ${isCollapsed ? 'justify-center' : 'justify-between'} items-center`}>
+          {!isCollapsed && (
+            <div className="font-black text-xl tracking-tighter text-white flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shrink-0">
+                <StoreIcon size={16} className="text-white" />
+              </div>
+              <span>COD<span className={isSuperAdminRoute ? 'text-rose-400' : 'text-indigo-400'}>ADMIN</span></span>
+            </div>
+          )}
+          {isCollapsed && (
+            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shrink-0">
               <StoreIcon size={16} className="text-white" />
             </div>
-            COD<span className={isSuperAdminRoute ? 'text-rose-400' : 'text-indigo-400'}>ADMIN</span>
-          </div>
-          {isSuperAdminRoute && (
-            <span className="text-xs font-black text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">SUPER</span>
           )}
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg transition-colors">
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg transition-colors shrink-0">
             <X size={20} />
           </button>
         </div>
@@ -241,64 +253,80 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 key={link.href}
                 href={link.href}
+                title={isCollapsed ? link.label : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm transition-all ${
+                className={`flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-xl font-semibold text-sm transition-all ${
                   isActive
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/50'
                     : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                 }`}
               >
-                <span className={isActive ? 'text-white' : 'text-slate-500'}>{link.icon}</span>
-                {link.label}
-                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300" />}
+                <span className={isActive ? 'text-white shrink-0' : 'text-slate-500 shrink-0'}>{link.icon}</span>
+                {!isCollapsed && <span className="truncate">{link.label}</span>}
+                {!isCollapsed && isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-300 shrink-0" />}
               </Link>
             );
           })}
         </nav>
 
         {/* Bottom Panel */}
-        <div className="p-3 border-t border-slate-800 space-y-2">
-          {/* Active Store Selector */}
-          <div className="bg-slate-800/60 rounded-xl p-3">
-            <div className="text-xs text-slate-500 font-bold mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
-              <StoreIcon size={10} /> Active Store
-            </div>
-            <select
-              disabled={!!isSingleStoreStaff}
-              value={activeStore?.id || ''}
-              onChange={(e) => setActiveStore(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              {availableStores.length > 0 ? (
-                availableStores
-                  .filter((s: any) => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
-                  .map((s: any) => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
-                  ))
-              ) : (
-                <option value="" disabled>No stores found</option>
-              )}
-            </select>
-          </div>
+        <div className="p-3 border-t border-slate-800 flex flex-col gap-2">
+          {!isCollapsed && (
+            <>
+              {/* Active Store Selector */}
+              <div className="bg-slate-800/60 rounded-xl p-3">
+                <div className="text-xs text-slate-500 font-bold mb-1.5 uppercase tracking-wider flex items-center gap-1.5">
+                  <StoreIcon size={10} /> Active Store
+                </div>
+                <select
+                  disabled={!!isSingleStoreStaff}
+                  value={activeStore?.id || ''}
+                  onChange={(e) => setActiveStore(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg p-2 text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                >
+                  {availableStores.length > 0 ? (
+                    availableStores
+                      .filter((s: any) => isGlobalStaff || !currentStaffAccount || allowedStoreIds.includes(s.id))
+                      .map((s: any) => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.region.toUpperCase()})</option>
+                      ))
+                  ) : (
+                    <option value="" disabled>No stores found</option>
+                  )}
+                </select>
+              </div>
 
-          {/* Dark Mode Toggle */}
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleDark}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all w-full"
+              >
+                {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-400" />}
+                {isDark ? 'Light Mode' : 'Dark Mode'}
+                <span className={`ml-auto w-8 h-4 rounded-full transition-colors ${isDark ? 'bg-amber-500' : 'bg-indigo-600'} relative flex items-center`}>
+                  <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-all ${isDark ? 'left-4' : 'left-0.5'}`} />
+                </span>
+              </button>
+            </>
+          )}
+
+          {/* Collapse Toggle */}
           <button
-            onClick={toggleDark}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all w-full"
+            onClick={toggleSidebar}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-xl font-semibold text-sm text-slate-400 hover:bg-slate-800 hover:text-white transition-all w-full hidden md:flex`}
+            title={isCollapsed ? 'Expand Sidebar' : undefined}
           >
-            {isDark ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-indigo-400" />}
-            {isDark ? 'Light Mode' : 'Dark Mode'}
-            <span className={`ml-auto w-8 h-4 rounded-full transition-colors ${isDark ? 'bg-amber-500' : 'bg-indigo-600'} relative flex items-center`}>
-              <span className={`absolute w-3 h-3 bg-white rounded-full shadow transition-all ${isDark ? 'left-4' : 'left-0.5'}`} />
-            </span>
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            {!isCollapsed && 'Collapse'}
           </button>
 
           {/* Lock */}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all w-full"
+            title={isCollapsed ? 'Lock Console' : undefined}
+            className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all w-full`}
           >
-            <LogOut size={18} /> Lock Console
+            <LogOut size={18} /> {!isCollapsed && 'Lock Console'}
           </button>
         </div>
       </aside>
