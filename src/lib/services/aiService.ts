@@ -289,6 +289,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
       skills = [...skills, ...dynamicSkills];
 
       const region = state.activeStore?.region || 'dz';
+      const explicitLanguage = storeContext?.storeLanguage;
       
       let localizationInstructions = '';
       if (region === 'dz') {
@@ -296,7 +297,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Algeria (DZ).
   - Currency: DZD (Algerian Dinar).
-  - Language: Use local Algerian Arabic (Derja) phrases interspersed with formal Arabic to build trust.
+  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use local Algerian Arabic (Derja) phrases interspersed with formal Arabic to build trust.'}
   - Optimize for Cash on Delivery (COD) workflows specific to Algeria (e.g., Yalidine, Nordine, Mayestro delivery).
   `;
       } else if (region === 'ro') {
@@ -304,7 +305,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Romania (RO).
   - Currency: RON (Romanian Leu).
-  - Language: Use native Romanian for client-facing copy.
+  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use native Romanian for client-facing copy.'}
   - Optimize for European COD markets, courier delivery confirmations, and local consumer behavior.
   `;
       } else if (region === 'co') {
@@ -312,7 +313,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Colombia (CO).
   - Currency: COP (Colombian Peso).
-  - Language: Use local Colombian Spanish for copywriting and support.
+  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use local Colombian Spanish for copywriting and support.'}
   - Optimize for Latin American Cash on Delivery logistics, local delivery confirmation methods, and consumer trust.
   `;
       } else {
@@ -320,9 +321,13 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - Target country/region: ${region.toUpperCase()}.
   - Currency: ${storeContext?.storeCurrency || 'USD'}.
-  - Language: ${storeContext?.storeLanguage || 'en'}.
+  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'en'}.
   - Always optimize all sales copy, landing pages, and suggestions specifically for this local region, its language, dialect, and cultural preferences.
   `;
+      }
+
+      if (explicitLanguage) {
+        localizationInstructions += `\n  *** STRICT LANGUAGE DIRECTIVE: DO NOT USE ANY OTHER LANGUAGE EXCEPT ${explicitLanguage.toUpperCase()}. ALL TEXT, DESCRIPTIONS, AND HEADINGS MUST BE IN ${explicitLanguage.toUpperCase()}. ***\n`;
       }
 
       let roleSpecificInstructions = '';
