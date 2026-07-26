@@ -6,9 +6,16 @@ export function AutoResizingIframe({ html }: { html: string }) {
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data && e.data.type === 'iframeHeight' && iframeRef.current?.contentWindow === e.source) {
-        setHeight(e.data.height);
+      const handleMessage = (e: MessageEvent) => {
+      if (e.data && iframeRef.current?.contentWindow === e.source) {
+        if (e.data.type === 'iframeHeight') {
+          setHeight(e.data.height);
+        } else if (e.data.type === 'scrollToHash') {
+          const element = document.querySelector(e.data.hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
       }
     };
     window.addEventListener('message', handleMessage);
@@ -34,6 +41,15 @@ export function AutoResizingIframe({ html }: { html: string }) {
           const observer = new MutationObserver(sendHeight);
           window.addEventListener('DOMContentLoaded', () => {
             observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+            
+            // Intercept anchor clicks
+            document.addEventListener('click', (e) => {
+              const anchor = e.target.closest('a');
+              if (anchor && anchor.getAttribute('href')?.startsWith('#')) {
+                e.preventDefault();
+                window.parent.postMessage({ type: 'scrollToHash', hash: anchor.getAttribute('href') }, '*');
+              }
+            });
           });
           // Also check height periodically just in case fonts/images load late
           setInterval(sendHeight, 500);
