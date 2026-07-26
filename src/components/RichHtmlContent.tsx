@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
-import DOMPurify from 'dompurify';
+import { AutoResizingIframe } from './AutoResizingIframe';
 
 interface Props {
   html: string;
@@ -69,23 +69,13 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
     return result;
   }, [html]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const scriptId = 'tailwind-play-cdn';
-    if (!document.getElementById(scriptId)) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://cdn.tailwindcss.com';
-      document.head.appendChild(script);
-    }
-  }, [html]);
 
   return (
     <div className="w-full">
       {segments.map((seg, i) => {
         if (seg.type === 'checkout') {
           return (
-            <div key={`checkout-${i}`} id="checkout" className="w-full max-w-2xl mx-auto px-4 py-8">
+            <div key={`checkout-${i}`} id="checkout" className="w-full max-w-2xl mx-auto px-4 py-8 relative z-10">
               <CheckoutForm
                 storeSlug={storeSlug}
                 embedded={true}
@@ -95,19 +85,11 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
           );
         }
 
-        // HTML segment — render with dangerouslySetInnerHTML
+        // HTML segment — render with AutoResizingIframe to guarantee exact styling as preview
         return (
-          <div
-            key={`html-${i}`}
-            className="w-full"
-            dangerouslySetInnerHTML={{ 
-              __html: DOMPurify.sanitize(seg.content, { 
-                ADD_TAGS: ['style', 'iframe', 'video', 'source', 'audio'],
-                ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'controls', 'autoplay', 'muted', 'loop', 'target'],
-                FORCE_BODY: true
-              }) 
-            }}
-          />
+          <div key={`html-${i}`} className="w-full">
+            <AutoResizingIframe html={seg.content} />
+          </div>
         );
       })}
     </div>

@@ -489,11 +489,11 @@ export default function AgentsHubPage() {
                         </button>
                       )}
                       {msg.role === 'agent' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-inherit">
+                        <div dir="auto" className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-2 prose-ul:my-1 prose-li:my-0.5 prose-strong:text-inherit">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                         </div>
                       ) : (
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                        <p dir="auto" className="whitespace-pre-wrap">{msg.content}</p>
                       )}
                       
                       {/* Render User Attachments */}
