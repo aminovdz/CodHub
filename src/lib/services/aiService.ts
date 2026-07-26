@@ -78,16 +78,17 @@ export const aiService = {
   /**
    * Generates a high-converting Next.js React component for a landing page.
    */
-  async generateLandingPage(title: string, region: string, contentStr?: string): Promise<{ componentCode: string; metadata: any } | null> {
+  async generateLandingPage(title: string, region: string, contentStr?: string, languageOverride?: string): Promise<{ componentCode: string; metadata: any } | null> {
     const isArabic = region === 'dz' || region === 'sa' || region === 'ae' || region === 'ma' || region === 'eg';
-    const languageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
+    const defaultLanguageStr = isArabic ? 'Arabic' : (region === 'ro' ? 'Romanian' : (region === 'es' ? 'Spanish' : (region === 'co' ? 'Spanish' : (region === 'fr' ? 'French' : (region === 'it' ? 'Italian' : 'English')))));
+    const languageStr = languageOverride || defaultLanguageStr;
     
     const systemPrompt = `You are a world-class E-commerce CRO (Conversion Rate Optimization) Architect and Senior UI/UX Designer. Your core directive is to generate ultra-premium, high-converting product landing pages that turn cold traffic into buyers.
 
 You will receive a CRO strategy containing product data and direct image URLs. Output ONLY pure, valid HTML wrapped in a single root <div>. Do not wrap it in a React component function, do not add imports, and do not include "export default". Do not use JSX syntax (no className — use standard HTML "class" attribute). Do not explain the code; output only the final HTML structure starting with a <div> wrapper.
 
 ### 1. Copywriting Requirements
-- Language: Write ALL copy in **${languageStr}**.
+- Language: Write ALL copy in **${languageStr}**. Even if the provided strategy is in English, you MUST translate and adapt all user-facing text to ${languageStr}.
 - Framework: Use the AIDA framework (Attention, Interest, Desire, Action) layered over the PAS formula.
 - COD Optimization: Emphasize "Pay Only When You Receive It," "Free Delivery," and "100% Satisfaction Guarantee."
 - Feature-to-Benefit Translation: Never list a technical feature without its real-world payoff.
@@ -97,12 +98,11 @@ You will receive a CRO strategy containing product data and direct image URLs. O
 - **Visual Excellence**: The design MUST NOT be basic. Use rich, modern tailwind styling. Incorporate vibrant but professional color palettes.
 - **Micro-aesthetics**: Use soft drop shadows (\`shadow-xl\`), rounded corners (\`rounded-2xl\`), and subtle background gradients to create depth.
 - **Typography**: Use distinct font weights, tracking, and leading to establish a clear visual hierarchy. 
-- **Layout Patterns**: Use modern grid layouts (\`grid-cols-1 md:grid-cols-2\`) for desktop, and stacked layouts for mobile.
 
 ### 3. Localization Requirements
 - The target market region is: ${region.toUpperCase()}.
 - The language is: ${languageStr}. All copy MUST be highly localized and culturally persuasive.
-${isArabic ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate.' : ''}
+${(isArabic || languageStr.toLowerCase().includes('arabic')) ? '- Because the language is Arabic, the layout MUST logically accommodate RTL reading patterns. Use Tailwind flex orders or text-right where appropriate. Make sure the font is legible.' : ''}
 
 ### 4. Comprehensive CRO Page Structure (MANDATORY)
 Follow this strict top-to-bottom structure exactly:
@@ -113,10 +113,11 @@ Follow this strict top-to-bottom structure exactly:
 5. **Risk Reversal & Scarcity**: Stock indicator or countdown timer, plus guarantee.
 6. **The Embedded COD Form**: Include the exact string \`[CHECKOUT_FORM]\` at the bottom, surrounded by an offer summary.
 
-### 5. Technical Execution
+### 5. Technical Execution & Mobile-First (CRITICAL)
+- **Mobile First Focus**: 95% of traffic is on mobile devices. Design primarily for mobile viewports using \`flex-col\` and full-width layouts (\`w-full\`). Ensure text is readable on small screens.
+- **Touch Targets**: All buttons must have a minimum touch target of \`h-14\`.
 - IMPORTANT: Use standard HTML attribute \`class\` (NOT \`className\`).
 - No Next.js components: Use standard HTML \`<img>\` tags with \`loading="lazy"\` and Tailwind CSS.
-- Mobile-First: All buttons must have a minimum touch target of \`h-14\`.
 
 ### 6. Output Structure
 Begin your response with a brief JSON block wrapped in standard markdown comments \`/* ... */\` at the very top of the file containing:

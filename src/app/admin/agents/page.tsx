@@ -595,7 +595,15 @@ export default function AgentsHubPage() {
                                 let html = msg.action.previewData.htmlContent || msg.action.previewData.htmlBody || msg.action.previewData.html;
                                 if (!html) {
                                   setIsLoading(true);
-                                  const result = await aiService.generateLandingPage(msg.action.previewData.title, activeStore?.region || 'dz', msg.content);
+                                  const langMap: Record<string, string> = { ar: 'Arabic', fr: 'French', en: 'English', es: 'Spanish', ro: 'Romanian' };
+                                  const storeLang = activeStore?.language ? (langMap[activeStore.language.toLowerCase()] || activeStore.language) : undefined;
+                                  
+                                  const result = await aiService.generateLandingPage(
+                                    msg.action.previewData.title, 
+                                    activeStore?.region || 'dz', 
+                                    msg.content,
+                                    storeLang
+                                  );
                                   html = result?.componentCode || '<h1>Failed to generate HTML</h1>';
                                   setIsLoading(false);
                                 }
