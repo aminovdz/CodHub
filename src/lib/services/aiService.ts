@@ -305,7 +305,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Algeria (DZ).
   - Currency: DZD (Algerian Dinar).
-  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use local Algerian Arabic (Derja) phrases interspersed with formal Arabic to build trust.'}
+  - Language: If the user asks for a specific language (e.g., Arabic, Derja, French), you MUST use it. Otherwise, default to ${explicitLanguage || 'local Algerian Arabic (Derja)'}.
   - Optimize for Cash on Delivery (COD) workflows specific to Algeria (e.g., Yalidine, Nordine, Mayestro delivery).
   `;
       } else if (region === 'ro') {
@@ -313,7 +313,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Romania (RO).
   - Currency: RON (Romanian Leu).
-  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use native Romanian for client-facing copy.'}
+  - Language: If the user asks for a specific language, use it. Otherwise, default to ${explicitLanguage || 'native Romanian'}.
   - Optimize for European COD markets, courier delivery confirmations, and local consumer behavior.
   `;
       } else if (region === 'co') {
@@ -321,7 +321,7 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - The target market is Colombia (CO).
   - Currency: COP (Colombian Peso).
-  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'Use local Colombian Spanish for copywriting and support.'}
+  - Language: If the user asks for a specific language, use it. Otherwise, default to ${explicitLanguage || 'local Colombian Spanish'}.
   - Optimize for Latin American Cash on Delivery logistics, local delivery confirmation methods, and consumer trust.
   `;
       } else {
@@ -329,13 +329,13 @@ ${contentStr || 'No specific strategy provided. Create a best-in-class generic t
   CRITICAL LOCALIZATION REQUIREMENT:
   - Target country/region: ${region.toUpperCase()}.
   - Currency: ${storeContext?.storeCurrency || 'USD'}.
-  - Language: ${explicitLanguage ? `STRICTLY use ${explicitLanguage} for ALL copy.` : 'English'}.
+  - Language: If the user asks for a specific language, use it. Otherwise, default to ${explicitLanguage || 'English'}.
   - Always optimize all sales copy, landing pages, and suggestions specifically for this local region, its language, dialect, and cultural preferences.
   `;
       }
 
       if (explicitLanguage) {
-        localizationInstructions += `\n  *** STRICT LANGUAGE DIRECTIVE: DO NOT USE ANY OTHER LANGUAGE EXCEPT ${explicitLanguage.toUpperCase()}. ALL TEXT, DESCRIPTIONS, AND HEADINGS MUST BE IN ${explicitLanguage.toUpperCase()}. ***\n`;
+        localizationInstructions += `\n  *** STRICT LANGUAGE DIRECTIVE: The user's prompt overrides default settings! IF the user specifies a language (like Arabic, French, Deridja, etc.), you MUST use their requested language. IF NOT specified, you MUST default to ${explicitLanguage.toUpperCase()}. ***\n`;
       }
 
       let roleSpecificInstructions = '';
