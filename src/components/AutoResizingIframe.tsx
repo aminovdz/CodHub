@@ -49,7 +49,7 @@ export function AutoResizingIframe({ html }: { html: string }) {
     <iframe
       ref={iframeRef}
       srcDoc={srcDoc}
-      style={{ width: '100%', height: height > 0 ? \`\${height}px\` : '100px', border: 'none', display: 'block' }}
+      style={{ width: '100%', height: height > 0 ? `${height}px` : '100px', border: 'none', display: 'block' }}
       scrolling="no"
     />
   );
