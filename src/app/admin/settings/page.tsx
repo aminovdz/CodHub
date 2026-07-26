@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X } from 'lucide-react';
+import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
+import { uploadImageToSupabase } from '@/lib/storage';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { DEFAULT_TRANSLATIONS } from '@/lib/translations';
 import { useEffect } from 'react';
@@ -45,7 +46,11 @@ export default function AdminSettingsPage() {
   const [localOpenAiModel, setLocalOpenAiModel] = useState(openAiModel || 'gpt-4o-mini');
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
+  const [localLogoUrl, setLocalLogoUrl] = useState(activeStore.logoUrl || '');
+  const [localFaviconUrl, setLocalFaviconUrl] = useState(activeStore.faviconUrl || '');
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
 
 
 
@@ -226,6 +231,8 @@ export default function AdminSettingsPage() {
       highValueThreshold: 15000
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
+    setLocalLogoUrl(activeStore.logoUrl || '');
+    setLocalFaviconUrl(activeStore.faviconUrl || '');
     setCustomDomain(activeStore.customDomain || '');
     setLocalGeminiModel(geminiModel || 'gemini-2.0-flash');
     setLocalClaudeModel(claudeModel || 'claude-3-5-sonnet-20241022');
@@ -239,6 +246,8 @@ export default function AdminSettingsPage() {
       translations, resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, smsConfig, dzFulfillment, primaryColor: localPrimaryColor,
+      logoUrl: localLogoUrl || undefined,
+      faviconUrl: localFaviconUrl || undefined,
       customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
       fraudConfig
     });
@@ -1197,6 +1206,74 @@ export default function AdminSettingsPage() {
                 />
               </div>
               <p className="text-xs text-slate-500 mt-2">This color will be used for main call-to-action buttons.</p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Logo</label>
+              <div className="flex gap-4 items-center">
+                {localLogoUrl ? (
+                  <div className="relative group">
+                    <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
+                    <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                    {isUploadingLogo ? <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImageIcon className="w-6 h-6 text-slate-400" />}
+                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                      if (!e.target.files?.[0]) return;
+                      setIsUploadingLogo(true);
+                      try {
+                        const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                        setLocalLogoUrl(url);
+                      } catch (err: any) {
+                        notify(err.message, 'error');
+                      } finally {
+                        setIsUploadingLogo(false);
+                      }
+                    }} />
+                  </label>
+                )}
+                <div className="flex-1">
+                  <input type="text" value={localLogoUrl} onChange={e => setLocalLogoUrl(e.target.value)} placeholder="Or paste image URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Appears in the header of your storefront. Recommended: 512x128px PNG/SVG.</p>
+            </div>
+
+            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Favicon</label>
+              <div className="flex gap-4 items-center">
+                {localFaviconUrl ? (
+                  <div className="relative group">
+                    <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
+                    <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                    {isUploadingFavicon ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <Globe className="w-5 h-5 text-slate-400" />}
+                    <input type="file" accept="image/png,image/x-icon,image/svg+xml" className="hidden" onChange={async (e) => {
+                      if (!e.target.files?.[0]) return;
+                      setIsUploadingFavicon(true);
+                      try {
+                        const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                        setLocalFaviconUrl(url);
+                      } catch (err: any) {
+                        notify(err.message, 'error');
+                      } finally {
+                        setIsUploadingFavicon(false);
+                      }
+                    }} />
+                  </label>
+                )}
+                <div className="flex-1">
+                  <input type="text" value={localFaviconUrl} onChange={e => setLocalFaviconUrl(e.target.value)} placeholder="Or paste image URL (.png, .ico, .svg)" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-2">Browser tab icon. Must be square (1:1), like 64x64px.</p>
             </div>
           </div>
         </div>

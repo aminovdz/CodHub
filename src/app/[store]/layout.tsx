@@ -14,9 +14,10 @@ export async function generateMetadata({ params }: { params: Promise<{ store: st
   const resolvedParams = await params;
   const storeSlug = resolvedParams.store;
   
-  const { data: stores } = await supabase.from('stores').select('name, region');
+  const { data: stores } = await supabase.from('stores').select('name, region, translations');
   const store = stores?.find(s => slugify(s.name) === storeSlug.toLowerCase() || s.region.toLowerCase() === storeSlug.toLowerCase());
   const storeName = store?.name || 'COD Hub';
+  const faviconUrl = store?.translations?.brand?.faviconUrl || '/icon.svg';
 
   return {
     title: {
@@ -24,6 +25,9 @@ export async function generateMetadata({ params }: { params: Promise<{ store: st
       default: `${storeName} - Premium Products, Pay on Delivery`
     },
     description: 'Shop premium products with zero risk. Pay only when you receive your order.',
+    icons: {
+      icon: faviconUrl
+    },
     openGraph: {
       title: `${storeName} - Premium Products`,
       description: 'Shop premium products with zero risk. Pay only when you receive your order.',

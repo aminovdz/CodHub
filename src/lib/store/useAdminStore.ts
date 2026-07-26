@@ -50,7 +50,6 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
     language: store.language,
     phone_prefix: store.phonePrefix,
     primary_color: store.primaryColor,
-    translations: store.translations,
     analytics: store.analytics,
     resend_api_key: store.resendApiKey,
     notify_email: store.notifyEmail,
@@ -62,6 +61,14 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
     fraud_config: store.fraudConfig,
     sticky_buy_button: store.stickyBuyButton,
     custom_domain: store.customDomain,
+    translations: {
+      ...store.translations,
+      brand: {
+        ...(store.translations?.brand || {}),
+        ...(store.logoUrl !== undefined ? { logoUrl: store.logoUrl } : {}),
+        ...(store.faviconUrl !== undefined ? { faviconUrl: store.faviconUrl } : {}),
+      }
+    }
   };
 }
 
@@ -88,6 +95,8 @@ function rowToStore(row: any): Store {
     fraudConfig: row.fraud_config,
     stickyBuyButton: row.sticky_buy_button || { enabled: false, text: 'Order Now', customCss: '' },
     customDomain: row.custom_domain,
+    logoUrl: row.translations?.brand?.logoUrl,
+    faviconUrl: row.translations?.brand?.faviconUrl,
   };
 }
 
@@ -369,6 +378,8 @@ export interface Store {
   language?: string;
   phonePrefix?: string;
   primaryColor?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
   translations?: Record<string, any>;
   analytics?: {
     google?: string;
