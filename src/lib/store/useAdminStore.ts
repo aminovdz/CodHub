@@ -967,10 +967,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       updateStore: async (storeId, data) => {
         if (data.name) {
           const proposedSlug = slugify(data.name);
-          const exists = get().availableStores.some(s => s.id !== storeId && slugify(s.name) === proposedSlug);
-          if (exists) {
-             useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
-             return;
+          const currentStore = get().availableStores.find(s => String(s.id) === String(storeId));
+          
+          if (!currentStore || slugify(currentStore.name) !== proposedSlug) {
+            const exists = get().availableStores.some(s => String(s.id) !== String(storeId) && slugify(s.name) === proposedSlug);
+            if (exists) {
+               useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
+               return;
+            }
           }
         }
         set((state) => {
