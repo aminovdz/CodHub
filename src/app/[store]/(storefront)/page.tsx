@@ -99,10 +99,10 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
 
           const cardShape = store?.theme?.shapes?.cardStyle || 'bordered';
           const cardClass = cardShape === 'floating' 
-            ? 'group bg-white rounded-2xl shadow-lg border-0 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col hover:-translate-y-1' 
+            ? 'group store-card rounded-2xl shadow-lg border-0 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col hover:-translate-y-1' 
             : cardShape === 'flat' 
-            ? 'group bg-white border-0 overflow-hidden hover:opacity-90 transition-all duration-300 flex flex-col'
-            : 'group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col';
+            ? 'group store-card border-0 overflow-hidden hover:opacity-90 transition-all duration-300 flex flex-col'
+            : 'group store-card rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col';
 
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
@@ -147,7 +147,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                   );
                 })}
                 {gridProducts.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-slate-500 font-medium bg-white rounded-2xl border border-slate-200">
+                  <div className="col-span-full py-12 text-center text-slate-500 font-medium store-card rounded-2xl border border-slate-200">
                     {t('store.noProducts', 'لا توجد منتجات متاحة في الوقت الحالي.')}
                   </div>
                 )}
@@ -163,7 +163,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
               <div className="flex overflow-x-auto pb-4 hide-scrollbar gap-3">
                 <button 
                   onClick={() => setActiveCategory(null)}
-                  className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${!activeCategory ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                  className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${!activeCategory ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'store-card text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
                 >
                   {t('store.allProducts', 'جميع المنتجات')}
                 </button>
@@ -171,7 +171,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                   <button 
                     key={i} 
                     onClick={() => setActiveCategory(cat)}
-                    className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${activeCategory === cat ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                    className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${activeCategory === cat ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'store-card text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
                   >
                     {cat}
                   </button>
@@ -186,7 +186,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(block.features || []).map((f, i) => (
-                  <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4">
+                  <div key={i} className="store-card p-6 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4">
                     <div className="p-3 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}>
                       <CheckCircle2 size={24} />
                     </div>

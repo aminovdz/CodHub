@@ -120,7 +120,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
       <div className="max-w-4xl w-full">
 
         {/* ===== SUCCESS HEADER ===== */}
-        <div className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-slate-100 text-center relative overflow-hidden mb-8">
+        <div className="store-card p-8 md:p-12 rounded-3xl shadow-lg border border-slate-100 text-center relative overflow-hidden mb-8">
           <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-green-400 to-emerald-600"></div>
 
           <div className="mx-auto w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6">
@@ -136,12 +136,12 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
             {checkoutConfig?.thankYouMessage || `${t('thankyou.orderProcessed', 'Your order is now being processed.')} ${t('thankyou.agentCall', 'An agent will call you shortly.')}`}
           </p>
 
-          <div className="mt-8 bg-slate-50 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between mx-auto max-w-xl border border-slate-100">
+          <div className="mt-8 store-subcard p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between mx-auto max-w-xl border border-slate-100">
             <div className="text-left mb-4 md:mb-0">
               <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">{t('thankyou.totalAmountDue', 'TOTAL AMOUNT DUE')}</div>
               <div className="text-3xl font-black text-slate-900">{totalPrice} <span className="text-xl text-slate-500">{currency}</span></div>
             </div>
-            <div className="text-xs font-bold text-slate-500 bg-white px-4 py-2 rounded-lg border border-slate-200">
+            <div className="text-xs font-bold text-slate-500 store-card px-4 py-2 rounded-lg border border-slate-200">
               {cart.length} {t('checkout.items', 'Item(s)')} • Order #{getShortOrderId(draftOrderId)}
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handleConfirmClick}
-                className="flex-shrink-0 bg-white text-green-700 font-black px-8 py-4 rounded-2xl hover:bg-green-50 transition-all flex items-center gap-2 shadow-lg text-lg active:scale-95"
+                className="flex-shrink-0 store-card text-green-700 font-black px-8 py-4 rounded-2xl hover:bg-green-50 transition-all flex items-center gap-2 shadow-lg text-lg active:scale-95"
               >
                 <MessageCircle size={20} /> {selfConfirmed ? t('thankyou.whatsappConfirmed', 'Message Sent') : t('thankyou.confirmWhatsapp', 'Confirm on WhatsApp')}
               </a>
@@ -185,7 +185,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
             </div>
             <div className="flex flex-col md:flex-row">
               {otoProduct.image && (
-                <div className="w-full md:w-2/5 shrink-0 bg-white p-6 flex items-center justify-center rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none">
+                <div className="w-full md:w-2/5 shrink-0 store-card p-6 flex items-center justify-center rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={otoProduct.image} alt={otoProduct.title} className="max-w-full max-h-56 object-contain drop-shadow-xl" />
                 </div>
@@ -293,7 +293,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
                 <Link
                   href={`${basePath}/products/${prod.seoSlug || prod.id}`}
                   key={prod.id}
-                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-indigo-300 transition-all cursor-pointer group flex flex-col"
+                  className="store-card rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-indigo-300 transition-all cursor-pointer group flex flex-col"
                 >
                   <div className="aspect-[4/3] bg-slate-100 relative overflow-hidden">
                     {prod.image ? (

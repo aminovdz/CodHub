@@ -1680,7 +1680,7 @@ export default function AdminSettingsPage() {
                 <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <Globe className="w-4 h-4 text-indigo-500" /> Layout Options
                 </h3>
-                <button type="button" onClick={() => setTheme({...theme, layout: { headerStyle: 'left', storeWidth: 'normal', productImageStyle: 'carousel', productCardStyle: 'default' }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                <button type="button" onClick={() => setTheme({...theme, layout: { headerStyle: 'left', storeWidth: 'normal', productImageStyle: 'carousel', productCardStyle: 'default', sectionOpacity: 100 }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
                   <RotateCcw className="w-3 h-3" /> Reset
                 </button>
               </div>
@@ -1706,6 +1706,25 @@ export default function AdminSettingsPage() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div>
+                  
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Section Background Opacity</label>
+                    <span className="text-xs font-bold text-indigo-600">{theme?.layout?.sectionOpacity ?? 100}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" max="100" step="5"
+                    value={theme?.layout?.sectionOpacity ?? 100} 
+                    onChange={e => setTheme({...theme, layout: {...(theme?.layout || {}), sectionOpacity: parseInt(e.target.value)}})} 
+                    className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Lower opacity to reveal the global background color behind sections.</p>
+                </div>
+    
                 </div>
 
                 <div>

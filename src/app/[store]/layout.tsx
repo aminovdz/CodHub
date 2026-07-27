@@ -124,6 +124,7 @@ export default async function RegionLayout({
               --color-secondary: ${theme.colors?.secondary || '#F59E0B'};
               --color-background: ${theme.colors?.background || '#F8FAFC'};
               --color-text: ${theme.colors?.text || '#0F172A'};
+              --section-opacity: ${theme.layout?.sectionOpacity !== undefined ? theme.layout.sectionOpacity / 100 : 1};
             }
             
             body {
@@ -134,6 +135,16 @@ export default async function RegionLayout({
             
             h1, h2, h3, h4, h5, h6 {
               font-family: var(--font-heading);
+            }
+
+            .store-card {
+              background-color: rgba(255, 255, 255, var(--section-opacity));
+            }
+            .store-subcard {
+              background-color: rgba(248, 250, 252, var(--section-opacity));
+            }
+            .store-header {
+              background-color: rgba(255, 255, 255, calc(var(--section-opacity) * 0.95));
             }
 
             ${theme.advanced?.customCss || ''}

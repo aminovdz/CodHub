@@ -172,7 +172,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         <div className="text-slate-500 mb-8 max-w-md text-center">عذراً، لم نتمكن من العثور على المنتج الذي تبحث عنه. يرجى التحقق من الرابط.</div>
         
         {/* Debug info */}
-        <div className="text-left bg-slate-50 p-4 rounded-xl text-sm text-slate-600 border border-slate-200 max-w-2xl w-full">
+        <div className="text-left store-subcard p-4 rounded-xl text-sm text-slate-600 border border-slate-200 max-w-2xl w-full">
           <p className="font-bold text-slate-800 mb-2 border-b border-slate-200 pb-2">معلومات التشخيص:</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -310,7 +310,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           <div className="w-full">
 
         {/* TRUST STRIP */}
-        <div className="grid grid-cols-3 gap-2 mb-8 bg-slate-50 border border-slate-100 rounded-2xl p-3 shadow-sm">
+        <div className="grid grid-cols-3 gap-2 mb-8 store-subcard border border-slate-100 rounded-2xl p-3 shadow-sm">
           <div className="flex flex-col items-center text-center gap-1.5">
             <Truck size={22} className="text-indigo-600" />
             <span className="text-[10px] md:text-xs font-bold text-slate-700 leading-tight">توصيل سريع</span>
@@ -383,8 +383,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                       ${isSelected
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(var(--color-brand-primary),0.1)]' 
                         : isOutOfStock
-                          ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                          ? 'border-slate-200 store-subcard text-slate-400 opacity-60 cursor-not-allowed'
+                          : 'border-slate-200 store-card text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                       }
                     `}
                   >
@@ -435,8 +435,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
 
         {/* CHECKOUT FORM INLINE */}
         {checkoutConfig?.productCheckoutType === 'inline' && (
-          <div id="inline-checkout-section" className="bg-white rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-12">
-            <div className="bg-slate-50 border-b border-slate-100 p-4 text-center">
+          <div id="inline-checkout-section" className="store-card rounded-3xl shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 overflow-hidden mb-12">
+            <div className="store-subcard border-b border-slate-100 p-4 text-center">
                <h2 className="text-lg font-black text-slate-800 flex items-center justify-center gap-2">
                  <ShoppingBag size={20} className="text-indigo-600"/> معلومات التوصيل
                </h2>
@@ -481,7 +481,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
           <div className="space-y-4">
              {((product as any).reviews?.filter((r: any) => r.status === 'approved') || []).length > 0 ? (
                ((product as any).reviews || []).filter((r: any) => r.status === 'approved').map((review: any) => (
-                 <div key={review.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                 <div key={review.id} className="store-subcard p-4 rounded-2xl border border-slate-100">
                    <div className="flex justify-between items-start mb-2">
                      <div className="flex gap-3">
                        <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
@@ -500,7 +500,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                  </div>
                ))
              ) : (
-               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-center">
+               <div className="store-subcard p-6 rounded-2xl border border-slate-100 text-center">
                  <div className="text-slate-400 mb-2 flex justify-center"><MessageCircle size={32} /></div>
                  <p className="text-sm font-bold text-slate-700">لا توجد تقييمات بعد</p>
                  <p className="text-xs text-slate-500">كن أول من يقيم هذا المنتج!</p>
@@ -513,14 +513,14 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         <div className="mb-12 border-t border-slate-100 pt-12">
           <h3 className="text-xl font-black text-slate-900 mb-6 text-center">لماذا تختارنا؟</h3>
           <div className="space-y-4">
-             <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+             <div className="flex gap-4 p-4 rounded-2xl store-subcard border border-slate-100">
                 <div className="text-indigo-600 mt-1"><Truck size={24} /></div>
                 <div>
                   <h4 className="font-bold text-slate-900">توصيل سريع</h4>
                   <p className="text-sm text-slate-500">توصيل خلال 48-72 ساعة إلى باب منزلك.</p>
                 </div>
              </div>
-             <div className="flex gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+             <div className="flex gap-4 p-4 rounded-2xl store-subcard border border-slate-100">
                 <div className="text-indigo-600 mt-1"><ShieldCheck size={24} /></div>
                 <div>
                   <h4 className="font-bold text-slate-900">أصلي 100%</h4>
@@ -534,15 +534,15 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
         <div className="mb-12 border-t border-slate-100 pt-12">
           <h3 className="text-xl font-black text-slate-900 mb-6 text-center">الأسئلة الشائعة</h3>
           <div className="space-y-4">
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+             <div className="store-subcard p-4 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900 mb-2">متى سأستلم طلبي؟</h4>
                 <p className="text-sm text-slate-600">سيتم توصيل طلبك خلال 48 إلى 72 ساعة عمل من تأكيد الطلب.</p>
              </div>
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+             <div className="store-subcard p-4 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900 mb-2">هل يمكنني الدفع عند الاستلام؟</h4>
                 <p className="text-sm text-slate-600">نعم، نحن نوفر خدمة الدفع عند الاستلام لجميع عملائنا. لا تحتاج لبطاقة ائتمان.</p>
              </div>
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+             <div className="store-subcard p-4 rounded-2xl border border-slate-100">
                 <h4 className="font-bold text-slate-900 mb-2">كيف يمكنني تتبع طلبي؟</h4>
                 <p className="text-sm text-slate-600">سيتواصل معك فريق خدمة العملاء لتزويدك بتفاصيل التتبع وموعد وصول المندوب.</p>
              </div>
@@ -574,7 +574,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       {/* Popup Checkout Modal */}
       {checkoutConfig?.productCheckoutType === 'popup' && isCheckoutModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm">
-           <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in zoom-in-95 duration-200">
+           <div className="store-card rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-in zoom-in-95 duration-200">
              <button onClick={() => setIsCheckoutModalOpen(false)} className="absolute top-4 right-4 z-50 bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-full transition-colors shadow-sm">
                <X size={24} />
              </button>
@@ -588,7 +588,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
       {/* Review Modal */}
       {isReviewModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
-           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
+           <div className="store-card rounded-3xl w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
              <div className="flex justify-between items-center p-6 border-b border-slate-100">
                <h3 className="text-xl font-black text-slate-900">أضف تقييمك</h3>
                <button onClick={() => setIsReviewModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">

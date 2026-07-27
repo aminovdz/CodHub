@@ -407,6 +407,7 @@ export interface ThemeConfig {
     headerStyle?: 'left' | 'center';
     storeWidth?: 'normal' | 'wide' | 'narrow';
     productCardStyle?: 'default' | 'minimal' | 'bordered';
+    sectionOpacity?: number;
     productImageStyle?: 'carousel' | 'grid';
   };
   advanced?: {
