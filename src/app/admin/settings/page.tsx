@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard } from 'lucide-react';
+import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard, Settings, Palette, Link2, Truck, FileText } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { uploadImageToSupabase } from '@/lib/storage';
@@ -29,6 +29,7 @@ export default function AdminSettingsPage() {
   const sessionUser = sessionData.user || sessionData.username || 'System';
   
   // Layout & SEO Settings
+  const [activeTab, setActiveTab] = useState<'general' | 'design' | 'integrations' | 'payments'>('general');
   const [isRtl, setIsRtl] = useState(true);
   const [announcementText, setAnnouncementText] = useState('⚡ Flash Sale: 50% OFF All Items');
   const [localStoreName, setLocalStoreName] = useState(activeStore.name || 'CODHUB');
@@ -392,8 +393,28 @@ export default function AdminSettingsPage() {
         <p className="text-slate-500 dark:text-slate-400 font-medium">Configure global behavior, statuses, and multi-tenant stores.</p>
       </div>
 
+      {/* Tabs Navigation */}
+      <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 border-b border-slate-200 dark:border-slate-800 pb-2">
+        {[
+          { id: 'general', label: 'General', icon: Settings },
+          { id: 'design', label: 'Design & Theme', icon: Palette },
+          { id: 'integrations', label: 'Integrations', icon: Link2 },
+          { id: 'payments', label: 'Payments & Security', icon: CreditCard },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={(e) => { e.preventDefault(); setActiveTab(tab.id as any); }}
+            type="button"
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
+          >
+            <tab.icon size={16} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* MULTI-STORE MANAGER */}
-      <div className="bg-[var(--color-primary)] dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className={`p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block bg-white dark:bg-slate-800' : 'hidden'}`}>
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
           <StoreIcon className="text-indigo-600" /> Multi-Store Manager
         </h2>
@@ -505,7 +526,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* AI SETTINGS MANAGER */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
           <Code className="text-indigo-600" /> AI Co-Pilot Settings
         </h2>
@@ -645,7 +666,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* CUSTOM ORDER STATUSES */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
           <Type className="text-indigo-600" /> Custom Order Statuses
         </h2>
@@ -679,7 +700,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* CATEGORY MANAGER */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
           <ListTree className="text-indigo-600" /> Category Manager
         </h2>
@@ -729,7 +750,7 @@ export default function AdminSettingsPage() {
 
       {/* SEO & LAYOUT */}
       <form onSubmit={handleSaveSEO} className="space-y-8">
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
             <Globe className="text-indigo-600" /> Localization & Layout
           </h2>
@@ -815,7 +836,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* INTEGRATIONS & PIXELS */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'integrations' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-2">
             <Code className="text-indigo-600" /> Tracking & Integrations
           </h2>
@@ -1024,7 +1045,7 @@ export default function AdminSettingsPage() {
 
 
         {/* SMS AUTOMATION */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8 ${activeTab === 'integrations' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
             <MessageCircle className="text-indigo-500" /> SMS Automations
           </h2>
@@ -1077,7 +1098,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* STRIPE INTEGRATION */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8 ${activeTab === 'payments' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
             <CreditCard className="text-indigo-500" /> Stripe Payment Integration
           </h2>
@@ -1109,7 +1130,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* WHATSAPP AUTOMATION */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'integrations' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
             <MessageCircle className="text-green-500" /> WhatsApp Automations
           </h2>
@@ -1348,7 +1369,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Premium Branding Panel */}
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 ${activeTab === 'design' ? 'block' : 'hidden'}`}>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
             <Globe className="w-6 h-6 text-indigo-600" /> Theme & Branding
           </h2>
