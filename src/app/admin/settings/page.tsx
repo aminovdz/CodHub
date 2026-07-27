@@ -1436,7 +1436,8 @@ export default function AdminSettingsPage() {
               <div className="space-y-6 flex-grow">
                 {/* Logo */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-700">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Store Logo</label>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Store Logo</label>
+                  <p className="text-[10px] text-slate-400 mb-3">Recommended: 512x512px or rectangular (transparent PNG/SVG)</p>
                   <div className="flex gap-4 items-center">
                     {localLogoUrl ? (
                       <div className="relative group">
