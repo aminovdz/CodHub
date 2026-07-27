@@ -832,6 +832,17 @@ export interface CheckoutConfig {
   layout?: '1-step' | '2-step';
 }
 
+export interface Campaign {
+  id: string;
+  storeId: string;
+  subject: string;
+  body: string;
+  totalRecipients: number;
+  sentCount: number;
+  status: 'SENDING' | 'COMPLETED' | 'FAILED';
+  date: string;
+}
+
 interface AdminStore {
   _hasHydrated: boolean;
   setHasHydrated: (v: boolean) => void;
@@ -897,6 +908,11 @@ interface AdminStore {
   // New: Coupons
   coupons: Coupon[];
   setCoupons: (updater: (prev: Coupon[]) => Coupon[]) => void;
+
+  // New: Campaigns
+  campaigns: Campaign[];
+  addCampaign: (campaign: Campaign) => void;
+  updateCampaignStatus: (id: string, sentCount: number, status: Campaign['status']) => void;
 
   // Persistent Save Methods
   saveCheckoutConfig: (config: CheckoutConfig) => Promise<void>;
@@ -1535,6 +1551,12 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
 
         return { coupons: nextCoupons, availableStores: nextStores, activeStore: state.activeStore ? nextStores.find(s => s.id === state.activeStore?.id) || state.activeStore : state.activeStore };
       }),
+
+      campaigns: [],
+      addCampaign: (campaign) => set((state) => ({ campaigns: [campaign, ...state.campaigns] })),
+      updateCampaignStatus: (id, sentCount, status) => set((state) => ({
+        campaigns: state.campaigns.map(c => c.id === id ? { ...c, sentCount, status } : c)
+      })),
 
       agentChats: {},
       setAgentChat: (storeId, agentId, messages) => set((state) => ({

@@ -575,6 +575,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
           status: 'PENDING_AGENT_CONFIRMATION',
           date: new Date().toISOString(),
           source: (utmSource as any) || undefined,
+          customFields: { email: email || undefined },
         },
         ...prev
       ]);
