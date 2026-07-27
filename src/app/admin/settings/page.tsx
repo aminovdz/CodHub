@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard, Settings, Palette, Link2, Truck, FileText } from 'lucide-react';
+import { RotateCcw, Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard, Settings, Palette, Link2, Truck, FileText } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { uploadImageToSupabase } from '@/lib/storage';
@@ -1424,9 +1424,14 @@ export default function AdminSettingsPage() {
             
             {/* BRAND IDENTITY */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-indigo-500" /> Brand Identity
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-indigo-500" /> Brand Identity
+                </h3>
+                <button type="button" onClick={() => { setLocalLogoUrl(''); setLocalFaviconUrl(''); }} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               
               <div className="space-y-6 flex-grow">
                 {/* Logo */}
@@ -1494,9 +1499,14 @@ export default function AdminSettingsPage() {
 
             {/* COLOR PALETTE */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-fuchsia-500"></span> Color Palette
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-fuchsia-500"></span> Color Palette
+                </h3>
+                <button type="button" onClick={() => { setTheme({...theme, colors: { primary: '#4F46E5', secondary: '#F59E0B', background: '#F8FAFC', text: '#0F172A' }}); }} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               
               <div className="grid grid-cols-2 gap-4">
                 {[
@@ -1524,9 +1534,14 @@ export default function AdminSettingsPage() {
 
             {/* HERO & ANNOUNCEMENT */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-indigo-500" /> Hero & Announcement
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-indigo-500" /> Hero & Announcement
+                </h3>
+                <button type="button" onClick={() => { setLocalAnnouncement(''); setTheme({...theme, hero: { bannerUrl: '', bannerUrlMobile: '', announcementBgColor: '#4F46E5', announcementTextColor: '#FFFFFF', announcementMarquee: false }}); }} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               
               <div className="space-y-5">
                 <div>
@@ -1565,9 +1580,14 @@ export default function AdminSettingsPage() {
 
             {/* TRUST & SOCIALS */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-indigo-500" /> Trust & Socials
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-indigo-500" /> Trust & Socials
+                </h3>
+                <button type="button" onClick={() => setTheme({...theme, trust: { badgesUrl: '', socialLinks: { instagram: '', facebook: '', tiktok: '' } }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               
               <div className="space-y-4">
                 <div>
@@ -1594,9 +1614,14 @@ export default function AdminSettingsPage() {
 
             {/* TYPOGRAPHY & SHAPES */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <Type className="w-4 h-4 text-indigo-500" /> Typography & Shapes
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Type className="w-4 h-4 text-indigo-500" /> Typography & Shapes
+                </h3>
+                <button type="button" onClick={() => setTheme({...theme, typography: { headingFont: 'Inter', bodyFont: 'Inter' }, shapes: { buttonStyle: 'rounded', cardStyle: 'bordered' }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -1648,11 +1673,64 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
+            
+            {/* LAYOUT OPTIONS */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-indigo-500" /> Layout Options
+                </h3>
+                <button type="button" onClick={() => setTheme({...theme, layout: { headerStyle: 'left', storeWidth: 'normal', productImageStyle: 'carousel', productCardStyle: 'default' }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Header Layout</label>
+                  <div className="flex gap-2">
+                    {['left', 'center'].map(style => (
+                      <button key={style} type="button" onClick={() => setTheme({...theme, layout: {...(theme?.layout || {}), headerStyle: style as any}})} className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${theme?.layout?.headerStyle === style || (!theme?.layout?.headerStyle && style === 'left') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                        Logo {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Store Width</label>
+                  <div className="flex gap-2">
+                    {['normal', 'wide', 'narrow'].map(style => (
+                      <button key={style} type="button" onClick={() => setTheme({...theme, layout: {...(theme?.layout || {}), storeWidth: style as any}})} className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${theme?.layout?.storeWidth === style || (!theme?.layout?.storeWidth && style === 'normal') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Product Card UI</label>
+                  <div className="flex gap-2">
+                    {['default', 'minimal', 'bordered'].map(style => (
+                      <button key={style} type="button" onClick={() => setTheme({...theme, layout: {...(theme?.layout || {}), productCardStyle: style as any}})} className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${theme?.layout?.productCardStyle === style || (!theme?.layout?.productCardStyle && style === 'default') ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                        {style}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* ADVANCED CSS */}
             <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-                <Code className="w-4 h-4 text-indigo-500" /> Advanced CSS
-              </h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Code className="w-4 h-4 text-indigo-500" /> Advanced CSS
+                </h3>
+                <button type="button" onClick={() => setTheme({...theme, advanced: { customCss: '' }})} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
               <p className="text-xs text-slate-500 mb-4">Add custom global CSS styles to override default theme behaviors. Use with caution.</p>
               
               <textarea 

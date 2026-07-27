@@ -403,6 +403,12 @@ export interface ThemeConfig {
     announcementTextColor?: string;
     announcementMarquee?: boolean;
   };
+  layout?: {
+    headerStyle?: 'left' | 'center';
+    storeWidth?: 'normal' | 'wide' | 'narrow';
+    productCardStyle?: 'default' | 'minimal' | 'bordered';
+    productImageStyle?: 'carousel' | 'grid';
+  };
   advanced?: {
     customCss?: string;
   };
