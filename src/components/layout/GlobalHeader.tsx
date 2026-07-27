@@ -11,8 +11,29 @@ const GlobalHeader = memo(function GlobalHeader({ region }: { region: string }) 
   const isSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith(`${region.toLowerCase()}.`);
   const basePath = isSubdomain ? '' : `/${region}`;
 
+  const theme = store?.theme;
+  const announcementText = store?.translations?.brand?.announcementText || 'Free Shipping on all orders!'; // Fallback to old property or default
+  
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <>
+      {theme?.hero && (theme.hero.announcementBgColor || theme.hero.announcementMarquee) && (
+        <div 
+          style={{ 
+            backgroundColor: theme.hero.announcementBgColor || '#4F46E5',
+            color: theme.hero.announcementTextColor || '#FFFFFF'
+          }}
+          className="w-full text-center py-2 px-4 text-xs font-bold overflow-hidden"
+        >
+          {theme.hero.announcementMarquee ? (
+            <div className="whitespace-nowrap animate-marquee">
+              {announcementText}
+            </div>
+          ) : (
+            <div>{announcementText}</div>
+          )}
+        </div>
+      )}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href={basePath || '/'} className="font-black text-2xl tracking-tighter text-slate-900 truncate max-w-[200px]">
           {store?.logoUrl ? (
@@ -30,7 +51,8 @@ const GlobalHeader = memo(function GlobalHeader({ region }: { region: string }) 
           </button>
         </div>
       </div>
-    </header>
+      </header>
+    </>
   );
 });
 

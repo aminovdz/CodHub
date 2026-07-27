@@ -50,17 +50,39 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
         if (block.type === 'hero') {
           let data = { title: '', subtitle: '' };
           try { data = JSON.parse(block.content); } catch (e) {}
-          return (
-            <div key={block.id} className="bg-indigo-950 text-white py-16 px-4 mb-12">
+          return store?.theme?.hero?.bannerUrl ? (
+            <div key={block.id} className="w-full relative h-[400px] md:h-[600px] mb-12">
+              <Image 
+                src={store.theme.hero.bannerUrl} 
+                alt={data.title || 'Hero Banner'} 
+                fill 
+                className="object-cover object-center" 
+                priority
+              />
+              <div className="absolute inset-0 bg-black/30 flex items-center">
+                <div className="max-w-6xl mx-auto px-4 w-full text-center md:text-right">
+                  <div className="md:w-1/2">
+                    <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight tracking-tight text-white drop-shadow-lg">
+                      {data.title || 'منتجات متميزة. الدفع عند الاستلام.'}
+                    </h1>
+                    <p className="text-white/90 text-lg md:text-xl font-medium max-w-md mx-auto md:mx-0 drop-shadow">
+                      {data.subtitle || 'لا حاجة لبطاقة ائتمان. افحص طلبك قبل الدفع.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div key={block.id} className="bg-indigo-950 text-white py-16 px-4 mb-12" style={{ backgroundColor: store?.theme?.colors?.primary || '#1e1b4b' }}>
               <div className="max-w-6xl mx-auto text-center md:text-right md:flex items-center justify-between">
                 <div className="md:w-1/2">
-                  <div className="inline-block bg-indigo-500/30 text-indigo-200 font-bold px-3 py-1 rounded-full text-sm mb-4 border border-indigo-400/30">
+                  <div className="inline-block bg-white/20 text-white font-bold px-3 py-1 rounded-full text-sm mb-4 border border-white/30 backdrop-blur-sm">
                     ⚡ {t('hero.flashDelivery', 'توصيل سريع متاح')}
                   </div>
                   <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight tracking-tight">
                     {data.title || 'منتجات متميزة. الدفع عند الاستلام.'}
                   </h1>
-                  <p className="text-indigo-200 text-lg md:text-xl font-medium max-w-md mx-auto md:mx-0">
+                  <p className="text-white/80 text-lg md:text-xl font-medium max-w-md mx-auto md:mx-0">
                     {data.subtitle || 'لا حاجة لبطاقة ائتمان. افحص طلبك قبل الدفع.'}
                   </p>
                 </div>
@@ -75,6 +97,13 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
             ? storeProducts.filter(p => (block.productIds as string[]).includes(p.id) && p.active !== false && (!activeCategory || p.category === activeCategory))
             : storeProducts.filter(p => p.active !== false && (!activeCategory || p.category === activeCategory));
 
+          const cardShape = store?.theme?.shapes?.cardStyle || 'bordered';
+          const cardClass = cardShape === 'floating' 
+            ? 'group bg-white rounded-2xl shadow-lg border-0 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col hover:-translate-y-1' 
+            : cardShape === 'flat' 
+            ? 'group bg-white border-0 overflow-hidden hover:opacity-90 transition-all duration-300 flex flex-col'
+            : 'group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-indigo-300 transition-all duration-300 flex flex-col';
+
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
               <div className="flex justify-between items-end mb-6">
@@ -85,7 +114,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                   const priceToDisplay = typeof product.price === 'number' ? product.price : (product.price as any)[region];
                   const slug = (product as any).seo_slug || (product as any).seoSlug || product.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
                   return (
-                    <Link key={product.id} href={`${basePath}/products/${slug}`} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-2xl hover:border-indigo-300 transition-all duration-300 flex flex-col">
+                    <Link key={product.id} href={`${basePath}/products/${slug}`} className={cardClass}>
                       <div className="aspect-[4/5] bg-slate-100 relative overflow-hidden">
                         <Image 
                           src={product.image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&q=80&w=800'} 

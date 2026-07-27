@@ -46,11 +46,22 @@ export default function AdminSettingsPage() {
   const [localOpenAiModel, setLocalOpenAiModel] = useState(openAiModel || 'gpt-4o-mini');
   const [localProvider, setLocalProvider] = useState<'gemini'|'claude'|'openai'|'openrouter'|'nvidia'>(aiProvider || 'gemini');
   const [localPrimaryColor, setLocalPrimaryColor] = useState(activeStore.primaryColor || '#4F46E5');
+  const [localAnnouncement, setLocalAnnouncement] = useState(activeStore.translations?.brand?.announcementText || '');
   const [localLogoUrl, setLocalLogoUrl] = useState(activeStore.logoUrl || '');
   const [localFaviconUrl, setLocalFaviconUrl] = useState(activeStore.faviconUrl || '');
+  const [theme, setTheme] = useState(activeStore.theme || {
+    colors: { primary: activeStore.primaryColor || '#4F46E5', secondary: '#F59E0B', background: '#F8FAFC', text: '#0F172A' },
+    typography: { headingFont: 'Inter', bodyFont: 'Inter' },
+    shapes: { buttonStyle: 'rounded' as const, cardStyle: 'bordered' as const },
+    trust: { badgesUrl: '', socialLinks: { instagram: '', facebook: '', tiktok: '' } },
+    hero: { bannerUrl: '', bannerUrlMobile: '', announcementBgColor: '#4F46E5', announcementTextColor: '#FFFFFF', announcementMarquee: false },
+    advanced: { customCss: '' }
+  });
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [isUploadingBadge, setIsUploadingBadge] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
 
 
 
@@ -231,8 +242,17 @@ export default function AdminSettingsPage() {
       highValueThreshold: 15000
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
+    setLocalAnnouncement(activeStore.translations?.brand?.announcementText || '');
     setLocalLogoUrl(activeStore.logoUrl || '');
     setLocalFaviconUrl(activeStore.faviconUrl || '');
+    setTheme(activeStore.theme || {
+      colors: { primary: activeStore.primaryColor || '#4F46E5', secondary: '#F59E0B', background: '#F8FAFC', text: '#0F172A' },
+      typography: { headingFont: 'Inter', bodyFont: 'Inter' },
+      shapes: { buttonStyle: 'rounded' as const, cardStyle: 'bordered' as const },
+      trust: { badgesUrl: '', socialLinks: { instagram: '', facebook: '', tiktok: '' } },
+      hero: { bannerUrl: '', bannerUrlMobile: '', announcementBgColor: '#4F46E5', announcementTextColor: '#FFFFFF', announcementMarquee: false },
+      advanced: { customCss: '' }
+    });
     setCustomDomain(activeStore.customDomain || '');
     setLocalGeminiModel(geminiModel || 'gemini-2.0-flash');
     setLocalClaudeModel(claudeModel || 'claude-3-5-sonnet-20241022');
@@ -243,11 +263,19 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     await updateStore(activeStore.id, { 
       name: localStoreName,
-      translations, resendApiKey, notifyEmail, analytics, 
+      translations: {
+        ...((translations as any) || {}),
+        brand: {
+          ...(((translations as any)?.brand as any) || {}),
+          announcementText: localAnnouncement
+        }
+      }, 
+      resendApiKey, notifyEmail, analytics, 
       yalidineApiKey, yalidineApiToken, genericWebhookUrl,
       whatsappConfig, smsConfig, dzFulfillment, primaryColor: localPrimaryColor,
       logoUrl: localLogoUrl || undefined,
       faviconUrl: localFaviconUrl || undefined,
+      theme: theme,
       customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
       fraudConfig
     });
@@ -1182,99 +1210,207 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Branding Panel */}
+        {/* Premium Branding Panel */}
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <Globe className="w-6 h-6 text-indigo-600" /> Branding
+            <Globe className="w-6 h-6 text-indigo-600" /> Theme & Branding
           </h2>
           
-          <div className="space-y-6">
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Primary Button Color</label>
-              <div className="flex gap-4 items-center">
-                <input 
-                  type="color" 
-                  value={localPrimaryColor} 
-                  onChange={e => setLocalPrimaryColor(e.target.value)}
-                  className="w-12 h-12 rounded cursor-pointer border-0 p-0"
-                />
-                <input 
-                  type="text" 
-                  value={localPrimaryColor}
-                  onChange={e => setLocalPrimaryColor(e.target.value)}
-                  className="w-48 p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-slate-900 dark:text-white bg-white dark:bg-slate-800"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mt-2">This color will be used for main call-to-action buttons.</p>
-            </div>
-
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Logo</label>
-              <div className="flex gap-4 items-center">
-                {localLogoUrl ? (
-                  <div className="relative group">
-                    <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
-                    <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X className="w-3 h-3" />
-                    </button>
+          <div className="space-y-8">
+            
+            {/* Essential Branding (Logo & Favicon) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Logo</label>
+                <div className="flex gap-4 items-center">
+                  {localLogoUrl ? (
+                    <div className="relative group">
+                      <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
+                      <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                      {isUploadingLogo ? <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImageIcon className="w-6 h-6 text-slate-400" />}
+                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                        if (!e.target.files?.[0]) return;
+                        setIsUploadingLogo(true);
+                        try {
+                          const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                          setLocalLogoUrl(url);
+                        } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingLogo(false); }
+                      }} />
+                    </label>
+                  )}
+                  <div className="flex-1">
+                    <input type="text" value={localLogoUrl} onChange={e => setLocalLogoUrl(e.target.value)} placeholder="Or paste image URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                   </div>
-                ) : (
-                  <label className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
-                    {isUploadingLogo ? <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImageIcon className="w-6 h-6 text-slate-400" />}
-                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                      if (!e.target.files?.[0]) return;
-                      setIsUploadingLogo(true);
-                      try {
-                        const url = await uploadImageToSupabase(e.target.files[0], 'stores');
-                        setLocalLogoUrl(url);
-                      } catch (err: any) {
-                        notify(err.message, 'error');
-                      } finally {
-                        setIsUploadingLogo(false);
-                      }
-                    }} />
-                  </label>
-                )}
-                <div className="flex-1">
-                  <input type="text" value={localLogoUrl} onChange={e => setLocalLogoUrl(e.target.value)} placeholder="Or paste image URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">Appears in the header of your storefront. Recommended: 512x128px PNG/SVG.</p>
-            </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-              <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Favicon</label>
-              <div className="flex gap-4 items-center">
-                {localFaviconUrl ? (
-                  <div className="relative group">
-                    <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
-                    <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <X className="w-3 h-3" />
-                    </button>
+              <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Favicon</label>
+                <div className="flex gap-4 items-center">
+                  {localFaviconUrl ? (
+                    <div className="relative group">
+                      <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
+                      <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                      {isUploadingFavicon ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <Globe className="w-5 h-5 text-slate-400" />}
+                      <input type="file" accept="image/png,image/x-icon,image/svg+xml" className="hidden" onChange={async (e) => {
+                        if (!e.target.files?.[0]) return;
+                        setIsUploadingFavicon(true);
+                        try {
+                          const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                          setLocalFaviconUrl(url);
+                        } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingFavicon(false); }
+                      }} />
+                    </label>
+                  )}
+                  <div className="flex-1">
+                    <input type="text" value={localFaviconUrl} onChange={e => setLocalFaviconUrl(e.target.value)} placeholder="Or paste URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                   </div>
-                ) : (
-                  <label className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
-                    {isUploadingFavicon ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <Globe className="w-5 h-5 text-slate-400" />}
-                    <input type="file" accept="image/png,image/x-icon,image/svg+xml" className="hidden" onChange={async (e) => {
-                      if (!e.target.files?.[0]) return;
-                      setIsUploadingFavicon(true);
-                      try {
-                        const url = await uploadImageToSupabase(e.target.files[0], 'stores');
-                        setLocalFaviconUrl(url);
-                      } catch (err: any) {
-                        notify(err.message, 'error');
-                      } finally {
-                        setIsUploadingFavicon(false);
-                      }
-                    }} />
-                  </label>
-                )}
-                <div className="flex-1">
-                  <input type="text" value={localFaviconUrl} onChange={e => setLocalFaviconUrl(e.target.value)} placeholder="Or paste image URL (.png, .ico, .svg)" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                 </div>
               </div>
-              <p className="text-xs text-slate-500 mt-2">Browser tab icon. Must be square (1:1), like 64x64px.</p>
             </div>
+
+            {/* Colors */}
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Color Palette</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Primary (Buttons)', key: 'primary', value: localPrimaryColor, set: setLocalPrimaryColor },
+                  { label: 'Secondary (Badges)', key: 'secondary', value: theme?.colors?.secondary || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), secondary: val}}) },
+                  { label: 'Background', key: 'background', value: theme?.colors?.background || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), background: val}}) },
+                  { label: 'Text', key: 'text', value: theme?.colors?.text || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), text: val}}) }
+                ].map((colorObj) => (
+                  <div key={colorObj.key} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 flex flex-col items-center">
+                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">{colorObj.label}</label>
+                    <input type="color" value={colorObj.value} onChange={e => colorObj.set(e.target.value)} className="w-10 h-10 rounded cursor-pointer border-0 p-0 mb-2" />
+                    <input type="text" value={colorObj.value} onChange={e => colorObj.set(e.target.value)} className="w-full text-center text-xs p-1 rounded border border-slate-300 dark:border-slate-600 font-mono bg-white dark:bg-slate-800" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Typography & Shapes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Typography</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Heading Font</label>
+                    <select value={theme?.typography?.headingFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), headingFont: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                      {['Inter', 'Roboto', 'Playfair Display', 'Merriweather', 'Tajawal', 'Cairo', 'Almarai'].map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Body Font</label>
+                    <select value={theme?.typography?.bodyFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), bodyFont: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                      {['Inter', 'Roboto', 'Open Sans', 'Lato', 'Tajawal', 'Cairo', 'Almarai'].map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Shapes & Style</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Button Style</label>
+                    <select value={theme?.shapes?.buttonStyle || 'rounded'} onChange={e => setTheme({...theme, shapes: {...(theme?.shapes || {}), buttonStyle: e.target.value as any}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                      <option value="sharp">Sharp (Square)</option>
+                      <option value="rounded">Rounded</option>
+                      <option value="pill">Pill (Fully rounded)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Card Style</label>
+                    <select value={theme?.shapes?.cardStyle || 'bordered'} onChange={e => setTheme({...theme, shapes: {...(theme?.shapes || {}), cardStyle: e.target.value as any}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
+                      <option value="flat">Flat (Minimal)</option>
+                      <option value="bordered">Bordered</option>
+                      <option value="floating">Floating (Shadows)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Banners & Socials */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Hero & Announcement</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Hero Banner Image URL</label>
+                    <input type="text" placeholder="https://..." value={theme?.hero?.bannerUrl || ''} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), bannerUrl: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Announcement Text</label>
+                    <input type="text" placeholder="Free Shipping on all orders!" value={localAnnouncement} onChange={e => setLocalAnnouncement(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Bar Background</label>
+                      <input type="color" value={theme?.hero?.announcementBgColor || '#4F46E5'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementBgColor: e.target.value}})} className="w-full h-10 rounded cursor-pointer border-0 p-0" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Bar Text</label>
+                      <input type="color" value={theme?.hero?.announcementTextColor || '#ffffff'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementTextColor: e.target.value}})} className="w-full h-10 rounded cursor-pointer border-0 p-0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={theme?.hero?.announcementMarquee || false} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementMarquee: e.target.checked}})} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Enable Marquee Effect</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Trust & Socials</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Trust Badges Image URL</label>
+                    <input type="text" placeholder="https://..." value={theme?.trust?.badgesUrl || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), badgesUrl: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Instagram URL</label>
+                    <input type="text" placeholder="https://instagram.com/..." value={theme?.trust?.socialLinks?.instagram || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), instagram: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">Facebook URL</label>
+                    <input type="text" placeholder="https://facebook.com/..." value={theme?.trust?.socialLinks?.facebook || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), facebook: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">TikTok URL</label>
+                    <input type="text" placeholder="https://tiktok.com/@..." value={theme?.trust?.socialLinks?.tiktok || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), tiktok: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Advanced CSS */}
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Advanced</h3>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">Custom CSS</label>
+                <textarea 
+                  value={theme.advanced?.customCss || ''} 
+                  onChange={e => setTheme({...theme, advanced: {...theme.advanced, customCss: e.target.value}})} 
+                  rows={4} 
+                  placeholder="/* Add custom global CSS here. Use with caution. */" 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-300 font-mono text-sm bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-600 outline-none" 
+                />
+              </div>
+            </div>
+            
           </div>
         </div>
 

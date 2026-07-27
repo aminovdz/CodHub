@@ -67,7 +67,8 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
         ...(store.translations?.brand || {}),
         ...(store.logoUrl !== undefined ? { logoUrl: store.logoUrl } : {}),
         ...(store.faviconUrl !== undefined ? { faviconUrl: store.faviconUrl } : {}),
-      }
+      },
+      theme: store.theme !== undefined ? store.theme : store.translations?.theme,
     }
   };
 }
@@ -97,6 +98,7 @@ function rowToStore(row: any): Store {
     customDomain: row.custom_domain,
     logoUrl: row.translations?.brand?.logoUrl,
     faviconUrl: row.translations?.brand?.faviconUrl,
+    theme: row.translations?.theme,
   };
 }
 
@@ -369,6 +371,41 @@ function rowToAbandonedCart(row: any): AbandonedCart {
 }
 
 
+export interface ThemeConfig {
+  colors?: {
+    primary?: string;
+    secondary?: string;
+    background?: string;
+    text?: string;
+  };
+  typography?: {
+    headingFont?: string;
+    bodyFont?: string;
+  };
+  shapes?: {
+    buttonStyle?: 'sharp' | 'rounded' | 'pill';
+    cardStyle?: 'flat' | 'bordered' | 'floating';
+  };
+  trust?: {
+    badgesUrl?: string;
+    socialLinks?: {
+      instagram?: string;
+      facebook?: string;
+      tiktok?: string;
+    }
+  };
+  hero?: {
+    bannerUrl?: string;
+    bannerUrlMobile?: string;
+    announcementBgColor?: string;
+    announcementTextColor?: string;
+    announcementMarquee?: boolean;
+  };
+  advanced?: {
+    customCss?: string;
+  };
+}
+
 export interface Store {
   id: string;
   region: string;
@@ -380,6 +417,7 @@ export interface Store {
   primaryColor?: string;
   logoUrl?: string;
   faviconUrl?: string;
+  theme?: ThemeConfig;
   translations?: Record<string, any>;
   analytics?: {
     google?: string;

@@ -82,7 +82,8 @@ export const useStorefrontStore = create<StorefrontState>()(
     const mappedStores = stores?.map(s => ({
       id: s.id, region: s.region, name: s.name, currency: s.currency,
       language: s.language, customDomain: s.custom_domain,
-      translations: s.translations, whatsappConfig: s.whatsapp_config
+      translations: s.translations, whatsappConfig: s.whatsapp_config,
+      theme: s.translations?.theme, primaryColor: s.primary_color
     })) as Store[] || [];
 
     // Extract pages from translations

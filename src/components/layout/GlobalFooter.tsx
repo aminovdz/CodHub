@@ -2,7 +2,7 @@
 
 import { memo } from 'react';
 import Link from 'next/link';
-import { ShieldCheck, Truck } from 'lucide-react';
+import { ShieldCheck, Truck, Link as LinkIcon } from 'lucide-react';
 import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
@@ -84,6 +84,37 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
           </div>
         </div>
 
+        {/* Trust Badges and Socials */}
+        {(store?.theme?.trust?.badgesUrl || store?.theme?.trust?.socialLinks) && (
+          <div className="border-t border-slate-800 pt-8 pb-4 flex flex-col md:flex-row items-center justify-between gap-6">
+            {store.theme.trust.badgesUrl && (
+              <div className="w-full md:w-auto flex justify-center md:justify-start">
+                <img src={store.theme.trust.badgesUrl} alt="Trust Badges" className="h-8 md:h-12 w-auto object-contain" />
+              </div>
+            )}
+            
+            {store.theme.trust.socialLinks && (
+              <div className="flex items-center gap-4">
+                {store.theme.trust.socialLinks.facebook && (
+                  <a href={store.theme.trust.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-indigo-600 hover:text-white transition-colors text-xs font-bold">
+                    FB
+                  </a>
+                )}
+                {store.theme.trust.socialLinks.instagram && (
+                  <a href={store.theme.trust.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-pink-600 hover:text-white transition-colors text-xs font-bold">
+                    IG
+                  </a>
+                )}
+                {store.theme.trust.socialLinks.tiktok && (
+                  <a href={store.theme.trust.socialLinks.tiktok} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:bg-slate-700 hover:text-white transition-colors">
+                    <LinkIcon size={18} />
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         <div className="pt-8 border-t border-slate-800 text-center text-xs text-slate-500 font-medium">
           &copy; {currentYear} {store?.name || 'CODHUB'} E-commerce. {t('footer.allRightsReserved', 'جميع الحقوق محفوظة.')}
         </div>
