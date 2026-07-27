@@ -165,7 +165,7 @@ export default function AdminCampaignsPage() {
                     disabled={isSending}
                     className="w-full px-4 py-2 rounded-xl border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all font-bold text-slate-900"
                   />
-                  <p className="text-[10px] text-slate-400 mt-2">To prevent spam filters, a delay is recommended. (Leave browser open while sending).</p>
+                  <p className="text-[10px] text-rose-500 font-bold mt-2">To prevent spam filters, a delay is recommended. (Leave browser open while sending).</p>
                 </div>
               </div>
             </div>
