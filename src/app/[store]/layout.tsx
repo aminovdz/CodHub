@@ -5,6 +5,8 @@ import { Metadata } from 'next';
 import { createClient } from '@supabase/supabase-js';
 import { slugify } from '@/lib/utils';
 import ChatbotWidget from '@/components/ChatbotWidget';
+import StoreHydrator from '@/components/StoreHydrator';
+import { rowToProduct, rowToShippingZone, rowToCheckoutConfig, Store, HomepageConfig, Product, ShippingZone, CheckoutConfig } from '@/lib/store/useAdminStore';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -14,8 +16,12 @@ export async function generateMetadata({ params }: { params: Promise<{ store: st
   const resolvedParams = await params;
   const storeSlug = resolvedParams.store;
   
-  const { data: stores } = await supabase.from('stores').select('name, region, translations');
-  const store = stores?.find(s => slugify(s.name) === storeSlug.toLowerCase() || s.region.toLowerCase() === storeSlug.toLowerCase());
+  const { data: stores } = await supabase.from('stores').select('name, region, translations, custom_domain');
+  const store = stores?.find(s => 
+    slugify(s.name) === storeSlug.toLowerCase() || 
+    s.region.toLowerCase() === storeSlug.toLowerCase() ||
+    s.custom_domain?.toLowerCase() === storeSlug.toLowerCase()
+  );
   const storeName = store?.name || 'COD Hub';
   const faviconUrl = store?.translations?.brand?.faviconUrl || '/icon.svg';
 
@@ -46,16 +52,60 @@ export default async function RegionLayout({
   const resolvedParams = await params;
   const storeSlug = resolvedParams.store;
 
-  const { data: stores } = await supabase.from('stores').select('id, region, whatsapp_config, name, translations, primary_color');
-  const store = stores?.find(s => slugify(s.name) === storeSlug.toLowerCase() || s.region.toLowerCase() === storeSlug.toLowerCase());
-  const region = store?.region || storeSlug;
+  const { data: storesData } = await supabase.from('stores').select('*');
+  const storeData = storesData?.find(s => 
+    slugify(s.name) === storeSlug.toLowerCase() || 
+    s.region.toLowerCase() === storeSlug.toLowerCase() ||
+    s.custom_domain?.toLowerCase() === storeSlug.toLowerCase()
+  );
+  const region = storeData?.region || storeSlug;
 
-  const isChatbotEnabled = store?.whatsapp_config?.chatbotEnabled;
-  const chatbotName = store?.whatsapp_config?.chatbotName;
-  const theme = store?.translations?.theme;
+  const isChatbotEnabled = storeData?.whatsapp_config?.chatbotEnabled;
+  const chatbotName = storeData?.whatsapp_config?.chatbotName;
+  const theme = storeData?.translations?.theme;
+
+  let store: Store | null = null;
+  let products: Product[] = [];
+  let zones: ShippingZone[] = [];
+  let configs: CheckoutConfig[] = [];
+  let homepages: HomepageConfig[] = [];
+
+  if (storeData) {
+    store = {
+      id: storeData.id,
+      region: storeData.region,
+      name: storeData.name,
+      currency: storeData.currency,
+      language: storeData.language,
+      customDomain: storeData.custom_domain,
+      translations: storeData.translations,
+      whatsappConfig: storeData.whatsapp_config,
+      theme: storeData.translations?.theme,
+      primaryColor: storeData.primary_color
+    } as Store;
+
+    if (storeData.translations && (storeData.translations as any).homepageConfig) {
+      homepages.push((storeData.translations as any).homepageConfig as HomepageConfig);
+    }
+
+    const [
+      { data: productsData },
+      { data: zonesData },
+      { data: configsData }
+    ] = await Promise.all([
+      supabase.from('products').select('*').eq('active', true).eq('store_id', storeData.id),
+      supabase.from('shipping_zones').select('*').eq('store_id', storeData.id),
+      supabase.from('checkout_configs').select('*').eq('store_id', storeData.id)
+    ]);
+
+    products = productsData ? productsData.map(rowToProduct) : [];
+    zones = zonesData ? zonesData.map(rowToShippingZone) : [];
+    configs = configsData ? configsData.map(rowToCheckoutConfig) : [];
+  }
 
   return (
     <>
+      {store && <StoreHydrator store={store} products={products} zones={zones} configs={configs} homepages={homepages} />}
       <RegionCookieSetter region={region} />
       <TrackingPixels region={region} />
       
@@ -70,7 +120,7 @@ export default async function RegionLayout({
               --font-heading: '${theme.typography?.headingFont || 'Inter'}', sans-serif;
               --font-body: '${theme.typography?.bodyFont || 'Inter'}', sans-serif;
               
-              --color-primary: ${theme.colors?.primary || store.primary_color || '#4F46E5'};
+              --color-primary: ${theme.colors?.primary || store?.primaryColor || storeData?.primary_color || '#4F46E5'};
               --color-secondary: ${theme.colors?.secondary || '#F59E0B'};
               --color-background: ${theme.colors?.background || '#F8FAFC'};
               --color-text: ${theme.colors?.text || '#0F172A'};
@@ -92,7 +142,7 @@ export default async function RegionLayout({
       )}
 
       {children}
-      {isChatbotEnabled && (
+      {isChatbotEnabled && store && (
         <ChatbotWidget 
           storeId={store.id} 
           region={region} 

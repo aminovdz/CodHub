@@ -3,7 +3,7 @@
 import { use, useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFunnelStore } from '@/lib/store/useFunnelStore';
-import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, PackageX, X, Headset } from 'lucide-react';
+import { ShoppingBag, ShieldCheck, Truck, Star, AlertCircle, Loader2, PackagePlus, PackageX, X, Headset, MessageCircle } from 'lucide-react';
 import StickyBuyButton from '@/components/StickyBuyButton';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -92,6 +92,8 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const [isZoomed, setIsZoomed] = useState(false);
   const [selectedCrossSells, setSelectedCrossSells] = useState<string[]>([]);
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [newReview, setNewReview] = useState({ name: '', comment: '', rating: 5 });
 
   const { buyNow, addCartItem, finalTotal, cart } = useFunnelStore();
 
@@ -377,15 +379,12 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
                     key={variant.id}
                     disabled={isOutOfStock}
                     onClick={() => setSelectedVariant(isSelected ? null : variant)}
-                    style={isSelected && store?.primaryColor ? { borderColor: store.primaryColor, backgroundColor: store.primaryColor + '10', color: store.primaryColor } : {}}
                     className={`relative overflow-hidden px-5 py-3 rounded-xl border-2 font-bold transition-all flex flex-col items-start
-                      ${isSelected && !store?.primaryColor
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(79,70,229,0.1)]' 
-                        : isSelected && store?.primaryColor
-                          ? 'shadow-[0_0_0_4px_rgba(0,0,0,0.05)]'
-                          : isOutOfStock
-                            ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                      ${isSelected
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-[0_0_0_4px_rgba(var(--color-brand-primary),0.1)]' 
+                        : isOutOfStock
+                          ? 'border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                       }
                     `}
                   >
@@ -419,11 +418,10 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
             <button 
               onClick={handleBuyNow}
               disabled={isSoldOut || (selectedVariant && selectedVariant.stock <= 0)}
-              style={(!isSoldOut && !(selectedVariant && selectedVariant.stock <= 0) && store?.primaryColor) ? { backgroundColor: store.primaryColor } : {}}
               className={`w-full transition-all text-white font-black text-xl py-5 rounded-2xl flex items-center justify-center gap-3 ${
                 isSoldOut || (selectedVariant && selectedVariant.stock <= 0) 
                 ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
-                : (!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_8px_30px_rgb(79,70,229,0.3)]' : 'hover:opacity-90 shadow-[0_8px_30px_rgba(0,0,0,0.2)]') + ' active:scale-[0.98]'
+                : 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 shadow-[0_8px_30px_rgba(var(--color-brand-primary),0.3)] active:scale-[0.98]'
               }`}
             >
               <ShoppingBag size={24} />
@@ -461,42 +459,53 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
 
         {/* REVIEWS SECTION */}
         <div className="mb-12 border-t border-slate-100 pt-12">
-          <h3 className="text-xl font-black text-slate-900 mb-6 flex justify-between items-center">
-            آراء العملاء
-            <span className="text-sm text-amber-500 font-bold flex items-center gap-1">
-              <Star size={16} className="fill-current"/> {(product as any).stars_rate || (product as any).starsRate || 4.8}
-            </span>
-          </h3>
+          <div className="flex justify-between items-end mb-6">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                آراء العملاء
+                <span className="text-sm text-amber-500 font-bold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <Star size={14} className="fill-current"/> {(product as any).stars_rate || (product as any).starsRate || 4.8}
+                </span>
+              </h3>
+            </div>
+            <button 
+              onClick={() => {
+                setIsReviewModalOpen(true);
+              }}
+              className="text-indigo-600 font-bold text-sm bg-indigo-50 px-4 py-2 rounded-xl hover:bg-indigo-100 transition-colors"
+            >
+              أضف تقييمك
+            </button>
+          </div>
           
           <div className="space-y-4">
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <div className="flex justify-between items-start mb-2">
-                 <div className="flex gap-3">
-                   <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">ي.م</div>
-                   <div>
-                     <p className="font-bold text-slate-900 text-sm">يوسف م.</p>
+             {((product as any).reviews?.filter((r: any) => r.status === 'approved') || []).length > 0 ? (
+               ((product as any).reviews || []).filter((r: any) => r.status === 'approved').map((review: any) => (
+                 <div key={review.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <div className="flex justify-between items-start mb-2">
+                     <div className="flex gap-3">
+                       <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                         {review.customerName.substring(0, 2).toUpperCase()}
+                       </div>
+                       <div>
+                         <p className="font-bold text-slate-900 text-sm">{review.customerName}</p>
+                         <p className="text-xs text-slate-400">{new Date(review.createdAt).toLocaleDateString('ar-SA')}</p>
+                       </div>
+                     </div>
+                     <div className="flex text-amber-400">
+                       {[...Array(5)].map((_, i) => <Star key={i} size={14} className={i < review.rating ? "fill-current" : ""} />)}
+                     </div>
                    </div>
+                   <p className="text-sm text-slate-600 mt-2 leading-relaxed">{review.comment}</p>
                  </div>
-                 <div className="flex text-amber-400">
-                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                 </div>
+               ))
+             ) : (
+               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-center">
+                 <div className="text-slate-400 mb-2 flex justify-center"><MessageCircle size={32} /></div>
+                 <p className="text-sm font-bold text-slate-700">لا توجد تقييمات بعد</p>
+                 <p className="text-xs text-slate-500">كن أول من يقيم هذا المنتج!</p>
                </div>
-               <p className="text-sm text-slate-600 mt-2">منتج ممتاز وتوصيل سريع. خيار الدفع عند الاستلام رائع جداً. أنصح به بشدة!</p>
-             </div>
-             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-               <div className="flex justify-between items-start mb-2">
-                 <div className="flex gap-3">
-                   <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center font-bold text-sm">س.أ</div>
-                   <div>
-                     <p className="font-bold text-slate-900 text-sm">سارة أ.</p>
-                   </div>
-                 </div>
-                 <div className="flex text-amber-400">
-                   {[...Array(5)].map((_, i) => <Star key={i} size={14} className="fill-current" />)}
-                 </div>
-               </div>
-               <p className="text-sm text-slate-600 mt-2">خدمة العملاء كانت متعاونة جداً على الواتساب. المنتج مطابق للوصف تماماً.</p>
-             </div>
+             )}
           </div>
         </div>
 
@@ -571,6 +580,73 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
              </button>
              <div className="p-1 sm:p-2 mt-8">
                <CheckoutForm storeSlug={storeSlug} embedded={true} />
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {isReviewModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm" dir="rtl">
+           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-200">
+             <div className="flex justify-between items-center p-6 border-b border-slate-100">
+               <h3 className="text-xl font-black text-slate-900">أضف تقييمك</h3>
+               <button onClick={() => setIsReviewModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                 <X size={24} />
+               </button>
+             </div>
+             <div className="p-6 space-y-4">
+               <div>
+                 <label className="block text-sm font-bold text-slate-700 mb-2">الاسم</label>
+                 <input 
+                   type="text" 
+                   value={newReview.name}
+                   onChange={e => setNewReview({...newReview, name: e.target.value})}
+                   placeholder="أدخل اسمك"
+                   className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none"
+                 />
+               </div>
+               <div>
+                 <label className="block text-sm font-bold text-slate-700 mb-2">التقييم</label>
+                 <div className="flex gap-2">
+                   {[1,2,3,4,5].map(star => (
+                     <button 
+                       key={star}
+                       onClick={() => setNewReview({...newReview, rating: star})}
+                       className={`p-2 rounded-lg transition-colors ${newReview.rating >= star ? 'text-amber-400' : 'text-slate-300 hover:text-amber-200'}`}
+                     >
+                       <Star size={32} className={newReview.rating >= star ? 'fill-current' : ''} />
+                     </button>
+                   ))}
+                 </div>
+               </div>
+               <div>
+                 <label className="block text-sm font-bold text-slate-700 mb-2">التعليق</label>
+                 <textarea 
+                   value={newReview.comment}
+                   onChange={e => setNewReview({...newReview, comment: e.target.value})}
+                   placeholder="ما رأيك في المنتج؟"
+                   rows={4}
+                   className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-600 outline-none resize-none"
+                 />
+               </div>
+               <button 
+                 onClick={() => {
+                   if (!newReview.name || !newReview.comment) {
+                     alert("يرجى إدخال الاسم والتعليق.");
+                     return;
+                   }
+                   // Note: We don't save it directly to the DB here because this is storefront and the user doesn't have auth.
+                   // In a real flow, this would call an API endpoint `/api/reviews` which inserts a pending review.
+                   // Since we are mocking backend logic for this flow, we'll just show an alert.
+                   alert("شكراً لتقييمك! سيتم نشره بعد المراجعة.");
+                   setIsReviewModalOpen(false);
+                   setNewReview({ name: '', comment: '', rating: 5 });
+                 }}
+                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl transition-colors"
+               >
+                 إرسال التقييم
+               </button>
              </div>
            </div>
         </div>

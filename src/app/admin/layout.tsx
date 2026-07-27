@@ -4,11 +4,12 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, ShoppingCart, Users, Package, Settings, Store as StoreIcon, BarChart2, Tag, Home, CreditCard, FileText, Bot, X, HelpCircle, Activity, Globe, Ghost, Megaphone, Boxes, Calculator, MonitorPlay, SplitSquareHorizontal, Sun, Moon, Menu, LogOut, ChevronLeft, ChevronRight
+  LayoutDashboard, ShoppingCart, Users, Package, Settings, Store as StoreIcon, BarChart2, Tag, Home, CreditCard, FileText, Bot, X, HelpCircle, Activity, Globe, Ghost, Megaphone, Boxes, Calculator, MonitorPlay, SplitSquareHorizontal, Sun, Moon, Menu, LogOut, ChevronLeft, ChevronRight, Mail
 } from 'lucide-react';
 import { useShallow } from 'zustand/shallow';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { ToastContainer } from '@/components/admin/ToastContainer';
+import { NotificationCenter } from '@/components/admin/NotificationCenter';
 
 const ADMIN_PIN = '1234';
 
@@ -150,6 +151,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     localStorage.setItem('codadmin-dark', String(!isDark));
   };
 
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
+
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
     localStorage.setItem('codadmin-collapsed', String(!isCollapsed));
@@ -190,6 +199,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: `${basePath}/analytics`, label: 'Analytics',       icon: <BarChart2 size={18} />,       roles: ['admin'] },
     { href: `${basePath}/calculator`,label: 'Profit Calculator',icon: <Calculator size={18} />,     roles: ['admin'] },
     { href: `${basePath}/customers`, label: 'Customers',       icon: <Users size={18} />,           roles: ['admin'] },
+    { href: `${basePath}/campaigns`, label: 'Campaigns',       icon: <Mail size={18} />,            roles: ['admin'] },
     { href: `${basePath}/stock`,     label: 'Stock',           icon: <Boxes size={18} />,           roles: ['admin', 'fulfillment'] },
     { href: `${basePath}/products`,  label: 'Products',        icon: <Package size={18} />,         roles: ['admin'] },
     { href: `${basePath}/coupons`,   label: 'Coupons',         icon: <Tag size={18} />,             roles: ['admin'] },
@@ -332,7 +342,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Desktop Top Right Utilities */}
+        <div className="hidden md:flex absolute top-6 right-8 z-30 items-center gap-3">
+          <NotificationCenter />
+        </div>
+
         {/* Mobile Top Bar */}
         <header className={`p-4 flex justify-between items-center md:hidden sticky top-0 z-30 shadow-md border-b transition-colors ${isDark ? 'bg-slate-950 border-slate-800' : 'bg-slate-900 border-slate-800'}`}>
           <div className="flex items-center gap-3">
@@ -342,6 +357,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="font-black text-xl text-white">COD<span className="text-indigo-400">ADMIN</span></div>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationCenter />
             <button onClick={toggleDark} className="p-2 text-slate-400 hover:text-white rounded-lg transition-colors">
               {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
@@ -351,7 +367,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </header>
 
-        <div className={`flex-1 overflow-y-auto p-5 md:p-10 transition-colors duration-300 ${isDark ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
+        <div className={`flex-1 overflow-y-auto p-5 md:p-10 md:pt-20 transition-colors duration-300 ${isDark ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'}`}>
           {children}
         </div>
       </main>

@@ -24,7 +24,7 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
           
           <div className="md:col-span-2">
             <div className="font-black text-2xl tracking-tighter text-white mb-4">
-              {store?.name || 'COD'}<span className="text-indigo-400">HUB</span>
+              {store?.name || 'COD'}<span style={{ color: 'var(--color-primary)' }}>HUB</span>
             </div>
             {footerConfig?.aboutText ? (
               <div 
@@ -37,7 +37,7 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
               </p>
             )}
             <div className="flex items-center gap-4 text-sm font-bold">
-              <span className="flex items-center gap-2"><Truck size={16} className="text-indigo-400"/> {t('product.payOnDelivery', 'الدفع عند الاستلام')}</span>
+              <span className="flex items-center gap-2"><Truck size={16} style={{ color: 'var(--color-primary)' }}/> {t('product.payOnDelivery', 'الدفع عند الاستلام')}</span>
               <span className="flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-400"/> {t('checkout.secureText', 'تسوق آمن 100%')}</span>
             </div>
           </div>

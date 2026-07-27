@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { uploadImageToSupabase } from '@/lib/storage';
@@ -125,6 +125,13 @@ export default function AdminSettingsPage() {
   // SMS State
   const [smsConfig, setSmsConfig] = useState<any>({});
 
+  // Stripe State
+  const [stripeConfig, setStripeConfig] = useState({
+    enabled: activeStore.stripeConfig?.enabled ?? false,
+    publishableKey: activeStore.stripeConfig?.publishableKey || '',
+    secretKey: activeStore.stripeConfig?.secretKey || '',
+  });
+
   // WhatsApp State
   const [whatsappConfig, setWhatsappConfig] = useState({
     abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
@@ -211,6 +218,12 @@ export default function AdminSettingsPage() {
       confirmationTemplate: activeStore.smsConfig?.confirmationTemplate ?? 'Hello [NAME], your order #[ORDER_ID] for [PRODUCT] has been confirmed and is being shipped! - [STORE_NAME]'
     });
 
+    setStripeConfig({
+      enabled: activeStore.stripeConfig?.enabled ?? false,
+      publishableKey: activeStore.stripeConfig?.publishableKey || '',
+      secretKey: activeStore.stripeConfig?.secretKey || '',
+    });
+
     setWhatsappConfig({
       abandonedCartEnabled: activeStore.whatsappConfig?.abandonedCartEnabled ?? false,
       abandonedCartDelayMinutes: activeStore.whatsappConfig?.abandonedCartDelayMinutes ?? 30,
@@ -242,9 +255,11 @@ export default function AdminSettingsPage() {
       highValueThreshold: 15000
     });
     setLocalPrimaryColor(activeStore.primaryColor || '#4F46E5');
+    setLocalStoreName(activeStore.name || '');
     setLocalAnnouncement(activeStore.translations?.brand?.announcementText || '');
     setLocalLogoUrl(activeStore.logoUrl || '');
     setLocalFaviconUrl(activeStore.faviconUrl || '');
+    // Initialize theme with primary color synced to localPrimaryColor state
     setTheme(activeStore.theme || {
       colors: { primary: activeStore.primaryColor || '#4F46E5', secondary: '#F59E0B', background: '#F8FAFC', text: '#0F172A' },
       typography: { headingFont: 'Inter', bodyFont: 'Inter' },
@@ -261,40 +276,46 @@ export default function AdminSettingsPage() {
 
   const handleSaveSEO = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateStore(activeStore.id, { 
-      name: localStoreName,
-      translations: {
-        ...((translations as any) || {}),
-        brand: {
-          ...(((translations as any)?.brand as any) || {}),
-          announcementText: localAnnouncement
-        }
-      }, 
-      resendApiKey, notifyEmail, analytics, 
-      yalidineApiKey, yalidineApiToken, genericWebhookUrl,
-      whatsappConfig, smsConfig, dzFulfillment, primaryColor: localPrimaryColor,
-      logoUrl: localLogoUrl || undefined,
-      faviconUrl: localFaviconUrl || undefined,
-      theme: theme,
-      customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
-      fraudConfig
-    });
+    setIsSaving(true);
+    try {
+      await updateStore(activeStore.id, { 
+        name: localStoreName,
+        translations: {
+          ...((translations as any) || {}),
+          brand: {
+            ...(((translations as any)?.brand as any) || {}),
+            announcementText: localAnnouncement
+          }
+        }, 
+        resendApiKey, notifyEmail, analytics, 
+        yalidineApiKey, yalidineApiToken, genericWebhookUrl,
+        whatsappConfig, smsConfig, stripeConfig, dzFulfillment, primaryColor: localPrimaryColor,
+        logoUrl: localLogoUrl || undefined,
+        faviconUrl: localFaviconUrl || undefined,
+        theme: theme,
+        customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
+        fraudConfig
+      });
 
-    setGlobalApiKey(localApiKey);
-    setClaudeApiKey(localClaudeKey);
-    setOpenAiApiKey(localOpenAiKey);
-    setOpenRouterApiKey(localOpenRouterKey);
-    setOpenRouterModel(localOpenRouterModel);
-    setNvidiaApiKey(localNvidiaKey);
-    setNvidiaModel(localNvidiaModel);
-    setAiProvider(localProvider);
-    setGeminiModel(localGeminiModel);
-    setClaudeModel(localClaudeModel);
-    setOpenAiModel(localOpenAiModel);
+      setGlobalApiKey(localApiKey);
+      setClaudeApiKey(localClaudeKey);
+      setOpenAiApiKey(localOpenAiKey);
+      setOpenRouterApiKey(localOpenRouterKey);
+      setOpenRouterModel(localOpenRouterModel);
+      setNvidiaApiKey(localNvidiaKey);
+      setNvidiaModel(localNvidiaModel);
+      setAiProvider(localProvider);
+      setGeminiModel(localGeminiModel);
+      setClaudeModel(localClaudeModel);
+      setOpenAiModel(localOpenAiModel);
 
-    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
-    setIsSaving(false);
-    notify('Settings saved successfully!', 'success');
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Settings Updated', detail: 'General and integration settings updated' });
+      setIsSaving(false);
+      notify('Settings saved successfully!', 'success');
+    } catch (err: any) {
+      setIsSaving(false);
+      notify(err.message || 'Failed to save settings', 'error');
+    }
   };
 
   const handleTestConnection = async (provider: string) => {
@@ -325,25 +346,30 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     if (!newStoreName || !newStoreRegion || !newStoreCurrency) return;
     setIsCreatingStore(true);
-    await addStore({
-      id: 'store_' + Date.now().toString(),
-      name: newStoreName,
-      region: newStoreRegion.toUpperCase(),
-      phonePrefix: newStorePrefix,
-      currency: newStoreCurrency.toUpperCase(),
-      language: newStoreLanguage.toLowerCase(),
-      customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
-      translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
-    });
-    addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
-    setNewStoreName('');
-    setNewStoreRegion('');
-    setNewStorePrefix('');
-    setNewStoreCurrency('');
-    setNewStoreLanguage('en');
-    setNewStoreCustomDomain('');
-    setIsCreatingStore(false);
-    notify('New store created successfully!', 'success');
+    try {
+      await addStore({
+        id: 'store_' + Date.now().toString(),
+        name: newStoreName,
+        region: newStoreRegion.toUpperCase(),
+        phonePrefix: newStorePrefix,
+        currency: newStoreCurrency.toUpperCase(),
+        language: newStoreLanguage.toLowerCase(),
+        customDomain: newStoreCustomDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
+        translations: (DEFAULT_TRANSLATIONS as any)[newStoreLanguage.toLowerCase()] || {}
+      });
+      addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Store Created', detail: `Created store ${newStoreName} (${newStoreRegion})` });
+      setNewStoreName('');
+      setNewStoreRegion('');
+      setNewStorePrefix('');
+      setNewStoreCurrency('');
+      setNewStoreLanguage('en');
+      setNewStoreCustomDomain('');
+      setIsCreatingStore(false);
+      notify('New store created successfully!', 'success');
+    } catch (err: any) {
+      setIsCreatingStore(false);
+      notify(err.message || 'Failed to create store', 'error');
+    }
   };
 
   const handleDeleteStore = (storeId: string, storeName: string) => {
@@ -367,7 +393,7 @@ export default function AdminSettingsPage() {
       </div>
 
       {/* MULTI-STORE MANAGER */}
-      <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+      <div className="bg-[var(--color-primary)] dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 mb-6">
           <StoreIcon className="text-indigo-600" /> Multi-Store Manager
         </h2>
@@ -724,7 +750,7 @@ export default function AdminSettingsPage() {
             <p className="text-xs text-slate-500 mb-3">
               Point a unique custom domain (e.g. <code>algerian-beauty.com</code> or <code>fitnessdz.com</code>) to this specific sub-store.
             </p>
-            <div className="flex gap-2 max-w-md">
+            <div className="flex gap-2 max-w-md mb-4">
               <input 
                 type="text" 
                 value={customDomain} 
@@ -732,6 +758,32 @@ export default function AdminSettingsPage() {
                 placeholder="e.g. algerian-beauty.com" 
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-indigo-600 text-slate-900 font-bold text-sm" 
               />
+            </div>
+            
+            <div className="bg-white p-4 rounded-xl border border-indigo-100 shadow-sm text-sm">
+              <h4 className="font-bold text-slate-800 mb-2">DNS Setup Instructions</h4>
+              <p className="text-slate-600 mb-3 text-xs">To connect your domain, log in to your domain registrar (e.g., GoDaddy, Namecheap) and add the following DNS records:</p>
+              
+              <div className="space-y-3">
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <div className="font-semibold text-slate-700 mb-1 text-xs uppercase tracking-wide">Option 1: A Record (Recommended for root domains)</div>
+                  <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Type</span>A</div>
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Name</span>@</div>
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Value</span>76.76.21.21</div>
+                  </div>
+                </div>
+                
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <div className="font-semibold text-slate-700 mb-1 text-xs uppercase tracking-wide">Option 2: CNAME (For subdomains like www)</div>
+                  <div className="grid grid-cols-3 gap-2 text-xs font-mono">
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Type</span>CNAME</div>
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Name</span>www</div>
+                    <div className="flex flex-col"><span className="text-slate-400 text-[10px] uppercase">Value</span>cname.vercel-dns.com.</div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-3 italic">Note: DNS changes may take up to 24-48 hours to propagate globally, though typically they take only a few minutes.</p>
             </div>
           </div>
           
@@ -970,6 +1022,91 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+
+        {/* SMS AUTOMATION */}
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+            <MessageCircle className="text-indigo-500" /> SMS Automations
+          </h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white">Auto-SMS on Order Confirmation</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Automatically send an SMS when order status changes to CONFIRMED or SHIPPED.</div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={smsConfig.enabled || false} onChange={(e) => setSmsConfig({...smsConfig, enabled: e.target.checked})} className="sr-only peer" />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+            
+            {smsConfig.enabled && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Provider</label>
+                    <select value={smsConfig.provider || 'twilio'} onChange={(e) => setSmsConfig({...smsConfig, provider: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white">
+                      <option value="twilio">Twilio</option>
+                      <option value="vonage">Vonage</option>
+                      <option value="smsdz">SMS DZ</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Sender ID (e.g., CODHUB)</label>
+                    <input type="text" value={smsConfig.senderId || ''} onChange={(e) => setSmsConfig({...smsConfig, senderId: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">API Key / Account SID</label>
+                    <input type="text" value={smsConfig.apiKey || ''} onChange={(e) => setSmsConfig({...smsConfig, apiKey: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">API Secret / Auth Token</label>
+                    <input type="password" value={smsConfig.apiSecret || ''} onChange={(e) => setSmsConfig({...smsConfig, apiSecret: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Confirmation Message Template</label>
+                  <textarea rows={3} value={smsConfig.confirmationTemplate || ''} onChange={(e) => setSmsConfig({...smsConfig, confirmationTemplate: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Available variables: <strong>[NAME]</strong>, <strong>[PRODUCT]</strong>, <strong>[ORDER_ID]</strong>, <strong>[STORE_NAME]</strong>.</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* STRIPE INTEGRATION */}
+        <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 mb-8">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
+            <CreditCard className="text-indigo-500" /> Stripe Payment Integration
+          </h2>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white">Enable Credit Card Checkout</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400 mt-1">Allow customers to pay via credit card using Stripe instead of Cash on Delivery.</div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" checked={stripeConfig.enabled || false} onChange={(e) => setStripeConfig({...stripeConfig, enabled: e.target.checked})} className="sr-only peer" />
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+            
+            {stripeConfig.enabled && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Publishable Key</label>
+                  <input type="text" value={stripeConfig.publishableKey || ''} onChange={(e) => setStripeConfig({...stripeConfig, publishableKey: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">Secret Key</label>
+                  <input type="password" value={stripeConfig.secretKey || ''} onChange={(e) => setStripeConfig({...stripeConfig, secretKey: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 dark:text-white" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* WHATSAPP AUTOMATION */}
         <div className="bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
@@ -1284,7 +1421,10 @@ export default function AdminSettingsPage() {
               <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Color Palette</h3>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Primary (Buttons)', key: 'primary', value: localPrimaryColor, set: setLocalPrimaryColor },
+                  { label: 'Primary (Buttons)', key: 'primary', value: localPrimaryColor, set: (val: string) => {
+                      setLocalPrimaryColor(val);
+                      setTheme(prev => ({ ...prev, colors: { ...(prev.colors || {}), primary: val } }));
+                    } },
                   { label: 'Secondary (Badges)', key: 'secondary', value: theme?.colors?.secondary || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), secondary: val}}) },
                   { label: 'Background', key: 'background', value: theme?.colors?.background || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), background: val}}) },
                   { label: 'Text', key: 'text', value: theme?.colors?.text || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), text: val}}) }

@@ -4,7 +4,10 @@ import { use, useEffect, useState, useRef, useMemo } from 'react';
 import { useFunnelStore, CartItem } from '@/lib/store/useFunnelStore';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Script from 'next/script';
-import { ShieldCheck, Truck, ArrowRight, PackagePlus, MapPin, Edit3, User, Phone, Mail } from 'lucide-react';
+import { Truck, ShieldCheck, MapPin, Package, Gift, Check, Phone, User, Home, AlertCircle, RefreshCw, X, CreditCard, ArrowRight, PackagePlus, Edit3, Mail } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const StripePayment = dynamic(() => import('./StripePayment'), { ssr: false });
 import { saveDraftOrder, submitOrder } from '@/lib/actions/funnelActions';
 import { resolveStore, Coupon } from '@/lib/store/useAdminStore';
 import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
@@ -16,6 +19,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   const [step, setStep] = useState(1);
   const [isAnimatingPrice, setIsAnimatingPrice] = useState(false);
   const [addingNote, setAddingNote] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card'>('cod');
   const [countdownSecs, setCountdownSecs] = useState<number | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [utmSource, setUtmSource] = useState<string>('');  
@@ -67,6 +71,20 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
     // Read UTM data from sessionStorage (captured by UTMTracker on landing)
     setUtmSource(sessionStorage.getItem('utm_source') || '');
     setUtmCampaign(sessionStorage.getItem('utm_campaign') || '');
+    
+    // Affiliate Tracking: Read ?ref= or cookie
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    
+    if (refCode) {
+      document.cookie = `affiliate_ref=${refCode}; path=/; max-age=2592000`; // 30 days
+      setCouponCode(refCode);
+    } else {
+      const match = document.cookie.match(/(^| )affiliate_ref=([^;]+)/);
+      if (match && match[2]) {
+        setCouponCode(match[2]);
+      }
+    }
   }, []);
 
   // Force single product if used on a landing page via forceProductId
@@ -291,6 +309,21 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
     
     setAppliedCoupon(c);
   };
+
+  // Auto-apply affiliate coupon on load
+  useEffect(() => {
+    if (couponCode && !appliedCoupon && coupons.length > 0 && !couponError) {
+      const c = coupons.find(c => c.storeId === store?.id && c.code.toLowerCase() === couponCode.trim().toLowerCase());
+      if (c && c.active) {
+        if ((!c.expiresAt || new Date(c.expiresAt) >= new Date()) &&
+            (!c.maxUses || c.usedCount < c.maxUses) &&
+            (!c.minOrderValue || totalPrice >= c.minOrderValue)) {
+          setAppliedCoupon(c);
+        }
+      }
+    }
+  }, [couponCode, appliedCoupon, coupons, store?.id, totalPrice, couponError]);
+
 
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
@@ -1007,8 +1040,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     type="button"
                     onClick={handleProceedToAddress}
                     disabled={!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid}
-                    style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                    className={`w-full mt-6 py-4 px-6 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group ${!store?.primaryColor ? 'bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
+                    className="w-full mt-6 py-4 px-6 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 group disabled:bg-slate-300 disabled:cursor-not-allowed shadow-[0_8px_30px_rgba(var(--color-brand-primary),0.3)]"
                   >
                     {t('checkout.next', 'متابعة لمعلومات التوصيل')}
                     <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -1224,32 +1256,72 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-6">
-                  {!isOneStep && (
-                    <button type="button" onClick={() => setStep(1)}
-                      className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+                {store?.stripeConfig?.enabled && store?.stripeConfig?.publishableKey && (
+                  <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">Payment Method</h3>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('cod')}
+                        className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'cod' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
+                      >
+                        <Truck size={24} />
+                        <span className="font-bold text-sm">Cash on Delivery</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('card')}
+                        className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${paymentMethod === 'card' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700'}`}
+                      >
+                        <CreditCard size={24} />
+                        <span className="font-bold text-sm">Credit Card</span>
+                      </button>
+                    </div>
+
+                    {paymentMethod === 'card' && (
+                      <StripePayment
+                        publishableKey={store.stripeConfig.publishableKey}
+                        amount={finalTotal}
+                        currency={currency}
+                        onSuccess={(id) => {
+                          // Could save the payment intent id to the order
+                          handleComplete();
+                        }}
+                        onError={(err) => {
+                          alert(`Payment failed: ${err}`);
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+
+                {paymentMethod === 'cod' && (
+                  <div className="flex gap-3 mt-6">
+                    {!isOneStep && (
+                      <button type="button" onClick={() => setStep(1)}
+                        className="px-5 py-4 rounded-xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+                      >
+                        ← {t('checkout.back', 'رجوع')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleComplete}
+                      disabled={
+                        (isOneStep && (!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid)) ||
+                        (checkoutConfig?.showAddressFields !== false
+                          ? (region === 'dz'
+                            ? (!wilaya || (checkoutConfig?.fields?.showCity !== false && !commune) || (deliveryType === 'home' && !detailedAddress))
+                            : ((deliveryType === 'home' && !detailedAddress) || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
+                          : false)
+                      }
+                      className="flex-1 py-4 px-5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-[0_8px_30px_rgba(var(--color-brand-primary),0.3)]"
                     >
-                      ← {t('checkout.back', 'رجوع')}
+                      <Truck size={20} />
+                      {t('checkout.orderNow', 'تأكيد الطلب')} - {isMounted ? finalTotal : '...'} {currency}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleComplete}
-                    disabled={
-                      (isOneStep && (!customerName || (phone.startsWith('0') ? phone.length < 10 : phone.length < 9) || !isCustomFieldsValid)) ||
-                      (checkoutConfig?.showAddressFields !== false
-                        ? (region === 'dz'
-                          ? (!wilaya || (checkoutConfig?.fields?.showCity !== false && !commune) || (deliveryType === 'home' && !detailedAddress))
-                          : ((deliveryType === 'home' && !detailedAddress) || (checkoutConfig?.fields?.showCity !== false && !city) || (checkoutConfig?.fields?.showProvince !== false && !province)))
-                        : false)
-                    }
-                    style={store?.primaryColor ? { backgroundColor: store.primaryColor } : {}}
-                    className={`flex-1 py-4 px-5 text-white font-black text-lg rounded-xl transition-all flex justify-center items-center gap-2 ${!store?.primaryColor ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 shadow-[0_8px_30px_rgb(22,163,74,0.3)]' : 'hover:opacity-90'} disabled:bg-slate-300 disabled:cursor-not-allowed`}
-                  >
-                    <Truck size={20} />
-                    {t('checkout.orderNow', 'تأكيد الطلب')} - {isMounted ? finalTotal : '...'} {currency}
-                  </button>
-                </div>
+                  </div>
+                )}
 
                 {/* Trust Badge / Guarantee */}
                 <div className="mt-5 flex flex-col items-center justify-center text-center gap-1.5 opacity-90">

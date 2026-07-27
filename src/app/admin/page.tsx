@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import DOMPurify from 'dompurify';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const sanitizeHTML = (html: string) => {
   if (typeof window === 'undefined') return html;
@@ -69,6 +70,32 @@ export default function AdminDashboard() {
   const myPendingOrders = storeOrders.filter(o => o.claimedBy === staffName && o.status === 'PENDING_AGENT_CONFIRMATION').length;
   const myConfirmedOrders = myOrders.filter(o => o.status === 'CONFIRMED').length;
   const myCanceledOrders = myOrders.filter(o => o.status === 'CANCELED').length;
+
+  // Chart Data Preparation
+  const chartData = [];
+  const days = dateRange === '7d' ? 7 : dateRange === '30d' ? 30 : 90;
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    
+    // Revenue for this day (delivered orders)
+    const dayOrders = storeOrders.filter(o => o.date && o.date.startsWith(dateStr));
+    const dayRevenue = dayOrders.filter(o => o.status === 'DELIVERED').reduce((acc, o) => acc + (o.total || 0), 0);
+    
+    chartData.push({
+      name: format(d, 'MMM dd'),
+      revenue: dayRevenue,
+      orders: dayOrders.length
+    });
+  }
+
+  // Onboarding Checklist logic
+  const hasProducts = storeProducts.length > 0;
+  const hasShippingZones = useAdminStore.getState().shippingZones?.some(z => z.storeId === activeStore.id);
+  const hasCustomizedBranding = activeStore.primaryColor || activeStore.logoUrl;
+  const onboardingProgress = [hasProducts, hasShippingZones, hasCustomizedBranding].filter(Boolean).length;
+  const showOnboarding = onboardingProgress < 3 && role === 'admin';
 
   const statCards = role === 'admin' ? [
     {
@@ -288,6 +315,79 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+
+      {/* Onboarding Checklist */}
+      {showOnboarding && (
+        <div className="bg-indigo-50 border border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-500/20 rounded-3xl p-6">
+          <h2 className="text-xl font-black text-indigo-900 dark:text-indigo-300 mb-4 flex items-center gap-2">
+            🚀 Quick Start Checklist
+            <span className="text-sm font-bold bg-white/50 dark:bg-indigo-900/50 px-2 py-1 rounded-lg text-indigo-700 dark:text-indigo-400">
+              {onboardingProgress} / 3 Completed
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/admin/products" className={`p-4 rounded-2xl border transition-all flex items-start gap-3 ${hasProducts ? 'bg-white/50 border-emerald-200 opacity-60' : 'bg-white border-indigo-100 hover:border-indigo-300 shadow-sm'}`}>
+              <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${hasProducts ? 'bg-emerald-500 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                {hasProducts ? '✓' : '1'}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-800">Add First Product</h3>
+                <p className="text-xs text-slate-500 mt-1">Create or ask AI to generate your first product.</p>
+              </div>
+            </Link>
+            <Link href="/admin/settings?tab=branding" className={`p-4 rounded-2xl border transition-all flex items-start gap-3 ${hasCustomizedBranding ? 'bg-white/50 border-emerald-200 opacity-60' : 'bg-white border-indigo-100 hover:border-indigo-300 shadow-sm'}`}>
+              <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${hasCustomizedBranding ? 'bg-emerald-500 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                {hasCustomizedBranding ? '✓' : '2'}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-800">Customize Branding</h3>
+                <p className="text-xs text-slate-500 mt-1">Set your brand color, logo, and announcement bar.</p>
+              </div>
+            </Link>
+            <Link href="/admin/settings?tab=delivery" className={`p-4 rounded-2xl border transition-all flex items-start gap-3 ${hasShippingZones ? 'bg-white/50 border-emerald-200 opacity-60' : 'bg-white border-indigo-100 hover:border-indigo-300 shadow-sm'}`}>
+              <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${hasShippingZones ? 'bg-emerald-500 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                {hasShippingZones ? '✓' : '3'}
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-slate-800">Set Delivery Zones</h3>
+                <p className="text-xs text-slate-500 mt-1">Configure shipping rates for different cities.</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Revenue Chart */}
+      {role === 'admin' && (
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Revenue Trend</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Last {days} days of delivered orders</p>
+            </div>
+            <div className="flex bg-slate-100 dark:bg-slate-700/50 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+              <button onClick={() => setDateRange('7d')} className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${dateRange === '7d' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>7d</button>
+              <button onClick={() => setDateRange('30d')} className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${dateRange === '30d' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>30d</button>
+              <button onClick={() => setDateRange('90d')} className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${dateRange === '90d' ? 'bg-white dark:bg-slate-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'}`}>90d</button>
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} minTickGap={30} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(0)}k` : val} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [`${Number(value).toLocaleString()} ${activeStore.currency}`, 'Revenue']}
+                  labelStyle={{ color: '#64748b', marginBottom: '4px', fontWeight: 'bold' }}
+                />
+                <Line type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6, strokeWidth: 0, fill: '#6366f1' }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

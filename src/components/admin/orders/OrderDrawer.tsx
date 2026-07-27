@@ -109,6 +109,28 @@ export default function OrderDrawer({
       if (callError) {
         console.error("Supabase call log error:", callError);
       }
+
+      // TRIGGER SMS Auto-Trigger
+      if (newStatus === 'CONFIRMED' && order.status !== 'CONFIRMED' && activeStore?.smsConfig?.enabled) {
+        try {
+          let msg = activeStore.smsConfig.confirmationTemplate || 'Order [ORDER_ID] for [PRODUCT] is confirmed.';
+          msg = msg.replace(/\[NAME\]/g, order.customer)
+                   .replace(/\[ORDER_ID\]/g, getShortOrderId(orderId))
+                   .replace(/\[PRODUCT\]/g, order.product)
+                   .replace(/\[STORE_NAME\]/g, activeStore.name);
+                   
+          fetch('/api/sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: order.phone,
+              message: msg,
+              provider: activeStore.smsConfig.provider,
+              senderId: activeStore.smsConfig.senderId
+            })
+          }).catch(console.error);
+        } catch(e) { console.error('SMS trigger error:', e); }
+      }
     } catch (err) { console.error(err); }
     
     setCallNote('');
@@ -156,6 +178,29 @@ export default function OrderDrawer({
       }
       const { error } = await adminDbUpdate('orders', { id: finalForm.id }, payload);
       if (error) throw error;
+
+      // TRIGGER SMS Auto-Trigger
+      if (finalForm.status === 'CONFIRMED' && order.status !== 'CONFIRMED' && activeStore?.smsConfig?.enabled) {
+        try {
+          let msg = activeStore.smsConfig.confirmationTemplate || 'Order [ORDER_ID] for [PRODUCT] is confirmed.';
+          msg = msg.replace(/\[NAME\]/g, finalForm.customer)
+                   .replace(/\[ORDER_ID\]/g, getShortOrderId(finalForm.id))
+                   .replace(/\[PRODUCT\]/g, finalForm.product)
+                   .replace(/\[STORE_NAME\]/g, activeStore.name);
+                   
+          fetch('/api/sms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: finalForm.phone,
+              message: msg,
+              provider: activeStore.smsConfig.provider,
+              senderId: activeStore.smsConfig.senderId
+            })
+          }).catch(console.error);
+        } catch(e) { console.error('SMS trigger error:', e); }
+      }
+
       addActivityLog({ storeId: activeStore.id, user: sessionUser, action: 'Order Updated', detail: `Updated ${getShortOrderId(finalForm.id)}` });
       setShowEditForm(false);
     } catch (err: any) { 

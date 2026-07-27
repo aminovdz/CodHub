@@ -13,6 +13,25 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Dynamic Storefront Variables (injected via layout.tsx) */
+  --color-brand-primary: var(--color-primary, #4F46E5);
+  --color-brand-secondary: var(--color-secondary, #F59E0B);
+  --color-brand-bg: var(--color-background, #F8FAFC);
+  --color-brand-text: var(--color-text, #0F172A);
+
+  /* Override Tailwind's default indigo to use our dynamic primary color */
+  --color-indigo-50: color-mix(in srgb, var(--color-brand-primary) 10%, white);
+  --color-indigo-100: color-mix(in srgb, var(--color-brand-primary) 20%, white);
+  --color-indigo-200: color-mix(in srgb, var(--color-brand-primary) 30%, white);
+  --color-indigo-300: color-mix(in srgb, var(--color-brand-primary) 40%, white);
+  --color-indigo-400: color-mix(in srgb, var(--color-brand-primary) 60%, white);
+  --color-indigo-500: color-mix(in srgb, var(--color-brand-primary) 80%, white);
+  --color-indigo-600: var(--color-brand-primary);
+  --color-indigo-700: color-mix(in srgb, var(--color-brand-primary) 85%, black);
+  --color-indigo-800: color-mix(in srgb, var(--color-brand-primary) 70%, black);
+  --color-indigo-900: color-mix(in srgb, var(--color-brand-primary) 55%, black);
+  --color-indigo-950: color-mix(in srgb, var(--color-brand-primary) 40%, black);
 }
 
 body {

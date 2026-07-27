@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { AutoResizingIframe } from './AutoResizingIframe';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   html: string;
@@ -24,6 +25,8 @@ type Segment =
  * string splitting + React rendering in a single pass.
  */
 export default function RichHtmlContent({ html, region, storeSlug, utmSource, utmCampaign }: Props) {
+  const router = useRouter();
+  
   const segments: Segment[] = useMemo(() => {
     if (!html) return [];
 
@@ -88,7 +91,10 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
         // HTML segment — render with AutoResizingIframe to guarantee exact styling as preview
         return (
           <div key={`html-${i}`} className="w-full">
-            <AutoResizingIframe html={seg.content} />
+            <AutoResizingIframe html={seg.content} onCheckout={() => {
+              const basePath = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost') ? '' : `/${storeSlug}`;
+              router.push(`${basePath}/checkout`);
+            }} />
           </div>
         );
       })}

@@ -73,7 +73,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
               </div>
             </div>
           ) : (
-            <div key={block.id} className="bg-indigo-950 text-white py-16 px-4 mb-12" style={{ backgroundColor: store?.theme?.colors?.primary || '#1e1b4b' }}>
+            <div key={block.id} className="text-white py-16 px-4 mb-12" style={{ backgroundColor: 'var(--color-primary)' }}>
               <div className="max-w-6xl mx-auto text-center md:text-right md:flex items-center justify-between">
                 <div className="md:w-1/2">
                   <div className="inline-block bg-white/20 text-white font-bold px-3 py-1 rounded-full text-sm mb-4 border border-white/30 backdrop-blur-sm">
@@ -102,7 +102,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
             ? 'group bg-white rounded-2xl shadow-lg border-0 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col hover:-translate-y-1' 
             : cardShape === 'flat' 
             ? 'group bg-white border-0 overflow-hidden hover:opacity-90 transition-all duration-300 flex flex-col'
-            : 'group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-indigo-300 transition-all duration-300 flex flex-col';
+            : 'group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col';
 
           return (
             <div key={block.id} className="max-w-6xl mx-auto px-4 mb-12">
@@ -128,7 +128,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                         </div>
                       </div>
                       <div className="p-5 flex flex-col flex-grow">
-                        <div className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2">
+                        <div className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--color-primary)' }}>
                           {product.category || 'منتج'}
                         </div>
                         <h3 className="font-bold text-slate-900 leading-snug mb-3 flex-grow line-clamp-2">
@@ -138,7 +138,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                           <div className="font-black text-xl text-slate-900 flex items-center gap-1 flex-row-reverse">
                             <span className="text-sm font-bold text-slate-400">{currency}</span> {priceToDisplay}
                           </div>
-                          <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center text-slate-400 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 hover:bg-[var(--color-primary)] group-hover:bg-[var(--color-primary)] group-hover:text-white flex items-center justify-center text-slate-400 transition-colors">
                             <ChevronRight size={20} className="rotate-180" />
                           </div>
                         </div>
@@ -163,7 +163,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
               <div className="flex overflow-x-auto pb-4 hide-scrollbar gap-3">
                 <button 
                   onClick={() => setActiveCategory(null)}
-                  className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${!activeCategory ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                  className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${!activeCategory ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
                 >
                   {t('store.allProducts', 'جميع المنتجات')}
                 </button>
@@ -171,7 +171,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
                   <button 
                     key={i} 
                     onClick={() => setActiveCategory(cat)}
-                    className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${activeCategory === cat ? 'bg-slate-900 text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
+                    className={`whitespace-nowrap px-6 py-2.5 font-bold rounded-full text-sm transition-colors shadow-sm ${activeCategory === cat ? 'bg-[var(--color-primary)] text-white shadow-lg' : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'}`}
                   >
                     {cat}
                   </button>
@@ -187,7 +187,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {(block.features || []).map((f, i) => (
                   <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-start gap-4">
-                    <div className="bg-indigo-50 p-3 rounded-xl text-indigo-600">
+                    <div className="p-3 rounded-xl" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)', color: 'var(--color-primary)' }}>
                       <CheckCircle2 size={24} />
                     </div>
                     <div>

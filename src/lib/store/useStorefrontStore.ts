@@ -48,6 +48,10 @@ export const useStorefrontStore = create<StorefrontState>()(
       setHasHydrated: (state) => set({ _hasHydrated: state }),
 
       fetchInitialData: async (storeSlug?: string) => {
+        if (get()._hasHydrated) {
+          set({ isLoading: false });
+          return;
+        }
     // Fetch stores first to find the ID
     const { data: stores } = await supabase.from('stores').select('*');
     const store = storeSlug ? stores?.find((s: any) => s.region.toLowerCase() === storeSlug.toLowerCase() || s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === storeSlug.toLowerCase()) : null;

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-export function AutoResizingIframe({ html }: { html: string }) {
+export function AutoResizingIframe({ html, onCheckout }: { html: string, onCheckout?: () => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(0);
 
@@ -15,6 +15,8 @@ export function AutoResizingIframe({ html }: { html: string }) {
           if (element) {
             element.scrollIntoView({ behavior: 'smooth' });
           }
+        } else if (e.data.type === 'redirectToCheckout' && onCheckout) {
+          onCheckout();
         }
       }
     };
@@ -45,9 +47,37 @@ export function AutoResizingIframe({ html }: { html: string }) {
             // Intercept anchor clicks
             document.addEventListener('click', (e) => {
               const anchor = e.target.closest('a');
-              if (anchor && anchor.getAttribute('href')?.startsWith('#')) {
-                e.preventDefault();
-                window.parent.postMessage({ type: 'scrollToHash', hash: anchor.getAttribute('href') }, '*');
+              const btn = e.target.closest('button');
+              
+              if (anchor) {
+                const href = anchor.getAttribute('href') || '';
+                if (href.startsWith('#')) {
+                  e.preventDefault();
+                  window.parent.postMessage({ type: 'scrollToHash', hash: href }, '*');
+                  return;
+                }
+                
+                // If the link is trying to go to checkout or is a buy button
+                if (href.toLowerCase().includes('checkout') || 
+                    anchor.classList.contains('buy-now-btn') ||
+                    anchor.textContent?.toLowerCase().includes('buy') ||
+                    anchor.textContent?.includes('اطلب') ||
+                    anchor.textContent?.includes('شراء')) {
+                  e.preventDefault();
+                  window.parent.postMessage({ type: 'redirectToCheckout', href }, '*');
+                  return;
+                }
+              }
+              
+              if (btn) {
+                 if (btn.classList.contains('buy-now-btn') ||
+                     btn.textContent?.toLowerCase().includes('buy') ||
+                     btn.textContent?.includes('اطلب') ||
+                     btn.textContent?.includes('شراء')) {
+                    e.preventDefault();
+                    window.parent.postMessage({ type: 'redirectToCheckout' }, '*');
+                    return;
+                 }
               }
             });
           });

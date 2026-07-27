@@ -25,6 +25,9 @@ export default function AdminProductsPage() {
   const [bumpSearches, setBumpSearches] = useState<Record<string, string>>({});
   const { notify } = useNotificationStore();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; productId: string; title: string }>({ isOpen: false, productId: '', title: '' });
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<'delete' | 'activate' | 'deactivate' | null>(null);
+  const [bulkConfirmModal, setBulkConfirmModal] = useState(false);
 
   const filteredProducts = products.filter(p => p.storeId === activeStore.id);
 
@@ -96,6 +99,55 @@ export default function AdminProductsPage() {
 
   const handleDelete = (id: string, title: string) => {
     setDeleteModal({ isOpen: true, productId: id, title });
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedProductIds(filteredProducts.map(p => p.id));
+    } else {
+      setSelectedProductIds([]);
+    }
+  };
+
+  const handleSelectProduct = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedProductIds(prev => [...prev, id]);
+    } else {
+      setSelectedProductIds(prev => prev.filter(pid => pid !== id));
+    }
+  };
+
+  const executeBulkAction = async () => {
+    if (selectedProductIds.length === 0 || !bulkAction) return;
+
+    try {
+      for (const id of selectedProductIds) {
+        if (bulkAction === 'delete') {
+          await deleteProduct(id);
+        } else if (bulkAction === 'activate') {
+          const p = products.find(prod => prod.id === id);
+          if (p) await updateProduct(id, { ...p, active: true });
+        } else if (bulkAction === 'deactivate') {
+          const p = products.find(prod => prod.id === id);
+          if (p) await updateProduct(id, { ...p, active: false });
+        }
+      }
+
+      addActivityLog({ 
+        storeId: activeStore.id, 
+        user: sessionUser, 
+        action: 'Bulk Product Update', 
+        detail: `Bulk ${bulkAction} on ${selectedProductIds.length} products` 
+      });
+      notify(`Successfully applied ${bulkAction} to ${selectedProductIds.length} products!`, 'success');
+    } catch (e) {
+      console.error(e);
+      notify(`Failed to execute bulk action`, 'error');
+    } finally {
+      setSelectedProductIds([]);
+      setBulkConfirmModal(false);
+      setBulkAction(null);
+    }
   };
 
   const handleImageUrlAdd = () => {
@@ -350,6 +402,14 @@ export default function AdminProductsPage() {
           <table className="w-full text-left border-collapse whitespace-nowrap md:whitespace-normal">
             <thead>
               <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                <th className="p-4 w-12">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                    checked={filteredProducts.length > 0 && selectedProductIds.length === filteredProducts.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="p-4 font-bold">Product</th>
                 <th className="p-4 font-bold">Category</th>
                 <th className="p-4 font-bold">Price</th>
@@ -359,10 +419,18 @@ export default function AdminProductsPage() {
             </thead>
             <tbody className="text-sm font-medium text-slate-700">
               {filteredProducts.length === 0 && (
-                <tr><td colSpan={5} className="p-8 text-center text-slate-500">No products found for this store. Click Add Product.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-slate-500">No products found for this store. Click Add Product.</td></tr>
               )}
               {filteredProducts.map(p => (
                 <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="p-4">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                      checked={selectedProductIds.includes(p.id)}
+                      onChange={(e) => handleSelectProduct(p.id, e.target.checked)}
+                    />
+                  </td>
                   <td className="p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-slate-200 overflow-hidden shrink-0 border border-slate-300">
                       {p.image ? <img src={p.image} alt={p.title} loading="lazy" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400"><ImageIcon size={16}/></div>}
@@ -413,6 +481,36 @@ export default function AdminProductsPage() {
           </table>
         </div>
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedProductIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl z-40 flex items-center gap-4">
+          <div className="font-bold">
+            <span className="text-indigo-400">{selectedProductIds.length}</span> selected
+          </div>
+          <div className="w-px h-6 bg-slate-700" />
+          <div className="flex gap-2">
+            <button 
+              onClick={() => { setBulkAction('activate'); setBulkConfirmModal(true); }}
+              className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-semibold hover:bg-emerald-500/30 transition-colors text-sm"
+            >
+              Activate
+            </button>
+            <button 
+              onClick={() => { setBulkAction('deactivate'); setBulkConfirmModal(true); }}
+              className="px-3 py-1.5 rounded-lg bg-slate-700 text-slate-300 font-semibold hover:bg-slate-600 transition-colors text-sm"
+            >
+              Deactivate
+            </button>
+            <button 
+              onClick={() => { setBulkAction('delete'); setBulkConfirmModal(true); }}
+              className="px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-400 font-semibold hover:bg-rose-500/30 transition-colors text-sm"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingProduct && (
@@ -960,6 +1058,70 @@ export default function AdminProductsPage() {
                 </div>
               </div>
 
+              {/* Customer Reviews Management */}
+              <div className="border-t border-slate-100 pt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900">Customer Reviews</h3>
+                    <p className="text-sm text-slate-500">Manage and add product reviews.</p>
+                  </div>
+                  <button type="button" onClick={() => {
+                    const newReview = { id: 'rev_' + Date.now(), customerName: 'New Customer', rating: 5, comment: 'Great product!', status: 'approved' as const, createdAt: new Date().toISOString() };
+                    setEditingProduct({...editingProduct, reviews: [...(editingProduct.reviews || []), newReview]});
+                  }} className="text-indigo-600 hover:text-indigo-700 font-bold text-sm flex items-center gap-1">
+                    <PlusSquare size={16} /> Add Review
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {editingProduct.reviews?.map((review) => (
+                    <div key={review.id} className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex gap-4">
+                      <div className="flex-1 space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="col-span-2">
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Customer Name</label>
+                            <input type="text" value={review.customerName} onChange={(e) => {
+                              setEditingProduct({...editingProduct, reviews: editingProduct.reviews?.map(r => r.id === review.id ? {...r, customerName: e.target.value} : r)});
+                            }} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Rating (1-5)</label>
+                            <input type="number" min="1" max="5" value={review.rating} onChange={(e) => {
+                              setEditingProduct({...editingProduct, reviews: editingProduct.reviews?.map(r => r.id === review.id ? {...r, rating: Number(e.target.value)} : r)});
+                            }} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-500 mb-1">Status</label>
+                            <select value={review.status} onChange={(e) => {
+                              setEditingProduct({...editingProduct, reviews: editingProduct.reviews?.map(r => r.id === review.id ? {...r, status: e.target.value as any} : r)});
+                            }} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm">
+                              <option value="approved">Approved</option>
+                              <option value="pending">Pending</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 mb-1">Comment</label>
+                          <textarea value={review.comment} onChange={(e) => {
+                            setEditingProduct({...editingProduct, reviews: editingProduct.reviews?.map(r => r.id === review.id ? {...r, comment: e.target.value} : r)});
+                          }} className="w-full p-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 outline-none font-medium text-sm min-h-[80px]" />
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => {
+                        setEditingProduct({...editingProduct, reviews: editingProduct.reviews?.filter(r => r.id !== review.id)});
+                      }} className="self-start p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                  {(!editingProduct.reviews || editingProduct.reviews.length === 0) && (
+                    <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 text-sm font-medium">
+                      No customer reviews yet. Click "Add Review" to create one.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Thank You Page Related Products */}
               <div className="border-t border-slate-100 pt-8">
                 <h3 className="text-lg font-black text-slate-900 mb-1">Thank You Page Related Products</h3>
@@ -1029,6 +1191,16 @@ export default function AdminProductsPage() {
       message={`Are you sure you want to delete "${deleteModal.title}"? This action cannot be undone.`}
       confirmText="Delete Product"
       variant="danger"
+    />
+
+    <ConfirmModal
+      isOpen={bulkConfirmModal}
+      onClose={() => setBulkConfirmModal(false)}
+      onConfirm={executeBulkAction}
+      title={`Confirm Bulk ${bulkAction === 'activate' ? 'Activation' : bulkAction === 'deactivate' ? 'Deactivation' : 'Deletion'}?`}
+      message={`Are you sure you want to ${bulkAction} ${selectedProductIds.length} selected products?`}
+      confirmText={`Yes, ${bulkAction}`}
+      variant={bulkAction === 'delete' ? 'danger' : 'info'}
     />
     </>
   );

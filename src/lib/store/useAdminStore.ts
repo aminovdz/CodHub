@@ -120,10 +120,11 @@ function productToRow(p: Partial<Product> & { id?: string }) {
     variants: p.variants,
     enable_variants: p.enableVariants,
 
-    maximizer_upsells: (p.maximizerUpsells !== undefined || p.orderBumps !== undefined || p.quantityOffers !== undefined) ? [
+    maximizer_upsells: (p.maximizerUpsells !== undefined || p.orderBumps !== undefined || p.quantityOffers !== undefined || p.reviews !== undefined) ? [
       ...(p.maximizerUpsells || []).map(u => ({ ...u, _type: 'maximizer' })),
       ...(p.orderBumps || []).map(b => ({ ...b, _type: 'bump' })),
-      ...(p.quantityOffers || []).map(q => ({ ...q, _type: 'quantity' }))
+      ...(p.quantityOffers || []).map(q => ({ ...q, _type: 'quantity' })),
+      ...(p.reviews || []).map(r => ({ ...r, _type: 'review' }))
     ] : undefined,
     blocks: p.blocks,
     seo_title: p.seoTitle,
@@ -186,6 +187,7 @@ export function rowToProduct(row: any): Product {
     bundleItems: row.bundle_items || [],
     quantityOffers: (row.maximizer_upsells || []).filter((u: any) => u._type === 'quantity'),
     orderBumps: (row.maximizer_upsells || []).filter((u: any) => u._type === 'bump'),
+    reviews: (row.maximizer_upsells || []).filter((u: any) => u._type === 'review'),
   };
 }
 
@@ -439,6 +441,11 @@ export interface Store {
     senderId?: string;
     confirmationTemplate?: string;
   };
+  stripeConfig?: {
+    enabled?: boolean;
+    publishableKey?: string;
+    secretKey?: string;
+  };
   whatsappConfig?: {
     abandonedCartEnabled?: boolean;
     abandonedCartDelayMinutes?: number;
@@ -543,6 +550,15 @@ export interface OrderBump {
   targetProductId?: string; // If this bump corresponds to a real product in the catalog
 }
 
+export interface CustomerReview {
+  id: string;
+  customerName: string;
+  rating: number; // 1 to 5
+  comment: string;
+  status: 'pending' | 'approved';
+  createdAt: string;
+}
+
 export interface Product {
   id: string;
   storeId: string;
@@ -581,6 +597,7 @@ export interface Product {
   bundleItems?: BundleItem[];      // products included in bundle
   quantityOffers?: QuantityOffer[];// optional checkout quantity-break offers
   orderBumps?: OrderBump[];
+  reviews?: CustomerReview[];      // customer reviews stored in maximizer_upsells array
 }
 
 export interface LandingPage {
@@ -959,8 +976,7 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
         const proposedSlug = slugify(store.name);
         const exists = get().availableStores.some(s => slugify(s.name) === proposedSlug);
         if (exists) {
-           useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
-           return;
+           throw new Error("A store with a similar name already exists.");
         }
         const lang = store.language || 'en';
         const defaultTrans = DEFAULT_TRANSLATIONS[lang] || DEFAULT_TRANSLATIONS['en'];
@@ -1015,14 +1031,14 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
       },
       updateStore: async (storeId, data) => {
         if (data.name) {
-          const proposedSlug = slugify(data.name);
           const currentStore = get().availableStores.find(s => String(s.id) === String(storeId));
-          
-          if (!currentStore || slugify(currentStore.name) !== proposedSlug) {
-            const exists = get().availableStores.some(s => String(s.id) !== String(storeId) && slugify(s.name) === proposedSlug);
+          if (currentStore && slugify(currentStore.name) !== slugify(data.name)) {
+            const proposedSlug = slugify(data.name);
+            const exists = get().availableStores.some(
+              s => String(s.id) !== String(storeId) && slugify(s.name) === proposedSlug
+            );
             if (exists) {
-               useNotificationStore.getState().notify("A store with a similar name already exists.", "error");
-               return;
+               throw new Error("A store with a similar name already exists.");
             }
           }
         }
