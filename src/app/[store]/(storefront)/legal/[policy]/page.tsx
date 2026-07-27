@@ -40,7 +40,7 @@ export default function LegalPage({ params }: { params: Promise<{ store: string,
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-16 px-4">
+    <div className="min-h-screen bg-[var(--color-background)] py-16 px-4">
       <div className="max-w-3xl mx-auto bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-12">
         <div 
           className="prose prose-slate prose-indigo max-w-none prose-h1:text-3xl prose-h1:md:text-4xl prose-h1:font-black prose-h1:text-slate-900 prose-h1:mb-8 prose-h1:border-b prose-h1:border-slate-100 prose-h1:pb-6 prose-h2:font-black prose-h2:mt-8 prose-p:font-medium prose-p:text-slate-600"

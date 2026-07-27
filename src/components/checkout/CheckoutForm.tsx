@@ -816,7 +816,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
   };
 
   return (
-    <div className={`font-sans ${embedded ? '' : 'min-h-screen bg-slate-50 py-8 px-4 pb-28'}`}>
+    <div className={`font-sans ${embedded ? '' : 'min-h-screen bg-[var(--color-background)] py-8 px-4 pb-28'}`}>
       <div className="max-w-lg mx-auto">
 
         {/* Progress Tracker — 2 steps */}

@@ -32,7 +32,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
 
   const basePath = isSubdomain ? '' : `/${storeSlug}`;
 
-  if (!isMounted) return <div className="min-h-screen bg-slate-50" />;
+  if (!isMounted) return <div className="min-h-screen bg-[var(--color-background)]" />;
 
   // Default to something visually appealing if no blocks
   const defaultBlocks = [
@@ -44,7 +44,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ store: st
   const storeProducts = products.filter(p => !store || p.storeId === store.id);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans pb-24" dir="rtl">
+    <div className="min-h-screen bg-[var(--color-background)] font-sans pb-24" dir="rtl">
       {blocks.map(block => {
         
         if (block.type === 'hero') {

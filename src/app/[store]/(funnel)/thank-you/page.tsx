@@ -116,7 +116,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ store: stri
     .slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-16 pb-24 px-4 font-sans flex flex-col items-center">
+    <div className="min-h-screen bg-[var(--color-background)] pt-16 pb-24 px-4 font-sans flex flex-col items-center">
       <div className="max-w-4xl w-full">
 
         {/* ===== SUCCESS HEADER ===== */}

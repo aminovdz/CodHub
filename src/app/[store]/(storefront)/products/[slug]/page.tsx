@@ -255,7 +255,7 @@ export default function ProductPage({ params }: { params: Promise<{ store: strin
   const isSoldOut = (product as any).disableOutOfStockPurchases && ((product as any).stock || 0) <= 0;
 
   return (
-    <div className="min-h-screen bg-white font-sans pb-24" dir="rtl">
+    <div className="min-h-screen bg-[var(--color-background)] font-sans pb-24" dir="rtl">
       {/* Top Ticker */}
       <div className="bg-indigo-950 text-white text-center text-xs md:text-sm font-bold py-2 px-4 tracking-wide">
         ⚡ توصيل سريع — الدفع عند الاستلام ✓

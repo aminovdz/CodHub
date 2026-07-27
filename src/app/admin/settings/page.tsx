@@ -748,6 +748,46 @@ export default function AdminSettingsPage() {
 
 
 
+      {/* FRAUD PREVENTION */}
+{/* Fraud Prevention */}
+        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
+          <p className="text-sm text-slate-500 mb-6 -mt-4">Protect your store from fake orders, bots, and high-risk customers.</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <ShieldAlert className="text-rose-500" /> Fraud Prevention Rules
+          </h2>
+          <div className="space-y-6">
+            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
+              <div>
+                <div className="font-bold text-slate-900">Block Duplicate IPs</div>
+                <div className="text-sm text-slate-500 mt-1">Prevent multiple orders from the same IP within a timeframe.</div>
+              </div>
+              <input type="checkbox" checked={fraudConfig.blockDuplicateIps} onChange={e => setFraudConfig({...fraudConfig, blockDuplicateIps: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
+            </label>
+
+            {fraudConfig.blockDuplicateIps && (
+              <div className="pl-6 border-l-2 border-rose-100">
+                <label className="block text-sm font-bold text-slate-700 mb-2">IP Block Window (Hours)</label>
+                <input type="number" min={1} value={fraudConfig.duplicateIpTimeframeHours} onChange={e => setFraudConfig({...fraudConfig, duplicateIpTimeframeHours: parseInt(e.target.value) || 24})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
+              </div>
+            )}
+
+            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
+              <div>
+                <div className="font-bold text-slate-900">Manual Approval for High-Value</div>
+                <div className="text-sm text-slate-500 mt-1">Flag orders above a certain amount for manual review.</div>
+              </div>
+              <input type="checkbox" checked={fraudConfig.requireApprovalForHighValue} onChange={e => setFraudConfig({...fraudConfig, requireApprovalForHighValue: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
+            </label>
+
+            {fraudConfig.requireApprovalForHighValue && (
+              <div className="pl-6 border-l-2 border-rose-100">
+                <label className="block text-sm font-bold text-slate-700 mb-2">High-Value Threshold ({activeStore.currency})</label>
+                <input type="number" min={0} value={fraudConfig.highValueThreshold} onChange={e => setFraudConfig({...fraudConfig, highValueThreshold: parseInt(e.target.value) || 0})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
+              </div>
+            )}
+          </div>
+        </div>
+
       {/* SEO & LAYOUT */}
       <form onSubmit={handleSaveSEO} className="space-y-8">
         <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm ${activeTab === 'general' ? 'block' : 'hidden'}`}>
@@ -1368,248 +1408,199 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
-        {/* Premium Branding Panel */}
-        <div className={`bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm mt-8 ${activeTab === 'design' ? 'block' : 'hidden'}`}>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-6">
-            <Globe className="w-6 h-6 text-indigo-600" /> Theme & Branding
-          </h2>
-          
-          <div className="space-y-8">
+        {/* PREMIUM BRANDING PANELS */}
+        <div className={`space-y-6 ${activeTab === 'design' ? 'block' : 'hidden'}`}>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Palette className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-900 dark:text-white">Design & Theme</h2>
+              <p className="text-sm text-slate-500 font-medium">Customize your storefront identity, colors, and typography.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Essential Branding (Logo & Favicon) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Logo</label>
-                <div className="flex gap-4 items-center">
-                  {localLogoUrl ? (
-                    <div className="relative group">
-                      <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
-                      <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-3 h-3" />
-                      </button>
+            {/* BRAND IDENTITY */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-indigo-500" /> Brand Identity
+              </h3>
+              
+              <div className="space-y-6 flex-grow">
+                {/* Logo */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Store Logo</label>
+                  <div className="flex gap-4 items-center">
+                    {localLogoUrl ? (
+                      <div className="relative group">
+                        <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
+                        <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                        {isUploadingLogo ? <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImageIcon className="w-6 h-6 text-slate-400" />}
+                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                          if (!e.target.files?.[0]) return;
+                          setIsUploadingLogo(true);
+                          try {
+                            // Assuming uploadImageToSupabase is available in scope
+                            const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                            setLocalLogoUrl(url);
+                          } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingLogo(false); }
+                        }} />
+                      </label>
+                    )}
+                    <div className="flex-1">
+                      <input type="text" value={localLogoUrl} onChange={e => setLocalLogoUrl(e.target.value)} placeholder="Or paste image URL" className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500" />
                     </div>
-                  ) : (
-                    <label className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
-                      {isUploadingLogo ? <div className="animate-spin w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <ImageIcon className="w-6 h-6 text-slate-400" />}
-                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                        if (!e.target.files?.[0]) return;
-                        setIsUploadingLogo(true);
-                        try {
-                          const url = await uploadImageToSupabase(e.target.files[0], 'stores');
-                          setLocalLogoUrl(url);
-                        } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingLogo(false); }
-                      }} />
-                    </label>
-                  )}
-                  <div className="flex-1">
-                    <input type="text" value={localLogoUrl} onChange={e => setLocalLogoUrl(e.target.value)} placeholder="Or paste image URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                   </div>
                 </div>
-              </div>
 
-              <div className="p-4 bg-slate-50 dark:bg-slate-700 rounded-xl border border-slate-200 dark:border-slate-600">
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Store Favicon</label>
-                <div className="flex gap-4 items-center">
-                  {localFaviconUrl ? (
-                    <div className="relative group">
-                      <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
-                      <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-3 h-3" />
-                      </button>
+                {/* Favicon */}
+                <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Store Favicon</label>
+                  <div className="flex gap-4 items-center">
+                    {localFaviconUrl ? (
+                      <div className="relative group">
+                        <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
+                        <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
+                        {isUploadingFavicon ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <Globe className="w-5 h-5 text-slate-400" />}
+                        <input type="file" accept="image/png,image/x-icon,image/svg+xml" className="hidden" onChange={async (e) => {
+                          if (!e.target.files?.[0]) return;
+                          setIsUploadingFavicon(true);
+                          try {
+                            const url = await uploadImageToSupabase(e.target.files[0], 'stores');
+                            setLocalFaviconUrl(url);
+                          } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingFavicon(false); }
+                        }} />
+                      </label>
+                    )}
+                    <div className="flex-1">
+                      <input type="text" value={localFaviconUrl} onChange={e => setLocalFaviconUrl(e.target.value)} placeholder="Or paste URL" className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500" />
                     </div>
-                  ) : (
-                    <label className="w-12 h-12 flex items-center justify-center bg-white dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 transition-colors">
-                      {isUploadingFavicon ? <div className="animate-spin w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full" /> : <Globe className="w-5 h-5 text-slate-400" />}
-                      <input type="file" accept="image/png,image/x-icon,image/svg+xml" className="hidden" onChange={async (e) => {
-                        if (!e.target.files?.[0]) return;
-                        setIsUploadingFavicon(true);
-                        try {
-                          const url = await uploadImageToSupabase(e.target.files[0], 'stores');
-                          setLocalFaviconUrl(url);
-                        } catch (err: any) { notify(err.message, 'error'); } finally { setIsUploadingFavicon(false); }
-                      }} />
-                    </label>
-                  )}
-                  <div className="flex-1">
-                    <input type="text" value={localFaviconUrl} onChange={e => setLocalFaviconUrl(e.target.value)} placeholder="Or paste URL" className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 font-mono text-xs text-slate-900 dark:text-white bg-white dark:bg-slate-800" />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Colors */}
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Color Palette</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* COLOR PALETTE */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-fuchsia-500"></span> Color Palette
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4">
                 {[
-                  { label: 'Primary (Buttons)', key: 'primary', value: localPrimaryColor, set: (val: string) => {
+                  { label: 'Primary', desc: 'Buttons, accents', key: 'primary', value: localPrimaryColor, set: (val: string) => {
                       setLocalPrimaryColor(val);
                       setTheme(prev => ({ ...prev, colors: { ...(prev.colors || {}), primary: val } }));
                     } },
-                  { label: 'Secondary (Badges)', key: 'secondary', value: theme?.colors?.secondary || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), secondary: val}}) },
-                  { label: 'Background', key: 'background', value: theme?.colors?.background || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), background: val}}) },
-                  { label: 'Text', key: 'text', value: theme?.colors?.text || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), text: val}}) }
+                  { label: 'Secondary', desc: 'Badges, highlights', key: 'secondary', value: theme?.colors?.secondary || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), secondary: val}}) },
+                  { label: 'Background', desc: 'Page backdrop', key: 'background', value: theme?.colors?.background || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), background: val}}) },
+                  { label: 'Text', desc: 'Main typography', key: 'text', value: theme?.colors?.text || '', set: (val: string) => setTheme({...theme, colors: {...(theme?.colors || {}), text: val}}) }
                 ].map((colorObj) => (
-                  <div key={colorObj.key} className="p-3 bg-slate-50 dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 flex flex-col items-center">
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">{colorObj.label}</label>
-                    <input type="color" value={colorObj.value} onChange={e => colorObj.set(e.target.value)} className="w-10 h-10 rounded cursor-pointer border-0 p-0 mb-2" />
-                    <input type="text" value={colorObj.value} onChange={e => colorObj.set(e.target.value)} className="w-full text-center text-xs p-1 rounded border border-slate-300 dark:border-slate-600 font-mono bg-white dark:bg-slate-800" />
+                  <div key={colorObj.key} className="p-4 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-700 flex items-center gap-3">
+                    <div className="relative w-10 h-10 rounded-full shadow-inner overflow-hidden border-2 border-white dark:border-slate-600 flex-shrink-0">
+                      <input type="color" value={colorObj.value} onChange={e => colorObj.set(e.target.value)} className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer border-0 p-0" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{colorObj.label}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{colorObj.desc}</div>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Typography & Shapes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Typography</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Heading Font</label>
-                    <select value={theme?.typography?.headingFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), headingFont: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                      {['Inter', 'Roboto', 'Playfair Display', 'Merriweather', 'Tajawal', 'Cairo', 'Almarai'].map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Body Font</label>
-                    <select value={theme?.typography?.bodyFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), bodyFont: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                      {['Inter', 'Roboto', 'Open Sans', 'Lato', 'Tajawal', 'Cairo', 'Almarai'].map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Shapes & Style</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Button Style</label>
-                    <select value={theme?.shapes?.buttonStyle || 'rounded'} onChange={e => setTheme({...theme, shapes: {...(theme?.shapes || {}), buttonStyle: e.target.value as any}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                      <option value="sharp">Sharp (Square)</option>
-                      <option value="rounded">Rounded</option>
-                      <option value="pill">Pill (Fully rounded)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Card Style</label>
-                    <select value={theme?.shapes?.cardStyle || 'bordered'} onChange={e => setTheme({...theme, shapes: {...(theme?.shapes || {}), cardStyle: e.target.value as any}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">
-                      <option value="flat">Flat (Minimal)</option>
-                      <option value="bordered">Bordered</option>
-                      <option value="floating">Floating (Shadows)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Banners & Socials */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Hero & Announcement</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Hero Banner Image URL</label>
-                    <input type="text" placeholder="https://..." value={theme?.hero?.bannerUrl || ''} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), bannerUrl: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Announcement Text</label>
-                    <input type="text" placeholder="Free Shipping on all orders!" value={localAnnouncement} onChange={e => setLocalAnnouncement(e.target.value)} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">Bar Background</label>
-                      <input type="color" value={theme?.hero?.announcementBgColor || '#4F46E5'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementBgColor: e.target.value}})} className="w-full h-10 rounded cursor-pointer border-0 p-0" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-slate-500 mb-1">Bar Text</label>
-                      <input type="color" value={theme?.hero?.announcementTextColor || '#ffffff'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementTextColor: e.target.value}})} className="w-full h-10 rounded cursor-pointer border-0 p-0" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={theme?.hero?.announcementMarquee || false} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementMarquee: e.target.checked}})} className="rounded text-indigo-600 focus:ring-indigo-500" />
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Enable Marquee Effect</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Trust & Socials</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Trust Badges Image URL</label>
-                    <input type="text" placeholder="https://..." value={theme?.trust?.badgesUrl || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), badgesUrl: e.target.value}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Instagram URL</label>
-                    <input type="text" placeholder="https://instagram.com/..." value={theme?.trust?.socialLinks?.instagram || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), instagram: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Facebook URL</label>
-                    <input type="text" placeholder="https://facebook.com/..." value={theme?.trust?.socialLinks?.facebook || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), facebook: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">TikTok URL</label>
-                    <input type="text" placeholder="https://tiktok.com/@..." value={theme?.trust?.socialLinks?.tiktok || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), tiktok: e.target.value}}})} className="w-full p-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Advanced CSS */}
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2">Advanced</h3>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Custom CSS</label>
+              {/* Advanced CSS */}
+              <div className="mt-6 flex-grow flex flex-col">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3"><Code className="inline w-3 h-3 mr-1"/> Advanced CSS</label>
                 <textarea 
                   value={theme.advanced?.customCss || ''} 
                   onChange={e => setTheme({...theme, advanced: {...theme.advanced, customCss: e.target.value}})} 
-                  rows={4} 
                   placeholder="/* Add custom global CSS here. Use with caution. */" 
-                  className="w-full px-4 py-3 rounded-xl border border-slate-300 font-mono text-sm bg-slate-50 dark:bg-slate-900 focus:ring-2 focus:ring-indigo-600 outline-none" 
+                  className="w-full flex-grow min-h-[100px] p-4 rounded-xl border border-slate-300 dark:border-slate-600 font-mono text-[11px] bg-slate-900 text-green-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none leading-relaxed" 
                 />
               </div>
             </div>
-            
-          </div>
-        </div>
 
-{/* Fraud Prevention */}
-        <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <ShieldAlert className="text-rose-500" /> Fraud Prevention Rules
-          </h2>
-          <div className="space-y-6">
-            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
-              <div>
-                <div className="font-bold text-slate-900">Block Duplicate IPs</div>
-                <div className="text-sm text-slate-500 mt-1">Prevent multiple orders from the same IP within a timeframe.</div>
+            {/* HERO & ANNOUNCEMENT */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-indigo-500" /> Hero & Announcement
+              </h3>
+              
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Hero Banner Image URL</label>
+                  <input type="text" placeholder="https://..." value={theme?.hero?.bannerUrl || ''} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), bannerUrl: e.target.value}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Announcement Text</label>
+                  <input type="text" placeholder="Free Shipping on all orders!" value={localAnnouncement} onChange={e => setLocalAnnouncement(e.target.value)} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium" />
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Bar BG</label>
+                    <div className="relative w-full h-8 rounded-lg shadow-inner overflow-hidden border-2 border-white">
+                      <input type="color" value={theme?.hero?.announcementBgColor || '#4F46E5'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementBgColor: e.target.value}})} className="absolute -top-2 -left-2 w-full h-16 cursor-pointer border-0 p-0 scale-150" />
+                    </div>
+                  </div>
+                  <div className="flex-1 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Bar Text</label>
+                    <div className="relative w-full h-8 rounded-lg shadow-inner overflow-hidden border-2 border-white">
+                      <input type="color" value={theme?.hero?.announcementTextColor || '#ffffff'} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementTextColor: e.target.value}})} className="absolute -top-2 -left-2 w-full h-16 cursor-pointer border-0 p-0 scale-150" />
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 hover:border-indigo-200 transition-colors">
+                    <input type="checkbox" checked={theme?.hero?.announcementMarquee || false} onChange={e => setTheme({...theme, hero: {...(theme?.hero || {}), announcementMarquee: e.target.checked}})} className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" />
+                    <div>
+                      <span className="block text-sm font-bold text-slate-700 dark:text-slate-300">Enable Marquee Effect</span>
+                      <span className="block text-xs text-slate-500">Scrolls the announcement text continuously</span>
+                    </div>
+                  </label>
+                </div>
               </div>
-              <input type="checkbox" checked={fraudConfig.blockDuplicateIps} onChange={e => setFraudConfig({...fraudConfig, blockDuplicateIps: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
-            </label>
+            </div>
 
-            {fraudConfig.blockDuplicateIps && (
-              <div className="pl-6 border-l-2 border-rose-100">
-                <label className="block text-sm font-bold text-slate-700 mb-2">IP Block Window (Hours)</label>
-                <input type="number" min={1} value={fraudConfig.duplicateIpTimeframeHours} onChange={e => setFraudConfig({...fraudConfig, duplicateIpTimeframeHours: parseInt(e.target.value) || 24})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
+            {/* TRUST & SOCIALS */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-indigo-500" /> Trust & Socials
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Trust Badges Image URL</label>
+                  <input type="text" placeholder="https://..." value={theme?.trust?.badgesUrl || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), badgesUrl: e.target.value}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                </div>
+                
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Instagram URL</label>
+                    <input type="text" placeholder="https://instagram.com/..." value={theme?.trust?.socialLinks?.instagram || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), instagram: e.target.value}}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Facebook URL</label>
+                    <input type="text" placeholder="https://facebook.com/..." value={theme?.trust?.socialLinks?.facebook || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), facebook: e.target.value}}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">TikTok URL</label>
+                    <input type="text" placeholder="https://tiktok.com/@..." value={theme?.trust?.socialLinks?.tiktok || ''} onChange={e => setTheme({...theme, trust: {...(theme?.trust || {}), socialLinks: {...(theme?.trust?.socialLinks || {}), tiktok: e.target.value}}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+                  </div>
+                </div>
               </div>
-            )}
-
-            <label className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-rose-100 transition-colors">
-              <div>
-                <div className="font-bold text-slate-900">Manual Approval for High-Value</div>
-                <div className="text-sm text-slate-500 mt-1">Flag orders above a certain amount for manual review.</div>
-              </div>
-              <input type="checkbox" checked={fraudConfig.requireApprovalForHighValue} onChange={e => setFraudConfig({...fraudConfig, requireApprovalForHighValue: e.target.checked})} className="w-5 h-5 rounded text-rose-600" />
-            </label>
-
-            {fraudConfig.requireApprovalForHighValue && (
-              <div className="pl-6 border-l-2 border-rose-100">
-                <label className="block text-sm font-bold text-slate-700 mb-2">High-Value Threshold ({activeStore.currency})</label>
-                <input type="number" min={0} value={fraudConfig.highValueThreshold} onChange={e => setFraudConfig({...fraudConfig, highValueThreshold: parseInt(e.target.value) || 0})} className="w-full max-w-[200px] px-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-rose-500 outline-none font-bold text-sm" />
-              </div>
-            )}
+            </div>
           </div>
         </div>
 
