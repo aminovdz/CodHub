@@ -1520,16 +1520,6 @@ export default function AdminSettingsPage() {
                 ))}
               </div>
 
-              {/* Advanced CSS */}
-              <div className="mt-6 flex-grow flex flex-col">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3"><Code className="inline w-3 h-3 mr-1"/> Advanced CSS</label>
-                <textarea 
-                  value={theme.advanced?.customCss || ''} 
-                  onChange={e => setTheme({...theme, advanced: {...theme.advanced, customCss: e.target.value}})} 
-                  placeholder="/* Add custom global CSS here. Use with caution. */" 
-                  className="w-full flex-grow min-h-[100px] p-4 rounded-xl border border-slate-300 dark:border-slate-600 font-mono text-[11px] bg-slate-900 text-green-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none leading-relaxed" 
-                />
-              </div>
             </div>
 
             {/* HERO & ANNOUNCEMENT */}
@@ -1600,6 +1590,77 @@ export default function AdminSettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* TYPOGRAPHY & SHAPES */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <Type className="w-4 h-4 text-indigo-500" /> Typography & Shapes
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Heading Font</label>
+                    <select value={theme?.typography?.headingFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), headingFont: e.target.value}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                      <option value="Inter">Inter</option>
+                      <option value="Roboto">Roboto</option>
+                      <option value="Outfit">Outfit</option>
+                      <option value="Poppins">Poppins</option>
+                      <option value="Montserrat">Montserrat</option>
+                      <option value="Playfair Display">Playfair Display</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Body Font</label>
+                    <select value={theme?.typography?.bodyFont || 'Inter'} onChange={e => setTheme({...theme, typography: {...(theme?.typography || {}), bodyFont: e.target.value}})} className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
+                      <option value="Inter">Inter</option>
+                      <option value="Roboto">Roboto</option>
+                      <option value="Outfit">Outfit</option>
+                      <option value="Poppins">Poppins</option>
+                      <option value="Montserrat">Montserrat</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Button Style</label>
+                    <div className="flex gap-2">
+                      {['rounded', 'pill', 'square'].map(style => (
+                        <button key={style} type="button" onClick={() => setTheme({...theme, shapes: {...(theme?.shapes || {}), buttonStyle: style as any}})} className={`flex-1 py-2 text-xs font-bold capitalize transition-all ${theme?.shapes?.buttonStyle === style ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'} ${style === 'pill' ? 'rounded-full' : style === 'rounded' ? 'rounded-lg' : 'rounded-sm'}`}>
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Card Style</label>
+                    <div className="flex gap-2">
+                      {['bordered', 'shadow', 'flat'].map(style => (
+                        <button key={style} type="button" onClick={() => setTheme({...theme, shapes: {...(theme?.shapes || {}), cardStyle: style as any}})} className={`flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-all ${theme?.shapes?.cardStyle === style ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ADVANCED CSS */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+                <Code className="w-4 h-4 text-indigo-500" /> Advanced CSS
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">Add custom global CSS styles to override default theme behaviors. Use with caution.</p>
+              
+              <textarea 
+                value={theme.advanced?.customCss || ''} 
+                onChange={e => setTheme({...theme, advanced: {...theme.advanced, customCss: e.target.value}})} 
+                placeholder="/* Add custom global CSS here */" 
+                className="w-full flex-grow min-h-[150px] p-4 rounded-xl border border-slate-300 dark:border-slate-600 font-mono text-[12px] bg-slate-900 text-green-400 focus:ring-2 focus:ring-indigo-500 outline-none resize-none leading-relaxed" 
+              ></textarea>
             </div>
           </div>
         </div>
