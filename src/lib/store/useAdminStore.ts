@@ -849,7 +849,7 @@ export interface Campaign {
   body: string;
   totalRecipients: number;
   sentCount: number;
-  status: 'SENDING' | 'COMPLETED' | 'FAILED';
+  status: 'SENDING' | 'COMPLETED' | 'FAILED' | 'PAUSED';
   date: string;
 }
 
