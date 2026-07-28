@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, memo } from 'react';
-import { MessageSquare, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { MessageSquare, X, Send, Bot, User, ImageIcon } from 'lucide-react';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
 }
 
 interface ChatbotWidgetProps {
@@ -19,7 +20,9 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Send an initial welcome message when the chat is opened for the first time
   useEffect(() => {
@@ -38,13 +41,33 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image must be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedImage(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && !selectedImage) || isLoading) return;
 
     const userMsg = input.trim();
+    const currentImage = selectedImage;
+    
     setInput('');
-    const newMessages = [...messages, { role: 'user', content: userMsg } as ChatMessage];
+    setSelectedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+
+    const newMessages = [...messages, { role: 'user', content: userMsg || 'Uploaded an image', imageUrl: currentImage } as ChatMessage];
     setMessages(newMessages);
     setIsLoading(true);
 
@@ -156,7 +179,10 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
                       : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-100 dark:border-slate-800/50 rounded-tl-none shadow-sm'
                   }`}
                 >
-                  <p className="whitespace-pre-line text-xs font-medium">{msg.content}</p>
+                  {msg.imageUrl && (
+                    <img src={msg.imageUrl} alt="Uploaded" className="max-w-full rounded-lg mb-2 border border-white/20" />
+                  )}
+                  {msg.content && <p className="whitespace-pre-line text-xs font-medium">{msg.content}</p>}
                 </div>
               </div>
             ))}
@@ -167,7 +193,8 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
                 <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center border border-slate-100 shadow-sm flex-shrink-0">
                   <Bot size={14} className="text-slate-600" />
                 </div>
-                <div className="bg-white dark:bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-800/50 flex items-center gap-1.5 shadow-sm">                  <span className="flex gap-1">
+                <div className="bg-white dark:bg-slate-800 text-slate-400 p-3 rounded-2xl rounded-tl-none border border-slate-100 dark:border-slate-800/50 flex items-center gap-1.5 shadow-sm">
+                  <span className="flex gap-1">
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                     <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -179,25 +206,56 @@ const ChatbotWidget = memo(function ChatbotWidget({ storeId, region, botName = '
           </div>
 
           {/* Form Input */}
-          <form
-            onSubmit={handleSubmit}
-            className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex gap-2"
-          >
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about products or delivery..."
-              className="flex-grow px-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 transition-all flex items-center justify-center shadow-sm"
+          <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+            {selectedImage && (
+              <div className="px-3 pt-3 flex items-start gap-2">
+                <div className="relative inline-block">
+                  <img src={selectedImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg border border-slate-200 shadow-sm" />
+                  <button 
+                    onClick={() => { setSelectedImage(null); if(fileInputRef.current) fileInputRef.current.value=''; }}
+                    className="absolute -top-2 -right-2 bg-slate-800 text-white rounded-full p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+            <form
+              onSubmit={handleSubmit}
+              className="p-3 flex gap-2 items-center"
             >
-              <Send size={14} />
-            </button>
-          </form>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={fileInputRef}
+                onChange={handleImageSelect} 
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                title="Attach Image"
+              >
+                <ImageIcon size={18} />
+              </button>
+
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about products or delivery..."
+                className="flex-grow px-4 py-2.5 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-xs font-medium text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+              />
+              <button
+                type="submit"
+                disabled={(!input.trim() && !selectedImage) || isLoading}
+                className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl disabled:opacity-50 transition-all flex items-center justify-center shadow-sm"
+              >
+                <Send size={14} />
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

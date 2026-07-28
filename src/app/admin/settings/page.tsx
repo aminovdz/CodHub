@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { RotateCcw, Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard, Settings, Palette, Link2, Truck, FileText } from 'lucide-react';
-import { useAdminStore } from '@/lib/store/useAdminStore';
+import { useAdminStore, NavigationItem } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
 import { uploadImageToSupabase } from '@/lib/storage';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
@@ -58,6 +58,7 @@ export default function AdminSettingsPage() {
     hero: { bannerUrl: '', bannerUrlMobile: '', announcementBgColor: '#4F46E5', announcementTextColor: '#FFFFFF', announcementMarquee: false },
     advanced: { customCss: '' }
   });
+  const [localNavigation, setLocalNavigation] = useState<NavigationItem[]>(activeStore.navigation || []);
   const [customDomain, setCustomDomain] = useState(activeStore.customDomain || '');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
@@ -269,6 +270,7 @@ export default function AdminSettingsPage() {
       hero: { bannerUrl: '', bannerUrlMobile: '', announcementBgColor: '#4F46E5', announcementTextColor: '#FFFFFF', announcementMarquee: false },
       advanced: { customCss: '' }
     });
+    setLocalNavigation(activeStore.navigation || []);
     setCustomDomain(activeStore.customDomain || '');
     setLocalGeminiModel(geminiModel || 'gemini-2.0-flash');
     setLocalClaudeModel(claudeModel || 'claude-3-5-sonnet-20241022');
@@ -294,6 +296,7 @@ export default function AdminSettingsPage() {
         logoUrl: localLogoUrl || undefined,
         faviconUrl: localFaviconUrl || undefined,
         theme: theme,
+        navigation: localNavigation,
         customDomain: customDomain.replace(/^(https?:\/\/)?(www\.)?/, '').trim() || null as any,
         fraudConfig
       });
@@ -1437,7 +1440,7 @@ export default function AdminSettingsPage() {
                 {/* Logo */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-700">
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Store Logo</label>
-                  <p className="text-[10px] text-slate-400 mb-3">Recommended: 512x512px or rectangular (transparent PNG/SVG)</p>
+                  <p className="text-[10px] text-slate-400 mb-3 font-bold text-indigo-500">Resolution Hint: Recommended 512x512px or rectangular (transparent PNG/SVG)</p>
                   <div className="flex gap-4 items-center">
                     {localLogoUrl ? (
                       <div className="relative group">
@@ -1738,6 +1741,92 @@ export default function AdminSettingsPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* NAVIGATION MENU */}
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col lg:col-span-2">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <ListTree className="w-4 h-4 text-indigo-500" /> Navigation Menu
+                </h3>
+                <button type="button" onClick={() => setLocalNavigation([])} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to empty">
+                  <RotateCcw className="w-3 h-3" /> Reset
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">Create your storefront navigation including mega-menus. (Save settings to apply)</p>
+              
+              <div className="space-y-4">
+                {localNavigation.map((navItem, index) => (
+                  <div key={navItem.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-700/30">
+                    <div className="flex gap-4 items-start">
+                      <div className="flex-1 space-y-3">
+                        <div className="flex gap-2">
+                          <input type="text" value={navItem.label} onChange={e => {
+                            const newNav = [...localNavigation];
+                            newNav[index].label = e.target.value;
+                            setLocalNavigation(newNav);
+                          }} placeholder="Label (e.g. Shop)" className="flex-1 p-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500" />
+                          <input type="text" value={navItem.url} onChange={e => {
+                            const newNav = [...localNavigation];
+                            newNav[index].url = e.target.value;
+                            setLocalNavigation(newNav);
+                          }} placeholder="URL (e.g. /shop)" className="flex-1 p-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                        
+                        {/* SubItems */}
+                        <div className="pl-6 space-y-2 border-l-2 border-slate-200 dark:border-slate-600">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Mega Menu Items</label>
+                          {navItem.subItems?.map((subItem, subIndex) => (
+                            <div key={subItem.id} className="flex gap-2 items-center">
+                              <input type="text" value={subItem.label} onChange={e => {
+                                const newNav = [...localNavigation];
+                                if (!newNav[index].subItems) newNav[index].subItems = [];
+                                newNav[index].subItems![subIndex].label = e.target.value;
+                                setLocalNavigation(newNav);
+                              }} placeholder="Sub-Label" className="w-1/3 p-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none" />
+                              <input type="text" value={subItem.url} onChange={e => {
+                                const newNav = [...localNavigation];
+                                if (!newNav[index].subItems) newNav[index].subItems = [];
+                                newNav[index].subItems![subIndex].url = e.target.value;
+                                setLocalNavigation(newNav);
+                              }} placeholder="Sub-URL" className="flex-1 p-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none" />
+                              <button type="button" onClick={() => {
+                                const newNav = [...localNavigation];
+                                newNav[index].subItems?.splice(subIndex, 1);
+                                setLocalNavigation(newNav);
+                              }} className="p-1.5 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => {
+                            const newNav = [...localNavigation];
+                            if (!newNav[index].subItems) newNav[index].subItems = [];
+                            newNav[index].subItems.push({ id: Math.random().toString(36).substring(7), label: '', url: '' });
+                            setLocalNavigation(newNav);
+                          }} className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
+                            <Plus className="w-3 h-3" /> Add Sub-Item
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <button type="button" onClick={() => {
+                        const newNav = [...localNavigation];
+                        newNav.splice(index, 1);
+                        setLocalNavigation(newNav);
+                      }} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                
+                <button type="button" onClick={() => {
+                  setLocalNavigation([...localNavigation, { id: Math.random().toString(36).substring(7), label: '', url: '' }]);
+                }} className="w-full p-3 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors flex items-center justify-center gap-2 font-medium text-sm">
+                  <Plus className="w-4 h-4" /> Add Root Menu Item
+                </button>
               </div>
             </div>
 

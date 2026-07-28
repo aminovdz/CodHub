@@ -28,7 +28,7 @@ export default function HelpDocsPage() {
     );
   }
 
-  const [activeTab, setActiveTab] = useState<'domain' | 'webhook' | 'ai' | 'pixels'>('domain');
+  const [activeTab, setActiveTab] = useState<'domain' | 'webhook' | 'ai' | 'pixels' | 'security'>('domain');
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -128,6 +128,16 @@ function doPost(e) {
           }`}
         >
           <Sparkles size={14} /> Tracking Pixels
+        </button>
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
+            activeTab === 'security'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-white shadow-md'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+          }`}
+        >
+          <ShieldAlert size={14} /> Security
         </button>
       </div>
 
@@ -444,6 +454,80 @@ function doPost(e) {
                 <li>Browse your products to trigger the <code>view_item</code> event.</li>
                 <li>Complete a test checkout to trigger the <code>purchase</code> event. Verify that the revenue value and currency are passed correctly in the event parameters.</li>
               </ol>
+            </div>
+          </div>
+        </>
+      ) : activeTab === 'security' ? (
+        <>
+          {/* Header Banner Security */}
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-rose-950 p-8 md:p-12 text-white border border-slate-800 shadow-2xl">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(244,63,94,0.15),transparent_50%)]" />
+            <div className="relative z-10 space-y-4">
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-rose-500/10 text-rose-300 border border-rose-500/20 uppercase tracking-widest">
+                <ShieldAlert size={12} className="animate-pulse" /> Security & Access
+              </span>
+              <h1 className="text-3xl md:text-5xl font-black tracking-tight leading-none">
+                How to Change <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-300">Passwords</span>
+              </h1>
+              <p className="text-slate-400 text-sm md:text-base max-w-xl font-medium">
+                Step-by-step guide on how to update passwords for Super Admins and Staff Members using the Supabase dashboard.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Step 1 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black text-lg">
+                1
+              </div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white">Open Supabase Dashboard</h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Log into your Supabase account and navigate to the project where COD-Hub is deployed. Go to the <strong>Authentication</strong> section in the left sidebar.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-lg">
+                2
+              </div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white">Find the User</h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Under <strong>Users</strong>, locate the email address of the account you want to change the password for (e.g. <code>admin@codhub.com</code>). Click the three dots (...) menu on the right side of the user row.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-lg">
+                3
+              </div>
+              <h3 className="text-lg font-black text-slate-800 dark:text-white">Reset Password</h3>
+              <p className="text-sm text-slate-500 font-medium">
+                Select <strong>Send password recovery</strong> or manually update it by clicking <strong>Edit user</strong>. Alternatively, you can run a SQL command in the SQL Editor to force-reset it immediately.
+              </p>
+            </div>
+
+            {/* Step 4 (SQL Alternative) */}
+            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm flex flex-col space-y-3">
+              <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                <Server size={18} className="text-slate-500" /> Advanced: SQL Reset
+              </h3>
+              <p className="text-sm text-slate-500 font-medium mb-2">
+                If you need to force reset a password immediately without email recovery, run this in the Supabase SQL Editor:
+              </p>
+              <div className="relative group mt-auto">
+                <button
+                  onClick={() => handleCopy("update auth.users set encrypted_password = crypt('NewPassword123!', gen_salt('bf')) where email = 'admin@codhub.com';", 'sqlreset')}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  {copiedValue === 'sqlreset' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+                <pre className="p-4 bg-slate-900 text-slate-300 rounded-xl text-[10px] font-mono whitespace-pre-wrap leading-relaxed border border-slate-800">
+                  update auth.users set encrypted_password = crypt('NewPassword123!', gen_salt('bf')) where email = 'admin@codhub.com';
+                </pre>
+              </div>
             </div>
           </div>
         </>

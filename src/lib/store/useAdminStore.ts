@@ -69,6 +69,7 @@ function storeToRow(store: Partial<Store> & { id?: string }) {
         ...(store.faviconUrl !== undefined ? { faviconUrl: store.faviconUrl } : {}),
       },
       theme: store.theme !== undefined ? store.theme : store.translations?.theme,
+      navigation: store.navigation !== undefined ? store.navigation : store.translations?.navigation,
     }
   };
 }
@@ -98,6 +99,7 @@ function rowToStore(row: any): Store {
     customDomain: row.custom_domain,
     logoUrl: row.translations?.brand?.logoUrl,
     faviconUrl: row.translations?.brand?.faviconUrl,
+    navigation: row.translations?.navigation || [],
     theme: row.translations?.theme,
   };
 }
@@ -415,6 +417,13 @@ export interface ThemeConfig {
   };
 }
 
+export interface NavigationItem {
+  id: string;
+  label: string;
+  url: string;
+  subItems?: NavigationItem[];
+}
+
 export interface Store {
   id: string;
   region: string;
@@ -427,6 +436,7 @@ export interface Store {
   logoUrl?: string;
   faviconUrl?: string;
   theme?: ThemeConfig;
+  navigation?: NavigationItem[];
   translations?: Record<string, any>;
   analytics?: {
     google?: string;

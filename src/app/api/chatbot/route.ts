@@ -142,9 +142,28 @@ export async function POST(req: Request) {
       ];
 
       (messages || []).forEach((m: any) => {
+        const parts: any[] = [{ text: m.content }];
+        
+        if (m.imageUrl && m.imageUrl.startsWith('data:image/')) {
+          try {
+            const [metadata, base64Data] = m.imageUrl.split(',');
+            const mimeTypeMatch = metadata.match(/:(.*?);/);
+            if (mimeTypeMatch && mimeTypeMatch[1] && base64Data) {
+              parts.push({
+                inlineData: {
+                  mimeType: mimeTypeMatch[1],
+                  data: base64Data
+                }
+              });
+            }
+          } catch (e) {
+            console.error("Failed to parse image for Gemini", e);
+          }
+        }
+
         contents.push({
           role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
+          parts: parts
         });
       });
 

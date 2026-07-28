@@ -81,7 +81,9 @@ export default async function RegionLayout({
       translations: storeData.translations,
       whatsappConfig: storeData.whatsapp_config,
       theme: storeData.translations?.theme,
-      primaryColor: storeData.primary_color
+      primaryColor: storeData.primary_color,
+      logoUrl: storeData.translations?.brand?.logoUrl,
+      faviconUrl: storeData.translations?.brand?.faviconUrl
     } as Store;
 
     if (storeData.translations && (storeData.translations as any).homepageConfig) {

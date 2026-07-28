@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAdminStore } from '@/lib/store/useAdminStore';
-import { Mail, Send, Users, ArrowLeft, Clock, History, CheckCircle, AlertCircle, Play } from 'lucide-react';
+import { Mail, Send, Users, ArrowLeft, Clock, History, CheckCircle, AlertCircle, Play, Pause, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function AdminCampaignsPage() {
@@ -16,6 +16,10 @@ export default function AdminCampaignsPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [currentProgress, setCurrentProgress] = useState(0);
   const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+  
+  const isPausedRef = useRef(false);
+  const isCancelledRef = useRef(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   // Extract unique emails from orders
   const uniqueEmails = useMemo(() => {
@@ -29,39 +33,31 @@ export default function AdminCampaignsPage() {
     return campaigns.filter(c => c.storeId === activeStore.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [campaigns, activeStore.id]);
 
-  const handleSendCampaign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (uniqueEmails.length === 0) {
-      setStatusMessage('No customers with emails found in this store.');
-      return;
-    }
-    if (!activeStore.resendApiKey) {
-      setStatusMessage('Please configure Resend API Key in Settings first.');
-      return;
-    }
+  const processCampaignQueue = async (campaignId: string, startIndex: number = 0) => {
+    let sent = startIndex;
+    setCurrentProgress(sent);
+    setStatusMessage(isPausedRef.current ? 'Campaign paused.' : 'Sending campaign...');
 
-    setIsSending(true);
-    setStatusMessage('Initializing campaign...');
-    setCurrentProgress(0);
+    for (let i = startIndex; i < uniqueEmails.length; i++) {
+      if (isCancelledRef.current) {
+        updateCampaignStatus(campaignId, sent, 'FAILED');
+        setIsSending(false);
+        setActiveCampaignId(null);
+        setStatusMessage(`Campaign cancelled after sending ${sent} emails.`);
+        return;
+      }
 
-    const campaignId = 'camp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-    setActiveCampaignId(campaignId);
+      while (isPausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (isCancelledRef.current) {
+          updateCampaignStatus(campaignId, sent, 'FAILED');
+          setIsSending(false);
+          setActiveCampaignId(null);
+          setStatusMessage(`Campaign cancelled after sending ${sent} emails.`);
+          return;
+        }
+      }
 
-    addCampaign({
-      id: campaignId,
-      storeId: activeStore.id,
-      subject,
-      body,
-      totalRecipients: uniqueEmails.length,
-      sentCount: 0,
-      status: 'SENDING',
-      date: new Date().toISOString()
-    });
-
-    let sent = 0;
-    setStatusMessage('Sending campaign...');
-
-    for (let i = 0; i < uniqueEmails.length; i++) {
       const email = uniqueEmails[i];
       try {
         const res = await fetch('/api/campaigns', {
@@ -88,7 +84,7 @@ export default function AdminCampaignsPage() {
       }
 
       // Throttle
-      if (i < uniqueEmails.length - 1 && delaySeconds > 0) {
+      if (i < uniqueEmails.length - 1 && delaySeconds > 0 && !isPausedRef.current && !isCancelledRef.current) {
         await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
       }
     }
@@ -99,6 +95,56 @@ export default function AdminCampaignsPage() {
     setStatusMessage(`Campaign finished! Successfully sent to ${sent} out of ${uniqueEmails.length} recipients.`);
     setSubject('');
     setBody('');
+  };
+
+  const handleSendCampaign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (uniqueEmails.length === 0) {
+      setStatusMessage('No customers with emails found in this store.');
+      return;
+    }
+    if (!activeStore.resendApiKey) {
+      setStatusMessage('Please configure Resend API Key in Settings first.');
+      return;
+    }
+
+    setIsSending(true);
+    isPausedRef.current = false;
+    isCancelledRef.current = false;
+    setIsPaused(false);
+    setStatusMessage('Initializing campaign...');
+    setCurrentProgress(0);
+
+    const campaignId = 'camp_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    setActiveCampaignId(campaignId);
+
+    addCampaign({
+      id: campaignId,
+      storeId: activeStore.id,
+      subject,
+      body,
+      totalRecipients: uniqueEmails.length,
+      sentCount: 0,
+      status: 'SENDING',
+      date: new Date().toISOString()
+    });
+
+    processCampaignQueue(campaignId, 0);
+  };
+
+  const togglePause = () => {
+    isPausedRef.current = !isPausedRef.current;
+    setIsPaused(isPausedRef.current);
+    setStatusMessage(isPausedRef.current ? 'Campaign paused.' : 'Sending campaign...');
+    if (activeCampaignId) {
+       updateCampaignStatus(activeCampaignId, currentProgress, isPausedRef.current ? 'PAUSED' : 'SENDING');
+    }
+  };
+
+  const cancelCampaign = () => {
+    isCancelledRef.current = true;
+    isPausedRef.current = false;
+    setIsPaused(false);
   };
 
   return (
@@ -212,16 +258,44 @@ export default function AdminCampaignsPage() {
               ) : (
                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
                   <div className="flex items-center justify-between font-bold text-sm text-slate-700">
-                    <span className="flex items-center gap-2"><Play size={16} className="text-indigo-600 animate-pulse"/> Sending in progress...</span>
+                    <span className="flex items-center gap-2">
+                      {!isPaused ? (
+                        <><Play size={16} className="text-indigo-600 animate-pulse"/> Sending in progress...</>
+                      ) : (
+                        <><Pause size={16} className="text-amber-500"/> Campaign paused</>
+                      )}
+                    </span>
                     <span>{currentProgress} / {uniqueEmails.length}</span>
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
+                      className={`${isPaused ? 'bg-amber-500' : 'bg-indigo-600'} h-3 rounded-full transition-all duration-300`}
                       style={{ width: `${(currentProgress / uniqueEmails.length) * 100}%` }}
                     ></div>
                   </div>
-                  <p className="text-xs font-bold text-rose-500 text-center animate-pulse">DO NOT CLOSE THIS TAB UNTIL COMPLETED</p>
+                  <div className="flex gap-4 pt-2">
+                    <button
+                      type="button"
+                      onClick={togglePause}
+                      className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                        isPaused 
+                          ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200' 
+                          : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                      }`}
+                    >
+                      {isPaused ? <Play size={18} /> : <Pause size={18} />}
+                      {isPaused ? 'Resume Sending' : 'Pause'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelCampaign}
+                      className="flex-1 py-3 bg-rose-100 hover:bg-rose-200 text-rose-700 rounded-xl font-bold flex items-center justify-center gap-2 transition-all"
+                    >
+                      <XCircle size={18} />
+                      Cancel
+                    </button>
+                  </div>
+                  {!isPaused && <p className="text-xs font-bold text-rose-500 text-center animate-pulse">DO NOT CLOSE THIS TAB UNTIL COMPLETED</p>}
                 </div>
               )}
 
@@ -251,6 +325,7 @@ export default function AdminCampaignsPage() {
                   <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Subject</th>
                   <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Status</th>
                   <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider">Progress</th>
+                  <th className="py-4 px-6 text-xs font-black text-slate-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -266,14 +341,39 @@ export default function AdminCampaignsPage() {
                       <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         camp.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
                         camp.status === 'FAILED' ? 'bg-rose-100 text-rose-700' :
+                        camp.status === 'PAUSED' ? 'bg-amber-100 text-amber-700' :
                         'bg-indigo-100 text-indigo-700'
                       }`}>
-                        {camp.status === 'COMPLETED' ? <CheckCircle size={12} /> : camp.status === 'FAILED' ? <AlertCircle size={12} /> : <Play size={12} />}
+                        {camp.status === 'COMPLETED' ? <CheckCircle size={12} /> : 
+                         camp.status === 'FAILED' ? <AlertCircle size={12} /> : 
+                         camp.status === 'PAUSED' ? <Pause size={12} /> : 
+                         <Play size={12} />}
                         {camp.status}
                       </span>
                     </td>
                     <td className="py-4 px-6 text-sm font-bold text-slate-600">
                       {camp.sentCount} / {camp.totalRecipients}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      {(camp.status === 'FAILED' || camp.status === 'PAUSED') && camp.sentCount < camp.totalRecipients && (
+                        <button
+                          onClick={() => {
+                            setSubject(camp.subject);
+                            setBody(camp.body);
+                            setActiveTab('compose');
+                            setIsSending(true);
+                            isPausedRef.current = false;
+                            isCancelledRef.current = false;
+                            setIsPaused(false);
+                            setActiveCampaignId(camp.id);
+                            updateCampaignStatus(camp.id, camp.sentCount, 'SENDING');
+                            processCampaignQueue(camp.id, camp.sentCount);
+                          }}
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors inline-flex"
+                        >
+                          <Play size={14} /> Resume
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
