@@ -465,8 +465,7 @@ export default function AdminSettingsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { 
-                    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-                    const baseUrl = isCustomDomain ? window.location.origin : (store.customDomain ? `https://${store.customDomain}` : `${window.location.origin}/${store.region}`);
+                    const baseUrl = store.customDomain ? `https://${store.customDomain}` : `${window.location.origin}/${store.region}`;
                     navigator.clipboard.writeText(baseUrl); 
                     notify('Store URL Copied!', 'success'); 
                   }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors" title="Copy Store Link">

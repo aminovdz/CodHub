@@ -138,10 +138,9 @@ export default function AdminABTestsPage() {
   };
 
   const handleCopyUrl = () => {
-    if (!slug) return;
-    const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-    const baseUrl = isCustomDomain ? window.location.origin : (activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`);
-    const url = `${baseUrl}/promo/${slug}`;
+    if (!slug || !existingTest) return;
+    const baseUrl = activeStore.customDomain ? `https://${activeStore.customDomain}` : `${window.location.origin}/${activeStore.region}`;
+    const url = `${baseUrl}/promo/${slug}?test=${existingTest.id}`;
     navigator.clipboard.writeText(url);
     notify('Live URL Copied!', 'success');
   };
