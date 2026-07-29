@@ -1761,8 +1761,8 @@ export default function AdminSettingsPage() {
                 <datalist id="url-suggestions">
                   <option value="/">Home</option>
                   <option value="/checkout">Checkout</option>
-                  {products.map(p => <option key={`prod-${p.id}`} value={`/products/${p.slug}`}>{p.name} (Product)</option>)}
-                  {landingPages.map(lp => <option key={`lp-${lp.id}`} value={`/promo/${lp.slug}`}>{lp.name} (Promo)</option>)}
+                  {products.map(p => <option key={`prod-${p.id}`} value={`/products/${p.seoSlug || p.id}`}>{p.title} (Product)</option>)}
+                  {landingPages.map(lp => <option key={`lp-${lp.id}`} value={`/promo/${lp.slug}`}>{lp.title || 'Promo'} (Promo)</option>)}
                 </datalist>
                 
                 {localNavigation.map((navItem, index) => (
