@@ -14,8 +14,11 @@ const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) 
   const footerConfig = homepageConfig?.footer;
   const { t } = useTranslation(region);
 
-  const isCustomDomain = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost');
-  const basePath = isCustomDomain ? '' : `/${region}`;
+  const isPathRouting = typeof window !== 'undefined' && (
+    window.location.pathname === `/${region}` || 
+    window.location.pathname.startsWith(`/${region}/`)
+  );
+  const basePath = isPathRouting ? `/${region}` : '';
 
   return (
     <footer className="bg-slate-900 text-slate-300 py-12 px-4 border-t border-slate-800">
