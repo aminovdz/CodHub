@@ -20,7 +20,8 @@ export default function AdminSettingsPage() {
     nvidiaModel, setNvidiaModel, aiProvider, setAiProvider,
     geminiModel, setGeminiModel, claudeModel, setClaudeModel, 
     openAiModel, setOpenAiModel,
-    addActivityLog
+    addActivityLog,
+    products, landingPages
   } = useAdminStore();
 
   const sessionData = typeof window !== 'undefined'
@@ -1757,6 +1758,13 @@ export default function AdminSettingsPage() {
               <p className="text-xs text-slate-500 mb-4">Create your storefront navigation including mega-menus. (Save settings to apply)</p>
               
               <div className="space-y-4">
+                <datalist id="url-suggestions">
+                  <option value="/">Home</option>
+                  <option value="/checkout">Checkout</option>
+                  {products.map(p => <option key={`prod-${p.id}`} value={`/products/${p.slug}`}>{p.name} (Product)</option>)}
+                  {landingPages.map(lp => <option key={`lp-${lp.id}`} value={`/promo/${lp.slug}`}>{lp.name} (Promo)</option>)}
+                </datalist>
+                
                 {localNavigation.map((navItem, index) => (
                   <div key={navItem.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-700/30">
                     <div className="flex gap-4 items-start">
@@ -1767,7 +1775,7 @@ export default function AdminSettingsPage() {
                             newNav[index].label = e.target.value;
                             setLocalNavigation(newNav);
                           }} placeholder="Label (e.g. Shop)" className="flex-1 p-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-indigo-500" />
-                          <input type="text" value={navItem.url} onChange={e => {
+                          <input type="text" list="url-suggestions" value={navItem.url} onChange={e => {
                             const newNav = [...localNavigation];
                             newNav[index].url = e.target.value;
                             setLocalNavigation(newNav);
@@ -1785,7 +1793,7 @@ export default function AdminSettingsPage() {
                                 newNav[index].subItems![subIndex].label = e.target.value;
                                 setLocalNavigation(newNav);
                               }} placeholder="Sub-Label" className="w-1/3 p-1.5 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 outline-none" />
-                              <input type="text" value={subItem.url} onChange={e => {
+                              <input type="text" list="url-suggestions" value={subItem.url} onChange={e => {
                                 const newNav = [...localNavigation];
                                 if (!newNav[index].subItems) newNav[index].subItems = [];
                                 newNav[index].subItems![subIndex].url = e.target.value;
