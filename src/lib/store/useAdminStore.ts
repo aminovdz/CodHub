@@ -4,7 +4,7 @@ import { slugify } from '../utils';
 import { DEFAULT_TRANSLATIONS } from '../translations';
 
 import { useNotificationStore } from './useNotificationStore';
-import { adminDbSelect, adminDbInsert, adminDbUpdate, adminDbDelete, adminDbUpsert } from '../actions/adminDb';
+import { adminDbSelect, adminDbInsert, adminDbUpdate, adminDbDelete, adminDbUpsert, fetchAdminInitialData } from '../actions/adminDb';
 
 export const ALGERIA_WILAYAS = [
   "Adrar", "Chlef", "Laghouat", "Oum El Bouaghi", "Batna", "Béjaïa", "Biskra", "Béchar", "Blida", "Bouira", "Tamanrasset", "Tébessa", "Tlemcen", "Tiaret", "Tizi Ouzou", "Alger", "Djelfa", "Jijel", "Sétif", "Saïda", "Skikda", "Sidi Bel Abbès", "Annaba", "Guelma", "Constantine", "Médéa", "Mostaganem", "M'Sila", "Mascara", "Ouargla", "Oran", "El Bayadh", "Illizi", "Bordj Bou Arreridj", "Boumerdès", "El Tarf", "Tindouf", "Tissemsilt", "El Oued", "Khenchela", "Souk Ahras", "Tipaza", "Mila", "Aïn Defla", "Naâma", "Aïn Témouchent", "Ghardaïa", "Relizane", "Timimoun", "Bordj Badji Mokhtar", "Ouled Djellal", "Béni Abbès", "In Salah", "In Guezzam", "Touggourt", "Djanet", "El M'Ghair", "El Meniaa"
@@ -1680,35 +1680,22 @@ export const useAdminStore = create<AdminStore>()((set, get) => ({
             }
           }
 
-          const basePromises = [
-            adminDbSelect('stores'),
-            adminDbSelect('products', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
-            adminDbSelect('shipping_zones', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
-            adminDbSelect('checkout_configs', resolvedStoreId ? { store_id: resolvedStoreId } : undefined),
-            adminDbSelect('landing_pages', resolvedStoreId ? { store_id: resolvedStoreId } : undefined)
-          ];
+          const {
+            stores,
+            products,
+            zones,
+            configs,
+            landingPages,
+            orders,
+            staff,
+            callLogs,
+            error
+          } = await fetchAdminInitialData(isAdmin, resolvedStoreId);
 
-          // Heavy data only needed for admin
-          const adminPromises = isAdmin ? [
-            adminDbSelect('orders', undefined, { orderColumn: 'date', ascending: false }),
-            adminDbSelect('staff_accounts'),
-            adminDbSelect('call_logs', undefined, { orderColumn: 'called_at', ascending: false })
-          ] : [
-            Promise.resolve({ data: [] }), // dummy orders
-            Promise.resolve({ data: [] }), // dummy staff
-            Promise.resolve({ data: [] })  // dummy logs
-          ];
-
-          const [
-            { data: stores },
-            { data: products },
-            { data: zones },
-            { data: configs },
-            { data: landingPages },
-            { data: orders },
-            { data: staff },
-            { data: callLogs }
-          ] = await Promise.all([...basePromises, ...adminPromises]);
+          if (error) {
+            console.error('Error fetching admin data:', error);
+            // Non-fatal, proceed with whatever data we got or empty arrays
+          }
           
           if (stores && stores.length > 0) {
             const mapped = stores.map(rowToStore);

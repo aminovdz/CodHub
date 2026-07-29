@@ -1,0 +1,22 @@
+--- src/app/[region]/(funnel)/checkout/page.tsx
++++ src/app/[region]/(funnel)/checkout/page.tsx
+@@ -149,8 +149,15 @@
+     const product = products.find(p => p.id === mainItem.id);
+     if (!product?.quantityOffers || product.quantityOffers.length === 0) return;
+-    // Auto-select the first/default offer but keep original name
+-    const defaultOffer = product.quantityOffers.find(o => (o as any).isDefault) ?? product.quantityOffers[0];
+-    setSelectedQuantity(defaultOffer.qty);
+-    // Only update price, not name (user can still see/select offers)
++    
++    // Check if the cart already has a quantity that matches an offer (e.g., selected on storefront)
++    const currentQty = mainItem.qty || 1;
++    const existingOffer = product.quantityOffers.find(o => o.qty === currentQty);
++    
++    if (existingOffer) {
++      setSelectedQuantity(existingOffer.qty);
++    } else {
++      const defaultOffer = product.quantityOffers.find(o => (o as any).isDefault) ?? product.quantityOffers[0];
++      setSelectedQuantity(defaultOffer.qty);
++    }
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, [products.length]);

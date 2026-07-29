@@ -3,13 +3,13 @@
 import { memo } from 'react';
 import Link from 'next/link';
 import { ShieldCheck, Truck, Link as LinkIcon } from 'lucide-react';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 import { useTranslation } from '@/lib/hooks/useTranslation';
 
 const GlobalFooter = memo(function GlobalFooter({ region }: { region: string }) {
   const currentYear = new Date().getFullYear();
-  const { homepages, availableStores } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = useStorefrontStore((state) => state.activeStore);
+  const homepages = useStorefrontStore((state) => state.homepages);
   const homepageConfig = store ? homepages.find(h => h.storeId === store.id) : undefined;
   const footerConfig = homepageConfig?.footer;
   const { t } = useTranslation(region);

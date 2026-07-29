@@ -140,3 +140,74 @@ export async function adminDbUpsert(table: string, payload: any, options?: { onC
   const { data, error } = await supabaseAdmin.from(table).upsert(payload, options).select();
   return { data, error: error?.message };
 }
+
+export async function fetchAdminInitialData(isAdmin: boolean, resolvedStoreId?: string) {
+  const session = await getAdminSession();
+  if (!session) return { error: 'Unauthorized' };
+
+  const buildQuery = (table: string, match?: Record<string, any>, options?: { orderColumn?: string, ascending?: boolean }) => {
+    let query = supabaseAdmin.from(table).select('*');
+    if (!session.isSuperAdmin) {
+      if (table === 'stores') {
+        query = query.in('id', session.storeIds);
+      } else {
+        query = query.in('store_id', session.storeIds);
+      }
+    }
+    if (match) {
+      for (const [key, value] of Object.entries(match)) {
+        if (Array.isArray(value)) {
+          query = query.in(key, value);
+        } else {
+          query = query.eq(key, value);
+        }
+      }
+    }
+    if (options?.orderColumn) {
+      query = query.order(options.orderColumn, { ascending: options.ascending ?? true });
+    }
+    return query;
+  };
+
+  const storeMatch = resolvedStoreId ? { store_id: resolvedStoreId } : undefined;
+
+  const basePromises = [
+    buildQuery('stores'),
+    buildQuery('products', storeMatch),
+    buildQuery('shipping_zones', storeMatch),
+    buildQuery('checkout_configs', storeMatch),
+    buildQuery('landing_pages', storeMatch)
+  ];
+
+  const adminPromises = isAdmin ? [
+    buildQuery('orders', undefined, { orderColumn: 'date', ascending: false }),
+    buildQuery('staff_accounts'),
+    buildQuery('call_logs', undefined, { orderColumn: 'called_at', ascending: false })
+  ] : [
+    Promise.resolve({ data: [] }),
+    Promise.resolve({ data: [] }),
+    Promise.resolve({ data: [] })
+  ];
+
+  const [
+    { data: stores },
+    { data: products },
+    { data: zones },
+    { data: configs },
+    { data: landingPages },
+    { data: orders },
+    { data: staff },
+    { data: callLogs }
+  ] = await Promise.all([...basePromises, ...adminPromises]);
+
+  return {
+    stores: stores || [],
+    products: products || [],
+    zones: zones || [],
+    configs: configs || [],
+    landingPages: landingPages || [],
+    orders: orders || [],
+    staff: staff || [],
+    callLogs: callLogs || []
+  };
+}

@@ -3,11 +3,10 @@
 import { memo, useState } from 'react';
 import Link from 'next/link';
 import { ShoppingBag, ChevronDown, Menu, X } from 'lucide-react';
-import { useAdminStore, resolveStore } from '@/lib/store/useAdminStore';
+import { useStorefrontStore } from '@/lib/store/useStorefrontStore';
 
 const GlobalHeader = memo(function GlobalHeader({ region }: { region: string }) {
-  const { availableStores } = useAdminStore();
-  const store = resolveStore(availableStores, region);
+  const store = useStorefrontStore((state) => state.activeStore);
   const isSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith(`${region.toLowerCase()}.`);
   const basePath = isSubdomain ? '' : `/${region}`;
   

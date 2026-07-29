@@ -83,7 +83,8 @@ export default async function RegionLayout({
       theme: storeData.translations?.theme,
       primaryColor: storeData.primary_color,
       logoUrl: storeData.translations?.brand?.logoUrl,
-      faviconUrl: storeData.translations?.brand?.faviconUrl
+      faviconUrl: storeData.translations?.brand?.faviconUrl,
+      navigation: storeData.translations?.navigation || []
     } as Store;
 
     if (storeData.translations && (storeData.translations as any).homepageConfig) {
