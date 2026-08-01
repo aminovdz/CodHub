@@ -69,6 +69,7 @@ export default async function RegionLayout({
   let zones: ShippingZone[] = [];
   let configs: CheckoutConfig[] = [];
   let homepages: HomepageConfig[] = [];
+  let landingPages: any[] = [];
 
   if (storeData) {
     store = {
@@ -94,21 +95,31 @@ export default async function RegionLayout({
     const [
       { data: productsData },
       { data: zonesData },
-      { data: configsData }
+      { data: configsData },
+      { data: landingPagesData }
     ] = await Promise.all([
       supabase.from('products').select('*').eq('active', true).eq('store_id', storeData.id),
       supabase.from('shipping_zones').select('*').eq('store_id', storeData.id),
-      supabase.from('checkout_configs').select('*').eq('store_id', storeData.id)
+      supabase.from('checkout_configs').select('*').eq('store_id', storeData.id),
+      supabase.from('landing_pages').select('*').eq('store_id', storeData.id).eq('published', true)
     ]);
 
     products = productsData ? productsData.map(rowToProduct) : [];
     zones = zonesData ? zonesData.map(rowToShippingZone) : [];
     configs = configsData ? configsData.map(rowToCheckoutConfig) : [];
+    landingPages = landingPagesData ? landingPagesData.map(row => ({
+      id: row.id,
+      storeId: row.store_id,
+      title: row.title,
+      slug: row.slug,
+      htmlContent: row.html_content,
+      published: row.published
+    })) : [];
   }
 
   return (
     <>
-      {store && <StoreHydrator store={store} products={products} zones={zones} configs={configs} homepages={homepages} />}
+      {store && <StoreHydrator store={store} products={products} zones={zones} configs={configs} homepages={homepages} landingPages={landingPages} />}
       <RegionCookieSetter region={region} />
       <TrackingPixels region={region} />
       
