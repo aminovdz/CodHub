@@ -1064,16 +1064,18 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                     <MapPin size={12} className="inline mr-1" />{t('checkout.deliveryInfo', 'عنوان التوصيل')}
                   </p>
 
-                  <div className="flex gap-3 mb-4">
-                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'home' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
-                      <input type="radio" checked={deliveryType === 'home'} onChange={() => setDeliveryType('home')} className="hidden" />
-                      <span className="font-bold text-sm">🏠 {t('checkout.homeDelivery', 'توصيل للمنزل')}</span>
-                    </label>
-                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'desk' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
-                      <input type="radio" checked={deliveryType === 'desk'} onChange={() => setDeliveryType('desk')} className="hidden" />
-                      <span className="font-bold text-sm">🏢 {t('checkout.stopDesk', 'توصيل للمكتب')}</span>
-                    </label>
-                  </div>
+                  {checkoutConfig?.fields?.showDeliveryType !== false && (
+                    <div className="flex gap-3 mb-4">
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'home' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
+                        <input type="radio" checked={deliveryType === 'home'} onChange={() => setDeliveryType('home')} className="hidden" />
+                        <span className="font-bold text-sm">🏠 {t('checkout.homeDelivery', 'توصيل للمنزل')}</span>
+                      </label>
+                      <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${deliveryType === 'desk' ? 'border-indigo-600 bg-indigo-50 text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'}`}>
+                        <input type="radio" checked={deliveryType === 'desk'} onChange={() => setDeliveryType('desk')} className="hidden" />
+                        <span className="font-bold text-sm">🏢 {t('checkout.stopDesk', 'توصيل للمكتب')}</span>
+                      </label>
+                    </div>
+                  )}
 
                   {checkoutConfig?.showAddressFields !== false && (
                     <>

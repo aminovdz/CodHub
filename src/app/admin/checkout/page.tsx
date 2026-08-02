@@ -511,6 +511,10 @@ export default function AdminCheckoutEditor() {
                   <span className="text-sm font-bold text-slate-700">Show Country</span>
                   <input type="checkbox" checked={config.fields.showCountry !== false} onChange={e => setConfig({...config, fields: {...config.fields, showCountry: e.target.checked}})} className="w-4 h-4 rounded text-indigo-600" />
                 </label>
+                <label className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-100 cursor-pointer shadow-sm">
+                  <span className="text-sm font-bold text-slate-700">Show Delivery Type (Home/Desk)</span>
+                  <input type="checkbox" checked={config.fields.showDeliveryType === true} onChange={e => setConfig({...config, fields: {...config.fields, showDeliveryType: e.target.checked}})} className="w-4 h-4 rounded text-indigo-600" />
+                </label>
               </div>
             )}
           </div>

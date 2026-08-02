@@ -286,6 +286,7 @@ export function rowToCheckoutConfig(row: any): CheckoutConfig {
       showPostalCode: fields.showPostalCode ?? false,
       showProvince: fields.showProvince ?? true,
       showCountry: fields.showCountry ?? false,
+      showDeliveryType: fields.showDeliveryType ?? true,
       scarcityConfig: fields.scarcityConfig,
     },
     productCheckoutType: fields.productCheckoutType || 'redirect',
@@ -830,6 +831,7 @@ export interface CheckoutConfig {
     showPostalCode?: boolean;
     showProvince?: boolean;
     showCountry?: boolean;
+    showDeliveryType?: boolean;
     scarcityConfig?: ScarcityConfig;
   };
   customFields: CustomCheckoutField[];
