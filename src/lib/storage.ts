@@ -25,3 +25,19 @@ export async function uploadMultipleImages(files: File[], bucketName: string = '
   }
   return urls;
 }
+
+export async function deleteImageFromSupabase(url: string, bucketName: string = 'images'): Promise<boolean> {
+  if (!url) return false;
+  try {
+    const res = await fetch('/api/upload', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, bucket: bucketName })
+    });
+    if (!res.ok) return false;
+    return true;
+  } catch (err) {
+    console.error('Failed to delete image:', err);
+    return false;
+  }
+}

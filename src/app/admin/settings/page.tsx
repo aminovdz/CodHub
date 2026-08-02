@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { RotateCcw, Save, Globe, Type, Store as StoreIcon, Plus, Trash2, Code, Key, Copy, ListTree, MessageCircle, ShieldAlert, Users, ShoppingCart, Edit2, X, Image as ImageIcon, CreditCard, Settings, Palette, Link2, Truck, FileText } from 'lucide-react';
 import { useAdminStore, NavigationItem } from '@/lib/store/useAdminStore';
 import { useNotificationStore } from '@/lib/store/useNotificationStore';
-import { uploadImageToSupabase } from '@/lib/storage';
+import { uploadImageToSupabase, deleteImageFromSupabase } from '@/lib/storage';
 import { ConfirmModal } from '@/components/admin/ConfirmModal';
 import { DEFAULT_TRANSLATIONS } from '@/lib/translations';
 import { useEffect } from 'react';
@@ -1431,7 +1431,12 @@ export default function AdminSettingsPage() {
                 <h3 className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4 text-indigo-500" /> Brand Identity
                 </h3>
-                <button type="button" onClick={() => { setLocalLogoUrl(''); setLocalFaviconUrl(''); }} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
+                <button type="button" onClick={() => { 
+                  if (localLogoUrl) deleteImageFromSupabase(localLogoUrl, 'stores');
+                  if (localFaviconUrl) deleteImageFromSupabase(localFaviconUrl, 'stores');
+                  setLocalLogoUrl(''); 
+                  setLocalFaviconUrl(''); 
+                }} className="text-xs text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors" title="Reset to default">
                   <RotateCcw className="w-3 h-3" /> Reset
                 </button>
               </div>
@@ -1445,7 +1450,10 @@ export default function AdminSettingsPage() {
                     {localLogoUrl ? (
                       <div className="relative group">
                         <img src={localLogoUrl} alt="Store Logo" className="w-16 h-16 object-contain bg-white rounded-lg border border-slate-200" />
-                        <button type="button" onClick={() => setLocalLogoUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" onClick={() => {
+                          if (localLogoUrl) deleteImageFromSupabase(localLogoUrl, 'stores');
+                          setLocalLogoUrl('');
+                        }} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -1476,7 +1484,10 @@ export default function AdminSettingsPage() {
                     {localFaviconUrl ? (
                       <div className="relative group">
                         <img src={localFaviconUrl} alt="Store Favicon" className="w-12 h-12 object-cover bg-white rounded-lg border border-slate-200" />
-                        <button type="button" onClick={() => setLocalFaviconUrl('')} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" onClick={() => {
+                          if (localFaviconUrl) deleteImageFromSupabase(localFaviconUrl, 'stores');
+                          setLocalFaviconUrl('');
+                        }} className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
