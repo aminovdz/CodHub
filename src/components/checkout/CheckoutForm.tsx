@@ -1089,7 +1089,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                                 <select value={wilaya} onChange={(e) => { setWilaya(e.target.value); setCommune(''); }}
                                   className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
                                 >
-                                  <option value="" disabled>Select</option>
+                                  <option value="" disabled>{t('checkout.selectWilaya', 'اختر الولاية')}</option>
                                   {uniqueWilayas.map(w => <option key={w} value={w}>{w}</option>)}
                                 </select>
                               </div>
@@ -1102,7 +1102,7 @@ export function CheckoutForm({ storeSlug, embedded = false, forceProductId }: { 
                                   <select value={commune} onChange={(e) => setCommune(e.target.value)}
                                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-900 bg-white appearance-none"
                                   >
-                                    <option value="" disabled>Select</option>
+                                    <option value="" disabled>{t('checkout.selectCommune', 'اختر البلدية')}</option>
                                     {availableCommunes.map(c => <option key={c} value={c}>{c}</option>)}
                                   </select>
                                 </div>
