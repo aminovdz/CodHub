@@ -56,7 +56,11 @@ export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isSticky
                 const style = window.getComputedStyle(el);
                 if (style.position === 'fixed' || style.position === 'sticky') {
                   if (style.bottom !== 'auto' || el.classList.contains('bottom-0') || el.classList.contains('bottom-2') || el.classList.contains('bottom-4') || el.classList.contains('bottom-6')) {
-                    extractedHtml += el.outerHTML;
+                    const clone = el.cloneNode(true);
+                    clone.style.position = 'relative';
+                    clone.style.bottom = 'auto';
+                    clone.classList.remove('fixed', 'sticky', 'bottom-0', 'bottom-2', 'bottom-4', 'bottom-6');
+                    extractedHtml += clone.outerHTML;
                     el.style.display = 'none';
                   }
                 }
