@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isStickyContainer = false }: { html: string, onCheckout?: () => void, onExtractSticky?: (html: string) => void, isStickyContainer?: boolean }) {
+export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isStickyContainer = false, onHeightChange }: { html: string, onCheckout?: () => void, onExtractSticky?: (html: string) => void, isStickyContainer?: boolean, onHeightChange?: (height: number) => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(0);
 
@@ -10,6 +10,7 @@ export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isSticky
       if (e.data && iframeRef.current?.contentWindow === e.source) {
         if (e.data.type === 'iframeHeight') {
           setHeight(e.data.height);
+          if (onHeightChange) onHeightChange(e.data.height);
         } else if (e.data.type === 'scrollToHash') {
           const element = document.querySelector(e.data.hash);
           if (element) {
@@ -117,7 +118,7 @@ export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isSticky
     <iframe
       ref={iframeRef}
       srcDoc={srcDoc}
-      style={{ width: '100%', height: height > 0 ? `${height}px` : '100px', border: 'none', display: 'block' }}
+      style={{ width: '100%', height: height > 0 ? `${height}px` : (isStickyContainer ? '0px' : '10px'), border: 'none', display: 'block', visibility: height > 0 || !isStickyContainer ? 'visible' : 'hidden' }}
       scrolling="no"
     />
   );

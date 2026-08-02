@@ -27,6 +27,7 @@ type Segment =
 export default function RichHtmlContent({ html, region, storeSlug, utmSource, utmCampaign }: Props) {
   const router = useRouter();
   const [stickyHtml, setStickyHtml] = useState<string>('');
+  const [stickyHeight, setStickyHeight] = useState(0);
   
   const segments: Segment[] = useMemo(() => {
     if (!html) return [];
@@ -112,11 +113,12 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
       })}
 
       {stickyHtml && (
-        <div className="fixed bottom-0 left-0 right-0 z-[9999] w-full shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pointer-events-none">
+        <div className={`fixed bottom-0 left-0 right-0 z-[9999] w-full transition-opacity duration-300 pointer-events-none ${stickyHeight > 10 ? 'shadow-[0_-4px_20px_rgba(0,0,0,0.1)] opacity-100' : 'opacity-0'}`}>
           <div className="pointer-events-auto">
           <AutoResizingIframe 
             html={stickyHtml} 
             isStickyContainer={true}
+            onHeightChange={setStickyHeight}
             onCheckout={() => {
               const checkoutEl = document.getElementById('checkout');
               if (checkoutEl) {

@@ -64,12 +64,20 @@ export default function AdminPromoPage() {
 
     let finalHtml = htmlContent;
     if (selectedProduct) {
+       // Replace exact literal if present
        finalHtml = finalHtml.replace(/\[Interactive COD Checkout Form Here\]/gi, `[CHECKOUT_FORM:${selectedProduct}]`);
+       // Replace generic checkout form without ID
        finalHtml = finalHtml.replace(/\[CHECKOUT_FORM\](?!:)/gi, `[CHECKOUT_FORM:${selectedProduct}]`);
+       // Replace existing checkout form with old ID
+       finalHtml = finalHtml.replace(/\[CHECKOUT_FORM:[a-zA-Z0-9._-]+\]/gi, `[CHECKOUT_FORM:${selectedProduct}]`);
+       
        if (!finalHtml.includes('[CHECKOUT_FORM')) {
           finalHtml += `\n<div class="mt-8 max-w-2xl mx-auto px-4">\n[CHECKOUT_FORM:${selectedProduct}]\n</div>`;
        }
     }
+
+    // Update the local state so the editor shows the correct shortcode
+    setHtmlContent(finalHtml);
 
     setLandingPages(prev => {
       const pageId = existingPage ? existingPage.id : 'promo_' + Date.now().toString();
