@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase';
 export default function PromoLandingPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
   const storeSlug = resolvedParams.store;
-  const slug = resolvedParams.slug;
+  const slug = decodeURIComponent(resolvedParams.slug);
   const { availableStores, _hasHydrated, isLoading } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
   const region = store?.region || storeSlug;

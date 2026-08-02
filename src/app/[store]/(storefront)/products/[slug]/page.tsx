@@ -69,7 +69,7 @@ const PRODUCTS = [
 export default function ProductPage({ params }: { params: Promise<{ store: string, slug: string }> }) {
   const resolvedParams = use(params);
   const storeSlug = resolvedParams.store;
-  const slug = resolvedParams.slug;
+  const slug = decodeURIComponent(resolvedParams.slug);
   const router = useRouter();
   const { products, availableStores, _hasHydrated, isLoading, checkoutConfigs } = useStorefrontStore();
   const store = resolveStore(availableStores, storeSlug);
