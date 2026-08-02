@@ -47,10 +47,10 @@ export default function AdminPromoPage() {
       setTitle(existingPage.title || '');
       setSlug(existingPage.slug);
       setOriginalSlug(existingPage.slug);
-      setHtmlContent(existingPage.htmlContent);
+      setHtmlContent(existingPage.htmlContent || '');
       setSelectedPageId(existingPage.id);
 
-      const match = existingPage.htmlContent.match(/\[CHECKOUT_FORM:([a-zA-Z0-9.-]+)\]/);
+      const match = (existingPage.htmlContent || '').match(/\[CHECKOUT_FORM:([a-zA-Z0-9.-]+)\]/);
       if (match && match[1]) {
         setSelectedProduct(match[1]);
       } else {
