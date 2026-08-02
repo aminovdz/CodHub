@@ -186,8 +186,8 @@ export default function AdminPromoPage() {
                   onChange={(e) => {
                     const formatted = e.target.value
                       .toLowerCase()
-                      .replace(/\s+/g, '-')
-                      .replace(/[^a-z0-9-]/g, '');
+                      .replace(/[\s_]+/g, '-')
+                      .replace(/[^\p{L}\p{N}-]+/gu, '');
                     setSlug(formatted);
                   }}
                   className="flex-1 px-4 py-3 border border-slate-300 rounded-r-xl focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900"

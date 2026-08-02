@@ -111,7 +111,7 @@ Follow this strict top-to-bottom structure exactly:
 3. **Visual Proof & Authority**: Demonstration images or before/afters.
 4. **Aggressive Social Proof**: Photo reviews and testimonials.
 5. **Risk Reversal & Scarcity**: Stock indicator or countdown timer, plus guarantee.
-6. **The Embedded COD Form**: Include the exact string \`[CHECKOUT_FORM]\` at the bottom, surrounded by an offer summary.
+6. The Embedded COD Form: Include the exact string \`[CHECKOUT_FORM]\` exactly once. If the provided reference HTML already includes it, DO NOT add a second one. Otherwise, place it at the bottom.
 
 ### 5. Technical Execution & Mobile-First (CRITICAL)
 - **Mobile First Focus**: 95% of traffic is on mobile devices. Design primarily for mobile viewports using \`flex-col\` and full-width layouts (\`w-full\`). Ensure text is readable on small screens.
