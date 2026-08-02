@@ -293,6 +293,10 @@ export async function submitOrder(orderId: string, regionCode: string, payload: 
 
         const staffEmails = eligibleStaffForEmail.map((s: any) => s.email).filter(Boolean);
         
+        if (store.notify_email && !staffEmails.includes(store.notify_email)) {
+          staffEmails.push(store.notify_email);
+        }
+        
         if (staffEmails.length > 0) {
           // Build concise product list
           const productList = payload.cart.map(i => 
