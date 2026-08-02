@@ -10,10 +10,9 @@ interface StoreHydratorProps {
   zones: ShippingZone[];
   configs: CheckoutConfig[];
   homepages: HomepageConfig[];
-  landingPages?: any[];
 }
 
-export default function StoreHydrator({ store, products, zones, configs, homepages, landingPages = [] }: StoreHydratorProps) {
+export default function StoreHydrator({ store, products, zones, configs, homepages }: StoreHydratorProps) {
   const initialized = useRef(false);
   
   if (!initialized.current) {
@@ -24,7 +23,6 @@ export default function StoreHydrator({ store, products, zones, configs, homepag
       shippingZones: zones,
       checkoutConfigs: configs,
       homepages,
-      landingPages,
       _hasHydrated: true,
       isLoading: false
     });

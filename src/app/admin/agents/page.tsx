@@ -17,6 +17,7 @@ import { aiService } from '@/lib/services/aiService';
 
 import { AGENTS } from '@/lib/agents/agentConfig';
 import { SkillRegistry } from '@/lib/agents/skills/registry';
+import RichHtmlContent from '@/components/RichHtmlContent';
 
 type Message = {
   id: string;
@@ -807,30 +808,13 @@ export default function AgentsHubPage() {
                   </div>
                 </div>
                 <div className="flex-1 bg-white rounded-2xl shadow-inner border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <iframe 
-                    title="Landing Page Preview"
-                    srcDoc={`
-                      <!DOCTYPE html>
-                      <html>
-                        <head>
-                          <meta charset="utf-8">
-                          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                          <script src="https://cdn.tailwindcss.com"></script>
-                          <style>
-                            body { font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
-                          </style>
-                        </head>
-                        <body>
-                          ${previewPageData.htmlContent.replace(/\[CHECKOUT_FORM[^\]]*\]/g, `
-                            <div style="max-width: 450px; margin: 30px auto; padding: 20px; border: 2px dashed #6366f1; border-radius: 16px; text-align: center; background: #e0e7ff; color: #4338ca; font-weight: bold; font-family: sans-serif;">
-                              🛍️ [Interactive COD Checkout Form Here]
-                            </div>
-                          `)}
-                        </body>
-                      </html>
-                    `}
-                    className="w-full h-full border-none"
-                  />
+                  <div className="w-full h-full overflow-y-auto overflow-x-hidden">
+                    <RichHtmlContent 
+                      html={previewPageData.htmlContent} 
+                      region={activeStore?.region || 'us'} 
+                      storeSlug={activeStore?.id || 'default'} 
+                    />
+                  </div>
                 </div>
               </div>
             </div>

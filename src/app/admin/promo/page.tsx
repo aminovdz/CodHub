@@ -15,8 +15,6 @@ export default function AdminPromoPage() {
     : {};
   const sessionUser = sessionData.user || sessionData.username || 'System';
 
-  if (!activeStore) return <div className="p-8">Loading store data...</div>;
-
   const storeProducts = products.filter(p => p.storeId === activeStore.id);
   const [selectedProduct, setSelectedProduct] = useState('');
   const [title, setTitle] = useState('');
