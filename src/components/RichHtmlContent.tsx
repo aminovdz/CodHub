@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { CheckoutForm } from '@/components/checkout/CheckoutForm';
 import { AutoResizingIframe } from './AutoResizingIframe';
 import { useRouter } from 'next/navigation';
@@ -26,6 +26,7 @@ type Segment =
  */
 export default function RichHtmlContent({ html, region, storeSlug, utmSource, utmCampaign }: Props) {
   const router = useRouter();
+  const [stickyHtml, setStickyHtml] = useState<string>('');
   
   const segments: Segment[] = useMemo(() => {
     if (!html) return [];
@@ -74,7 +75,7 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
 
 
   return (
-    <div className="w-full">
+    <div className="w-full relative pb-20">
       {segments.map((seg, i) => {
         if (seg.type === 'checkout') {
           return (
@@ -91,13 +92,44 @@ export default function RichHtmlContent({ html, region, storeSlug, utmSource, ut
         // HTML segment — render with AutoResizingIframe to guarantee exact styling as preview
         return (
           <div key={`html-${i}`} className="w-full">
-            <AutoResizingIframe html={seg.content} onCheckout={() => {
-              const basePath = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost') ? '' : `/${storeSlug}`;
-              router.push(`${basePath}/checkout`);
-            }} />
+            <AutoResizingIframe 
+              html={seg.content} 
+              onCheckout={() => {
+                const checkoutEl = document.getElementById('checkout');
+                if (checkoutEl) {
+                  checkoutEl.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  const basePath = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost') ? '' : `/${storeSlug}`;
+                  router.push(`${basePath}/checkout`);
+                }
+              }} 
+              onExtractSticky={(html) => {
+                setStickyHtml(prev => prev ? prev + html : html);
+              }}
+            />
           </div>
         );
       })}
+
+      {stickyHtml && (
+        <div className="fixed bottom-0 left-0 right-0 z-[9999] w-full shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pointer-events-none">
+          <div className="pointer-events-auto">
+          <AutoResizingIframe 
+            html={stickyHtml} 
+            isStickyContainer={true}
+            onCheckout={() => {
+              const checkoutEl = document.getElementById('checkout');
+              if (checkoutEl) {
+                checkoutEl.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                const basePath = typeof window !== 'undefined' && !window.location.hostname.includes('vercel.app') && !window.location.hostname.includes('localhost') ? '' : `/${storeSlug}`;
+                router.push(`${basePath}/checkout`);
+              }
+            }} 
+          />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

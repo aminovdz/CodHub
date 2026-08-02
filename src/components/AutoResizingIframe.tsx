@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 
-export function AutoResizingIframe({ html, onCheckout }: { html: string, onCheckout?: () => void }) {
+export function AutoResizingIframe({ html, onCheckout, onExtractSticky, isStickyContainer = false }: { html: string, onCheckout?: () => void, onExtractSticky?: (html: string) => void, isStickyContainer?: boolean }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(0);
 
@@ -17,6 +17,8 @@ export function AutoResizingIframe({ html, onCheckout }: { html: string, onCheck
           }
         } else if (e.data.type === 'redirectToCheckout' && onCheckout) {
           onCheckout();
+        } else if (e.data.type === 'extractedSticky' && onExtractSticky) {
+          onExtractSticky(e.data.html);
         }
       }
     };
@@ -44,6 +46,26 @@ export function AutoResizingIframe({ html, onCheckout }: { html: string, onCheck
           window.addEventListener('DOMContentLoaded', () => {
             observer.observe(document.body, { childList: true, subtree: true, attributes: true });
             
+            ${!isStickyContainer ? `
+            // Extract sticky elements to parent
+            setTimeout(() => {
+              const possibleFixed = document.querySelectorAll('.fixed, .sticky, [style*="fixed"], [style*="sticky"]');
+              let extractedHtml = '';
+              possibleFixed.forEach(el => {
+                const style = window.getComputedStyle(el);
+                if (style.position === 'fixed' || style.position === 'sticky') {
+                  if (style.bottom !== 'auto' || el.classList.contains('bottom-0') || el.classList.contains('bottom-2') || el.classList.contains('bottom-4') || el.classList.contains('bottom-6')) {
+                    extractedHtml += el.outerHTML;
+                    el.style.display = 'none';
+                  }
+                }
+              });
+              if (extractedHtml) {
+                window.parent.postMessage({ type: 'extractedSticky', html: extractedHtml }, '*');
+              }
+            }, 100);
+            ` : ''}
+
             // Intercept anchor clicks
             document.addEventListener('click', (e) => {
               const anchor = e.target.closest('a');
@@ -85,7 +107,7 @@ export function AutoResizingIframe({ html, onCheckout }: { html: string, onCheck
           setInterval(sendHeight, 500);
         </script>
       </head>
-      <body>
+      <body class="${isStickyContainer ? 'bg-transparent' : ''}">
         ${html}
       </body>
     </html>
