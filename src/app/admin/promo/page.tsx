@@ -49,11 +49,28 @@ export default function AdminPromoPage() {
       setOriginalSlug(existingPage.slug);
       setHtmlContent(existingPage.htmlContent);
       setSelectedPageId(existingPage.id);
+
+      const match = existingPage.htmlContent.match(/\[CHECKOUT_FORM:([a-zA-Z0-9.-]+)\]/);
+      if (match && match[1]) {
+        setSelectedProduct(match[1]);
+      } else {
+        setSelectedProduct('');
+      }
     }
   }, [existingPage, selectedPageId]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+
+    let finalHtml = htmlContent;
+    if (selectedProduct) {
+       finalHtml = finalHtml.replace(/\[Interactive COD Checkout Form Here\]/gi, `[CHECKOUT_FORM:${selectedProduct}]`);
+       finalHtml = finalHtml.replace(/\[CHECKOUT_FORM\](?!:)/gi, `[CHECKOUT_FORM:${selectedProduct}]`);
+       if (!finalHtml.includes('[CHECKOUT_FORM')) {
+          finalHtml += `\n<div class="mt-8 max-w-2xl mx-auto px-4">\n[CHECKOUT_FORM:${selectedProduct}]\n</div>`;
+       }
+    }
+
     setLandingPages(prev => {
       const pageId = existingPage ? existingPage.id : 'promo_' + Date.now().toString();
       const updatedPage = {
@@ -61,7 +78,7 @@ export default function AdminPromoPage() {
         storeId: activeStore.id,
         title,
         slug,
-        htmlContent,
+        htmlContent: finalHtml,
         published: true
       };
       if (existingPage) {
@@ -112,6 +129,7 @@ export default function AdminPromoPage() {
     setOriginalSlug(newSlug);
     setHtmlContent(newContent);
     setSelectedPageId(null);
+    setSelectedProduct('');
   };
 
   return (
@@ -163,7 +181,7 @@ export default function AdminPromoPage() {
 
         <form onSubmit={handleSave} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8 space-y-6">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Page Title</label>
               <input 
@@ -190,10 +208,23 @@ export default function AdminPromoPage() {
                       .replace(/[^\p{L}\p{N}-]+/gu, '');
                     setSlug(formatted);
                   }}
-                  className="flex-1 px-4 py-3 border border-slate-300 rounded-r-xl focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900"
+                  className="flex-1 px-4 py-3 border border-slate-300 rounded-r-xl focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 w-full"
                   placeholder="e.g. summer-sale"
                 />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Target Product</label>
+              <select
+                value={selectedProduct}
+                onChange={e => setSelectedProduct(e.target.value)}
+                className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-600 outline-none font-bold text-slate-900 bg-white"
+              >
+                <option value="">-- No Product Selected --</option>
+                {storeProducts.map(p => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
             </div>
           </div>
 
