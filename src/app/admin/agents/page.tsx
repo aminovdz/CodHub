@@ -832,8 +832,8 @@ export default function AgentsHubPage() {
                   const finalPage = {
                     id: 'promo_' + Date.now().toString(),
                     storeId: activeStore.id,
-                    title: previewPageData.productName + ' Promo',
-                    slug: previewPageData.productName.toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '-').replace(/(^-|-$)/g, '') || ('promo-' + Date.now()),
+                    title: previewPageData.title + ' Promo',
+                    slug: previewPageData.title.toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, '-').replace(/(^-|-$)/g, '') || ('promo-' + Date.now()),
                     productId: previewPageData.productId,
                     htmlContent: previewPageData.htmlContent,
                     published: true,
